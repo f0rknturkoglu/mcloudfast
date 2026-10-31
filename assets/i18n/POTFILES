@@ -40,3 +40,4 @@ src/ui/mcloud/player.rs
 src/ui/mcloud/pages.rs
 src/ui/mcloud/artist.rs
 src/ui/mcloud/topbar.rs
+src/ui/browse.rs

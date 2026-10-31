@@ -120,6 +120,7 @@ pub enum Page {
     Episodes,
     RecentlyAdded,
     AllPlaylists,
+    Browse,
     Playlist(String),
     Album(String),
     Artist(String),
@@ -145,6 +146,7 @@ impl Page {
             Page::Episodes => "episodes".into(),
             Page::RecentlyAdded => "recent".into(),
             Page::AllPlaylists => "playlists".into(),
+            Page::Browse => "browse".into(),
             Page::Playlist(id) => format!("playlist:{id}"),
             Page::Album(id) => format!("album:{id}"),
             Page::Artist(id) => format!("artist:{id}"),
@@ -168,6 +170,7 @@ impl Page {
             "episodes" => Page::Episodes,
             "recent" => Page::RecentlyAdded,
             "playlists" => Page::AllPlaylists,
+            "browse" => Page::Browse,
             "queue" => Page::Queue,
             "settings" => Page::Settings,
             other => {

@@ -230,6 +230,17 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
     {
         app.actions.push(Action::Open(Page::Home));
     }
+    if row(
+        ui,
+        Leading::Icon(Icon::McloudBrowse),
+        &gettext(locale, "Browse"),
+        page == Page::Browse,
+        false,
+    )
+    .clicked()
+    {
+        app.actions.push(Action::Open(Page::Browse));
+    }
 
     heading(ui, &gettext(locale, "Library"), None);
     for (icon, label, target) in [

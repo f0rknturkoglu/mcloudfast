@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 pub mod artist;
+pub mod browse;
 pub mod collection;
 pub(crate) mod devices;
 mod dialogs;
@@ -409,6 +410,7 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                                 | Page::Episodes
                                 | Page::RecentlyAdded
                                 | Page::AllPlaylists => library::show(app, ui, page),
+                                Page::Browse => browse::show(app, ui),
                                 Page::Playlist(id) => collection::playlist(app, ui, &id),
                                 Page::Album(id) => collection::album(app, ui, &id),
                                 Page::Artist(id) => artist::show(app, ui, &id),

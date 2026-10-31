@@ -3169,6 +3169,7 @@ impl App {
                     self.load_playlists();
                 }
             }
+            Page::Browse => {}
             Page::Playlist(id) => {
                 let incomplete = match self.playlist_pages.get(&id) {
                     None => true,
@@ -5432,6 +5433,7 @@ impl App {
                     self.load_playlists();
                 }
             }
+            Page::Browse => {}
             Page::Playlist(id) => {
                 let needs_generation = self
                     .playlist_pages
@@ -5990,6 +5992,7 @@ impl App {
                     });
                 }
             }
+            Page::Browse => {}
             Page::Playlist(id) => {
                 if self.playlist_pages.get(&id).is_some_and(|page| {
                     page.pending_writes > 0
@@ -6194,6 +6197,7 @@ impl App {
                 self.load_playlists();
             }
             Page::AllPlaylists => self.load_playlists(),
+            Page::Browse => {}
             Page::Playlist(id) => {
                 if let Some(playlist) = self.playlist_pages.get_mut(id) {
                     playlist.items.loading = true;
