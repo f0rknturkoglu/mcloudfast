@@ -91,7 +91,12 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             ),
         );
     }
-    player_bar::show(app, ui);
+    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
+    // mcloud's player floats over the page instead of taking a band.
+    if !mcloud {
+        player_bar::show(app, ui);
+    }
+    let mut content = ui.available_rect_before_wrap();
     if app.lyrics_fullscreen.is_some() {
         lyrics::fullscreen(app, ui);
     } else {
@@ -110,7 +115,11 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         if app.show_friends_panel {
             friends::side_panel(app, ui);
         }
+        content = ui.available_rect_before_wrap();
         central(app, ui);
+    }
+    if mcloud {
+        mcloud::player::show(app, ui, content);
     }
     keep_room_for_panels(app, ctx);
     devices::popup(app, ctx);
@@ -342,6 +351,11 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                     slow_banner(app, ui);
                 }
             }
+            // mcloud's floating player covers the page's end.
+            let page_clearance = match app.settings.interface {
+                crate::settings::Interface::Spotifast => 0,
+                crate::settings::Interface::Mcloud => mcloud::player::PAGE_CLEARANCE as i8,
+            };
             let scroll = crate::autoscroll::show(
                 ui,
                 egui::ScrollArea::vertical()
@@ -354,7 +368,7 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                             left: widgets::PAGE_PADDING as i8,
                             right: widgets::PAGE_PADDING as i8,
                             top: 4,
-                            bottom: 48,
+                            bottom: 48 + page_clearance,
                         })
                         .show(ui, |ui| {
                             ui.set_min_width(ui.available_width());

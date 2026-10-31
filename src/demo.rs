@@ -1495,6 +1495,8 @@ pub fn apply_flags(app: &mut App, page: Option<&str>, show: Option<&str>) {
                 app.actions
                     .push(Action::SetInterface(crate::settings::Interface::Mcloud));
             }
+            "glass-full" => app.settings.mcloud_glass = crate::settings::GlassEffect::Full,
+            "glass-eco" => app.settings.mcloud_glass = crate::settings::GlassEffect::Eco,
             // Follow system on a desktop fixed light or dark (Linux), for
             // shots of the light and dark mode themes.
             "system-light" | "system-dark" => {

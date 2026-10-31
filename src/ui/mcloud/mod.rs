@@ -5,4 +5,6 @@
 //! Spotifast's and emits the same [`crate::model::Action`]s, so playback,
 //! navigation and the library behave the same in either look.
 
+pub mod glass;
+pub mod player;
 pub mod sidebar;

@@ -1308,6 +1308,14 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 "mcloud draws an Apple Music style sidebar, colours and typeface.",
             ),
         ),
+        RowText::new(
+            gettext(locale, "Glass effect"),
+            gettext(
+                locale,
+                "How the floating player's glass is drawn. Full is the finest and works the GPU hardest; Eco draws a solid surface.",
+            ),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
     ];
     for index in [8, 9, 10] {
         appearance_rows[index].available &= visualizers;
@@ -1355,6 +1363,49 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                                 .clicked()
                                 {
                                     app.actions.push(Action::SetInterface(*interface));
+                                }
+                            }
+                        });
+                    },
+                );
+            }
+            {
+                use crate::settings::GlassEffect;
+                let choices = [
+                    (GlassEffect::Full, pgettext(locale, "glass", "Full")),
+                    (GlassEffect::Balanced, pgettext(locale, "glass", "Balanced")),
+                    (GlassEffect::Eco, pgettext(locale, "glass", "Eco")),
+                ];
+                let choice_gap = 6.0;
+                let choices_width = choices
+                    .iter()
+                    .map(|(_, label)| theme::soft_button_width(ui, label))
+                    .sum::<f32>()
+                    + choice_gap * (choices.len() - 1) as f32;
+                filtered_row_sized(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[14],
+                    choices_width,
+                    |ui| {
+                        // Laid right to left, so the last choice goes first.
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = choice_gap;
+                            for (effect, label) in choices.iter().rev() {
+                                if theme::soft_button(
+                                    ui,
+                                    &palette,
+                                    None,
+                                    label,
+                                    app.settings.mcloud_glass == *effect,
+                                )
+                                .clicked()
+                                    && app.settings.mcloud_glass != *effect
+                                {
+                                    app.settings.mcloud_glass = *effect;
+                                    changed = true;
                                 }
                             }
                         });

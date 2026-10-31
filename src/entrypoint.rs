@@ -57,7 +57,7 @@ struct Cli {
     /// `library-list-narrow`, `library-list-wide`, `library-grid`, `library-grid-narrow`,
     /// `library-grid-wide`, `waiting-for-browser`, `sign-in-returning`, `sign-in-malformed`,
     /// `sign-in-shared-retired`, `sign-in-unknown-client`, `sign-in-not-allowed`,
-    /// `shared-grant`, `own-app`, or `mcloud`.
+    /// `shared-grant`, `own-app`, `mcloud`, `glass-full`, or `glass-eco`.
     #[cfg(feature = "demo")]
     #[arg(long)]
     demo_show: Option<String>,

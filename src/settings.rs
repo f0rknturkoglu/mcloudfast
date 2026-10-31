@@ -58,6 +58,18 @@ pub enum Interface {
     Mcloud,
 }
 
+/// How mcloud draws its glass surfaces: the page behind them blurred on the
+/// GPU and bent at their edges, more or less finely, or solid surfaces that
+/// leave the GPU alone.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GlassEffect {
+    Full,
+    #[default]
+    Balanced,
+    Eco,
+}
+
 /// How the tray icon is drawn on Linux and Windows: in colour, or white or
 /// black to match the panel. The macOS menu bar always gets the template
 /// image, which it draws black or white to match itself.
@@ -301,6 +313,8 @@ pub struct Settings {
     /// The look of the main window. While mcloud draws it, its palette
     /// stands in for the theme, which is kept for switching back.
     pub interface: Interface,
+    /// How mcloud's floating player draws its glass.
+    pub mcloud_glass: GlassEffect,
     /// The interface language; older files without it follow the system.
     pub language: LanguageChoice,
     /// Filename selected from the local themes directory.
@@ -511,6 +525,7 @@ impl Default for Settings {
             audio_cache_mb: 1024,
             theme: ThemeChoice::System,
             interface: Interface::Spotifast,
+            mcloud_glass: GlassEffect::Balanced,
             language: LanguageChoice::System,
             custom_theme: None,
             custom_theme_cache: None,
