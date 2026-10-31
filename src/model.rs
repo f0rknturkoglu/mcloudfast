@@ -616,6 +616,15 @@ pub enum TopPeriod {
     LongTerm,
 }
 
+/// Category filter on the Home page (All, Music, Podcasts).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum HomeFilter {
+    #[default]
+    All,
+    Music,
+    Podcasts,
+}
+
 impl TopPeriod {
     pub const ALL: [TopPeriod; 3] = [Self::ShortTerm, Self::MediumTerm, Self::LongTerm];
 
@@ -673,6 +682,8 @@ impl TopPeriod {
 
 #[derive(Default)]
 pub struct HomeData {
+    /// Active category filter on the Home page (All, Music, Podcasts).
+    pub category_filter: HomeFilter,
     pub recently_played: Loadable<Vec<PlayHistory>>,
     pub top_artists: Loadable<Vec<Artist>>,
     /// Active period selected for top songs.
@@ -1305,6 +1316,7 @@ pub enum Action {
     ForgetSearch(String),
     SetSearchFilter(SearchFilter),
     SetTopPeriod(TopPeriod),
+    SetHomeFilter(HomeFilter),
     FocusSearch,
     LoadMore(Page),
     LoadWindow {

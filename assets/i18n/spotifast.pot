@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 01:55+0300\n"
+"POT-Creation-Date: 2026-11-01 02:10+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -31,13 +31,13 @@ msgstr ""
 msgid "Play {name}"
 msgstr ""
 
-#: src/ui/sidebar.rs:302 src/app.rs:3593 src/app.rs:23540
+#: src/ui/sidebar.rs:302 src/app.rs:3593 src/app.rs:23541
 #: src/ui/collection.rs:2261 src/ui/collection.rs:2490
 msgid "Playlist"
 msgstr ""
 
-#: src/ui/sidebar.rs:312 src/ui/friends.rs:304 src/app.rs:3567 src/app.rs:23545
-#: src/ui/collection.rs:2483 src/ui/home.rs:96 src/ui/keys.rs:337
+#: src/ui/sidebar.rs:312 src/ui/friends.rs:304 src/app.rs:3567 src/app.rs:23546
+#: src/ui/collection.rs:2483 src/ui/home.rs:122 src/ui/keys.rs:337
 #: src/ui/winamp/playlist.rs:653
 msgid "Liked Songs"
 msgstr ""
@@ -46,8 +46,8 @@ msgstr ""
 msgid "Library order"
 msgstr ""
 
-#: src/ui/sidebar.rs:356 src/ui/home.rs:520 src/ui/home.rs:530
-#: src/ui/home.rs:557
+#: src/ui/sidebar.rs:356 src/ui/home.rs:564 src/ui/home.rs:574
+#: src/ui/home.rs:601
 msgid "Recently played"
 msgstr ""
 
@@ -117,24 +117,24 @@ msgstr ""
 msgid "Library"
 msgstr ""
 
-#: src/ui/sidebar.rs:1095 src/app.rs:8382 src/model.rs:807 src/ui/search.rs:668
+#: src/ui/sidebar.rs:1095 src/app.rs:8382 src/model.rs:818 src/ui/search.rs:668
 #: src/ui/mcloud/sidebar.rs:171
 msgid "Playlists"
 msgstr ""
 
-#: src/ui/sidebar.rs:1096 src/model.rs:806 src/model.rs:931
+#: src/ui/sidebar.rs:1096 src/model.rs:817 src/model.rs:942
 #: src/ui/library.rs:17 src/ui/search.rs:595 src/ui/mcloud/sidebar.rs:142
 #: src/ui/mcloud/artist.rs:86
 msgid "Albums"
 msgstr ""
 
-#: src/ui/sidebar.rs:1097 src/model.rs:805 src/ui/library.rs:22
+#: src/ui/sidebar.rs:1097 src/model.rs:816 src/ui/library.rs:22
 #: src/ui/search.rs:527 src/ui/mcloud/sidebar.rs:139
 msgid "Artists"
 msgstr ""
 
-#: src/ui/sidebar.rs:1098 src/model.rs:808 src/ui/library.rs:27
-#: src/ui/search.rs:719
+#: src/ui/sidebar.rs:1098 src/model.rs:819 src/ui/library.rs:27
+#: src/ui/search.rs:719 src/ui/mcloud/pages.rs:470
 msgid "Podcasts"
 msgstr ""
 
@@ -148,7 +148,7 @@ msgid "Search in Your Library"
 msgstr ""
 
 #: src/ui/sidebar.rs:1243 src/app.rs:3628 src/ui/artist.rs:226
-#: src/ui/artist.rs:369 src/ui/home.rs:794 src/ui/library.rs:101
+#: src/ui/artist.rs:369 src/ui/home.rs:856 src/ui/library.rs:101
 #: src/ui/search.rs:159 src/ui/search.rs:491 src/ui/winamp/playlist.rs:746
 #: src/ui/mcloud/pages.rs:265 src/ui/mcloud/pages.rs:347
 msgid "Artist"
@@ -175,7 +175,7 @@ msgstr ""
 #: src/ui/sidebar.rs:1988 src/ui/player_bar.rs:798 src/ui/widgets.rs:1213
 #: src/ui/artist.rs:401 src/ui/collection.rs:310 src/ui/new_releases.rs:117
 #: src/ui/prerelease.rs:309 src/ui/search.rs:408 src/ui/show.rs:390
-#: src/ui/mcloud/player.rs:226 src/ui/mcloud/pages.rs:474
+#: src/ui/mcloud/player.rs:226 src/ui/mcloud/pages.rs:501
 #: src/ui/mcloud/artist.rs:252
 msgid "Play"
 msgstr ""
@@ -200,7 +200,7 @@ msgstr[1] ""
 #. Translators: Keep {count} exactly as written. It becomes the number of selected songs.
 #. Translators: {count} is a number of songs.
 #: src/i18n.rs:201 src/ui/widgets.rs:696 src/ui/collection.rs:2602
-#: src/ui/mcloud/pages.rs:709
+#: src/ui/mcloud/pages.rs:736
 #, rust-format
 msgid "{count} song"
 msgid_plural "{count} songs"
@@ -261,7 +261,7 @@ msgstr ""
 
 #: src/ui/player_bar.rs:742 src/ui/player_bar.rs:749 src/ui/collection.rs:364
 #: src/ui/new_releases.rs:146 src/ui/mcloud/player.rs:196
-#: src/ui/mcloud/pages.rs:484
+#: src/ui/mcloud/pages.rs:511
 msgid "Shuffle"
 msgstr ""
 
@@ -270,7 +270,7 @@ msgid "Previous"
 msgstr ""
 
 #: src/ui/player_bar.rs:796 src/ui/friends.rs:208 src/ui/collection.rs:308
-#: src/ui/mcloud/player.rs:224 src/ui/mcloud/pages.rs:472
+#: src/ui/mcloud/player.rs:224 src/ui/mcloud/pages.rs:499
 #: src/ui/mcloud/artist.rs:250
 msgid "Pause"
 msgstr ""
@@ -372,7 +372,7 @@ msgstr ""
 msgid "Next up"
 msgstr ""
 
-#: src/ui/queue.rs:625 src/ui/queue.rs:658 src/ui/widgets.rs:2976
+#: src/ui/queue.rs:625 src/ui/queue.rs:658 src/ui/widgets.rs:2989
 #: src/ui/collection.rs:1269 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr ""
@@ -449,8 +449,8 @@ msgstr ""
 msgid "No timed lyrics for this track."
 msgstr ""
 
-#: src/ui/lyrics.rs:462 src/ui/widgets.rs:2874 src/ui/widgets.rs:2914
-#: src/ui/widgets.rs:2942 src/app.rs:13707 src/ui/collection.rs:920
+#: src/ui/lyrics.rs:462 src/ui/widgets.rs:2887 src/ui/widgets.rs:2927
+#: src/ui/widgets.rs:2955 src/app.rs:13708 src/ui/collection.rs:920
 msgid "Loading…"
 msgstr ""
 
@@ -606,7 +606,7 @@ msgstr ""
 
 #: src/ui/widgets.rs:2051 src/ui/artist.rs:431 src/ui/collection.rs:413
 #: src/ui/show.rs:260 src/ui/show.rs:468 src/ui/mcloud/player.rs:580
-#: src/ui/mcloud/pages.rs:543 src/ui/mcloud/artist.rs:361
+#: src/ui/mcloud/pages.rs:570 src/ui/mcloud/artist.rs:361
 msgid "More"
 msgstr ""
 
@@ -661,59 +661,59 @@ msgstr ""
 msgid "Sort by duration"
 msgstr ""
 
-#: src/ui/widgets.rs:2953 src/app.rs:13916 src/app.rs:13930
+#: src/ui/widgets.rs:2966 src/app.rs:13917 src/app.rs:13931
 msgid "Network connection error. Check your connection."
 msgstr ""
 
-#: src/ui/widgets.rs:3211
+#: src/ui/widgets.rs:3224
 msgid "Cut"
 msgstr ""
 
-#: src/ui/widgets.rs:3216 src/ui/login.rs:560
+#: src/ui/widgets.rs:3229 src/ui/login.rs:560
 msgid "Copy"
 msgstr ""
 
-#: src/ui/widgets.rs:3221
+#: src/ui/widgets.rs:3234
 msgid "Paste"
 msgstr ""
 
-#: src/ui/widgets.rs:3238
+#: src/ui/widgets.rs:3251
 msgid "Select all"
 msgstr ""
 
-#: src/ui/widgets.rs:3345
+#: src/ui/widgets.rs:3358
 msgid "Clear"
 msgstr ""
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3390
+#: src/ui/widgets.rs:3403
 #, rust-format
 msgid "Built with love by {name}"
 msgstr ""
 
-#: src/ui/widgets.rs:3535
+#: src/ui/widgets.rs:3548
 msgid "Host"
 msgstr ""
 
-#: src/ui/widgets.rs:3552
+#: src/ui/widgets.rs:3565
 msgid "Port"
 msgstr ""
 
-#: src/ui/widgets.rs:3570
+#: src/ui/widgets.rs:3583
 msgid "Username"
 msgstr ""
 
-#: src/ui/widgets.rs:3581
+#: src/ui/widgets.rs:3594
 msgid "Password"
 msgstr ""
 
-#: src/ui/widgets.rs:3599
+#: src/ui/widgets.rs:3612
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
 msgstr ""
 
-#: src/ui/widgets.rs:3603
+#: src/ui/widgets.rs:3616
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -865,7 +865,7 @@ msgid "Queue cleared"
 msgstr ""
 
 #. Translators: Keep {date} unchanged. It is a date in YYYY-MM-DD form.
-#: src/app.rs:6520 src/app.rs:23530
+#: src/app.rs:6520 src/app.rs:23531
 #, rust-format
 msgid "Queue {date}"
 msgstr ""
@@ -1101,117 +1101,117 @@ msgid_plural "{count} links copied"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/app.rs:12178
+#: src/app.rs:12179
 msgid ""
 "Spotify doesn't let apps reorder your playlists, so this order is saved on "
 "this computer"
 msgstr ""
 
-#: src/app.rs:12333
+#: src/app.rs:12334
 msgid "Restarting local playback"
 msgstr ""
 
-#: src/app.rs:12369
+#: src/app.rs:12370
 msgid "Local playback needs Spotify Premium"
 msgstr ""
 
-#: src/app.rs:12419
+#: src/app.rs:12420
 msgid "Play history cleared"
 msgstr ""
 
 #. Translators: {size} is a size in megabytes, such as 12.5.
-#: src/app.rs:12430
+#: src/app.rs:12431
 #, rust-format
 msgid "Cleared {size} MB of artwork"
 msgstr ""
 
 #. Translators: {error} is an error message.
-#: src/app.rs:12436
+#: src/app.rs:12437
 #, rust-format
 msgid "Couldn't clear artwork: {error}"
 msgstr ""
 
-#: src/app.rs:12663
+#: src/app.rs:12664
 msgid "Downloading MilkDrop preset packs"
 msgstr ""
 
 #. Translators: {name} is the name of a visualizer preset pack.
-#: src/app.rs:12697
+#: src/app.rs:12698
 #, rust-format
 msgid "Downloading {name} presets"
 msgstr ""
 
-#: src/app.rs:13850
+#: src/app.rs:13851
 msgid "Couldn't start playback"
 msgstr ""
 
-#: src/app.rs:13851
+#: src/app.rs:13852
 msgid "Couldn't pause"
 msgstr ""
 
-#: src/app.rs:13852
+#: src/app.rs:13853
 msgid "Couldn't skip"
 msgstr ""
 
-#: src/app.rs:13853
+#: src/app.rs:13854
 msgid "Couldn't go back"
 msgstr ""
 
-#: src/app.rs:13854
+#: src/app.rs:13855
 msgid "Couldn't seek"
 msgstr ""
 
-#: src/app.rs:13855
+#: src/app.rs:13856
 msgid "Couldn't change the volume"
 msgstr ""
 
-#: src/app.rs:13856
+#: src/app.rs:13857
 msgid "Couldn't change shuffle"
 msgstr ""
 
-#: src/app.rs:13857
+#: src/app.rs:13858
 msgid "Couldn't change repeat"
 msgstr ""
 
-#: src/app.rs:13900 src/ui/mod.rs:476
+#: src/app.rs:13901 src/ui/mod.rs:476
 msgid "Spotify won't let this computer play this song right now."
 msgstr ""
 
-#: src/app.rs:13907
+#: src/app.rs:13908
 msgid ""
 "No audio output device was found. Connect or enable one, then press play "
 "again."
 msgstr ""
 
-#: src/app.rs:13921
+#: src/app.rs:13922
 msgid ""
 "Spotify doesn't make this playlist's songs available to third-party apps."
 msgstr ""
 
-#: src/app.rs:14042
+#: src/app.rs:14043
 msgid "Spotify sign-in expired. Sign in again, then retry the cover upload."
 msgstr ""
 
-#: src/app.rs:14047
+#: src/app.rs:14048
 msgid ""
 "Spotify refused this cover. Check that you own the playlist, then sign in "
 "again to grant image upload permission. If using a personal app, reconnect "
 "it in Settings too."
 msgstr ""
 
-#: src/app.rs:14051
+#: src/app.rs:14052
 msgid "Spotify rejected the image size. Choose a smaller image."
 msgstr ""
 
 #. Translators: {error} is an error message.
-#: src/app.rs:14054
+#: src/app.rs:14055
 #, rust-format
 msgid "Couldn't upload the cover: {error}. Try again."
 msgstr ""
 
 #. Translators: Keep {track} unchanged. It is the name of the song,
 #. playlist, album, or artist the radio is based on, not translated.
-#: src/app.rs:23550 src/app/radio.rs:38
+#: src/app.rs:23551 src/app/radio.rs:38
 #, rust-format
 msgid "{track} Radio"
 msgstr ""
@@ -2276,7 +2276,7 @@ msgstr ""
 msgid "Compilation"
 msgstr ""
 
-#: src/api/models.rs:298 src/model.rs:933 src/ui/mcloud/artist.rs:121
+#: src/api/models.rs:298 src/model.rs:944 src/ui/mcloud/artist.rs:121
 msgid "Appears On"
 msgstr ""
 
@@ -2290,44 +2290,45 @@ msgstr ""
 msgid "{rate} fps, your screen"
 msgstr ""
 
-#: src/model.rs:649
+#: src/model.rs:658
 msgid "Last 4 weeks"
 msgstr ""
 
-#: src/model.rs:650
+#: src/model.rs:659
 msgid "Last 6 months"
 msgstr ""
 
-#: src/model.rs:651
+#: src/model.rs:660
 msgid "Past year"
 msgstr ""
 
-#: src/model.rs:660
+#: src/model.rs:669
 msgid "Calculated from your listening over approximately the last 4 weeks."
 msgstr ""
 
-#: src/model.rs:664
+#: src/model.rs:673
 msgid "Calculated from your listening over approximately the last 6 months."
 msgstr ""
 
-#: src/model.rs:668
+#: src/model.rs:677
 msgid "Calculated from several years of listening history."
 msgstr ""
 
-#: src/model.rs:803 src/model.rs:930 src/ui/mcloud/pages.rs:441
+#: src/model.rs:814 src/model.rs:941 src/ui/mcloud/pages.rs:441
+#: src/ui/mcloud/pages.rs:468
 msgctxt "filter"
 msgid "All"
 msgstr ""
 
-#: src/model.rs:804 src/ui/search.rs:443 src/ui/mcloud/sidebar.rs:145
+#: src/model.rs:815 src/ui/search.rs:443 src/ui/mcloud/sidebar.rs:145
 msgid "Songs"
 msgstr ""
 
-#: src/model.rs:809 src/ui/library.rs:32 src/ui/search.rs:286
+#: src/model.rs:820 src/ui/library.rs:32 src/ui/search.rs:286
 msgid "Episodes"
 msgstr ""
 
-#: src/model.rs:932 src/ui/mcloud/artist.rs:93
+#: src/model.rs:943 src/ui/mcloud/artist.rs:93
 msgid "Singles & EPs"
 msgstr ""
 
@@ -2442,7 +2443,7 @@ msgstr ""
 msgid "Enlarge cover"
 msgstr ""
 
-#: src/ui/collection.rs:315 src/ui/mcloud/pages.rs:498
+#: src/ui/collection.rs:315 src/ui/mcloud/pages.rs:525
 msgid "No playable songs in this view"
 msgstr ""
 
@@ -2450,8 +2451,8 @@ msgstr ""
 msgid "Shuffle off"
 msgstr ""
 
-#: src/ui/collection.rs:400 src/ui/collection.rs:426 src/ui/mcloud/pages.rs:531
-#: src/ui/mcloud/pages.rs:555
+#: src/ui/collection.rs:400 src/ui/collection.rs:426 src/ui/mcloud/pages.rs:558
+#: src/ui/mcloud/pages.rs:582
 msgid "Save as playlist"
 msgstr ""
 
@@ -2483,7 +2484,7 @@ msgstr ""
 msgid "Added songs appear here."
 msgstr ""
 
-#: src/ui/collection.rs:1709 src/ui/home.rs:908
+#: src/ui/collection.rs:1709 src/ui/home.rs:970
 msgid "Your top songs"
 msgstr ""
 
@@ -2767,49 +2768,57 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
-#: src/ui/home.rs:345
+#: src/ui/home.rs:389
 msgid "Made for you"
 msgstr ""
 
-#: src/ui/home.rs:374
+#: src/ui/home.rs:418
 msgid "Your top mixes"
 msgstr ""
 
-#: src/ui/home.rs:395 src/ui/new_releases.rs:25
+#: src/ui/home.rs:439 src/ui/new_releases.rs:25
 msgid "New releases"
 msgstr ""
 
 #. Translators: {owner} is the name of the playlist's owner.
-#: src/ui/home.rs:467 src/ui/search.rs:623
+#: src/ui/home.rs:511 src/ui/search.rs:623
 #, rust-format
 msgid "By {owner}"
 msgstr ""
 
-#: src/ui/home.rs:694
+#: src/ui/home.rs:737 src/ui/library.rs:28
+msgid "No podcasts yet"
+msgstr ""
+
+#: src/ui/home.rs:744 src/ui/library.rs:29
+msgid "Followed podcasts appear here."
+msgstr ""
+
+#: src/ui/home.rs:756
 msgid "Your podcasts"
 msgstr ""
 
 #. Translators: {time} is the time left in an episode, such as 12 min; {show} is the podcast's name.
-#: src/ui/home.rs:700
+#: src/ui/home.rs:762
 #, rust-format
 msgid "{time} left • {show}"
 msgstr ""
 
 #. Translators: {show} is the podcast's name.
-#: src/ui/home.rs:709
+#: src/ui/home.rs:771
 #, rust-format
 msgid "New • {show}"
 msgstr ""
 
-#: src/ui/home.rs:757 src/ui/home.rs:767 src/ui/home.rs:782
+#: src/ui/home.rs:819 src/ui/home.rs:829 src/ui/home.rs:844
 msgid "Your top artists"
 msgstr ""
 
-#: src/ui/home.rs:909
+#: src/ui/home.rs:971
 msgid "Show more top songs"
 msgstr ""
 
-#: src/ui/home.rs:986
+#: src/ui/home.rs:1048
 msgid "Recommended for you"
 msgstr ""
 
@@ -2981,14 +2990,6 @@ msgstr ""
 
 #: src/ui/library.rs:24
 msgid "Followed artists appear here."
-msgstr ""
-
-#: src/ui/library.rs:28
-msgid "No podcasts yet"
-msgstr ""
-
-#: src/ui/library.rs:29
-msgid "Followed podcasts appear here."
 msgstr ""
 
 #: src/ui/library.rs:33
@@ -3793,8 +3794,12 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
+#: src/ui/mcloud/pages.rs:469
+msgid "Music"
+msgstr ""
+
 #. Translators: Heading for other albums by this artist below an album page.
-#: src/ui/mcloud/pages.rs:799
+#: src/ui/mcloud/pages.rs:826
 #, rust-format
 msgid "More by {artist}"
 msgstr ""

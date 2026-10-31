@@ -13,7 +13,7 @@ use egui::{Align, Color32, CornerRadius, Id, Layout, Rect, Sense, UiBuilder, pos
 use crate::api::models::{Album, Track, pick_image};
 use crate::app::App;
 use crate::i18n::{gettext, ngettext, pgettext};
-use crate::model::{Action, Dialog, Page, RowContext, SortColumn, TableSort};
+use crate::model::{Action, Dialog, HomeFilter, Page, RowContext, SortColumn, TableSort};
 use crate::theme::{self, Icon, Palette};
 use crate::ui::collection::{Actions, Hero};
 use crate::ui::widgets;
@@ -459,6 +459,33 @@ pub(crate) fn liked_genre_chips(
     ui.add_space(8.0);
 }
 
+pub(crate) fn home_category_chips(app: &mut App, ui: &mut egui::Ui) {
+    let palette = app.palette;
+    let locale = app.locale;
+    let current = app.home.category_filter;
+
+    let options = [
+        (HomeFilter::All, pgettext(locale, "filter", "All")),
+        (HomeFilter::Music, gettext(locale, "Music")),
+        (HomeFilter::Podcasts, gettext(locale, "Podcasts")),
+    ];
+
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 8.0;
+        for (filter, label) in options {
+            let is_active = filter == current;
+            if theme::soft_button(ui, &palette, None, label.as_ref(), is_active).clicked() {
+                let next = if is_active && filter != HomeFilter::All {
+                    HomeFilter::All
+                } else {
+                    filter
+                };
+                app.actions.push(Action::SetHomeFilter(next));
+            }
+        }
+    });
+}
+
 fn controls(app: &mut App, ui: &mut egui::Ui, actions: &Actions<'_>, filtered: bool) {
     let palette = app.palette;
     let locale = app.locale;
@@ -797,7 +824,7 @@ fn more_by_shelf(
     ui.add_space(32.0);
     // Translators: Heading for other albums by this artist below an album page.
     let title = gettext(app.locale, "More by {artist}").replace("{artist}", artist_name);
-    theme::text(ui, &title, theme::bold(17.0), Color32::WHITE);
+    theme::text(ui, &title, theme::bold(20.0), Color32::WHITE);
     ui.add_space(12.0);
 
     const CARD_SIZE: f32 = 160.0;

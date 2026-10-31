@@ -1102,7 +1102,21 @@ pub fn link(
 }
 
 pub fn section_title(ui: &mut egui::Ui, palette: &Palette, label: &str) -> Response {
-    text(ui, label, bold(17.0), palette.text)
+    let size = if crate::ui::mcloud::active(ui.ctx()) {
+        20.0
+    } else {
+        17.0
+    };
+    text(ui, label, bold(size), palette.text)
+}
+
+pub fn section_link(ui: &mut egui::Ui, palette: &Palette, label: &str) -> Response {
+    let size = if crate::ui::mcloud::active(ui.ctx()) {
+        20.0
+    } else {
+        17.0
+    };
+    link(ui, label, bold(size), palette.text)
 }
 
 pub fn subtle(ui: &mut egui::Ui, palette: &Palette, label: &str) -> Response {

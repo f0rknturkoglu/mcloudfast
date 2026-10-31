@@ -2802,7 +2802,12 @@ pub fn shelf(
     title: &str,
     add_contents: impl FnOnce(&mut Ui),
 ) {
-    ui.add_space(8.0);
+    let top_space = if crate::ui::mcloud::active(ui.ctx()) {
+        12.0
+    } else {
+        8.0
+    };
+    ui.add_space(top_space);
     theme::section_title(ui, palette, title);
     shelf_cards(ui, id, add_contents);
 }
@@ -2816,14 +2821,22 @@ pub fn linked_shelf(
     title: &str,
     add_contents: impl FnOnce(&mut Ui),
 ) -> bool {
-    ui.add_space(8.0);
-    let clicked = theme::link(ui, title, theme::bold(17.0), palette.text).clicked();
+    let top_space = if crate::ui::mcloud::active(ui.ctx()) {
+        12.0
+    } else {
+        8.0
+    };
+    ui.add_space(top_space);
+    let clicked = theme::section_link(ui, palette, title).clicked();
     shelf_cards(ui, id, add_contents);
     clicked
 }
 
 pub(crate) fn shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui)) {
-    ui.add_space(4.0);
+    let is_mcloud = crate::ui::mcloud::active(ui.ctx());
+    let card_space = if is_mcloud { 8.0 } else { 4.0 };
+    let bottom_space = if is_mcloud { 16.0 } else { 12.0 };
+    ui.add_space(card_space);
     crate::autoscroll::show(
         ui,
         egui::ScrollArea::horizontal().id_salt(id),
@@ -2835,7 +2848,7 @@ pub(crate) fn shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut 
             });
         },
     );
-    ui.add_space(12.0);
+    ui.add_space(bottom_space);
 }
 
 /// A wrapping grid of cards.

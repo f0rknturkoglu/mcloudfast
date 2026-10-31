@@ -87,17 +87,17 @@ Palet ve SF Pro fontu, sidebar, üst çubuk, yüzen player, liquid glass (kullan
 memnun), albüm ve playlist başlığı ile butonlar, tablo başlıkları ve satır
 çizgileri, sanatçı sayfası, ana sayfa selamlamasının kaldırılması, albüm
 sayfasının altı (tam tarih, süre/parça özeti, telif ve "More by [Sanatçı]" rafı),
-Liked Songs sayfası (tür çipleri filtreleme ve sağdaki "Recently added ☰" sıralama açılır menüsü).
+Liked Songs sayfası (tür çipleri filtreleme ve sağdaki "Recently added ☰" sıralama açılır menüsü),
+Ana sayfa (All/Music/Podcasts kategori filtre çipleri, filtrelere göre raf ve kısayol gösterimi,
+20.0 pt Apple Music bölüm ve raf başlıkları ile raf boşlukları).
 
 ## Kalanlar (sırayla önerilen)
 
-1. **Ana sayfa:** All/Music/Podcasts çipleri, "Made For You" ve "Recently Played" gibi
-   bölüm başlıkları.
-2. **Recently Added ve All Playlists:** mcloud'un kütüphane görünümleri
+1. **Recently Added ve All Playlists:** mcloud'un kütüphane görünümleri
    (`theme.js` -> `openLibrary`). Yeni sayfalar gerekiyor.
-3. **Browse sayfası:** renkli kategori karoları. Spotifast'te yok; Web API'nin
+2. **Browse sayfası:** renkli kategori karoları. Spotifast'te yok; Web API'nin
    kategori isteğiyle yeni bir sayfa yazılmalı.
-4. **Sidebar:** mcloud'daki gibi sayfanın arkasından renk sızdıran parlama
+3. **Sidebar:** mcloud'daki gibi sayfanın arkasından renk sızdıran parlama
    (sidebar glow).
 
 ## Bilinen durumlar

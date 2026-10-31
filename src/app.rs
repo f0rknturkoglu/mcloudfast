@@ -11917,6 +11917,7 @@ impl App {
             }
             Action::SetSearchFilter(filter) => self.search.filter = filter,
             Action::SetTopPeriod(period) => self.set_top_period(period),
+            Action::SetHomeFilter(filter) => self.home.category_filter = filter,
             Action::FocusSearch => {
                 self.search.focus_requested = true;
                 if !matches!(self.page(), Page::Search) {

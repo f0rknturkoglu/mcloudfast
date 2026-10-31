@@ -45,21 +45,47 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         let greeting = crate::util::greeting(app.locale);
         theme::text(ui, greeting.as_ref(), theme::bold(30.0), palette.text);
         ui.add_space(12.0);
+    } else {
+        super::mcloud::pages::home_category_chips(app, ui);
+        ui.add_space(14.0);
     }
-    quick_access(app, ui);
-    ui.add_space(16.0);
 
-    if app.settings.home.made_for_you.visible {
+    let filter = if crate::ui::mcloud::active(ui.ctx()) {
+        app.home.category_filter
+    } else {
+        crate::model::HomeFilter::All
+    };
+
+    if quick_access(app, ui) {
+        ui.add_space(16.0);
+    }
+
+    let show_music = matches!(
+        filter,
+        crate::model::HomeFilter::All | crate::model::HomeFilter::Music
+    );
+    let show_podcasts = matches!(
+        filter,
+        crate::model::HomeFilter::All | crate::model::HomeFilter::Podcasts
+    );
+
+    if show_music && app.settings.home.made_for_you.visible {
         made_for_you(app, ui);
         top_mixes(app, ui);
     }
-    new_releases(app, ui);
-    recently_played(app, ui);
-    podcasts(app, ui);
-    top_artists(app, ui);
-    top_tracks(app, ui);
-    if app.settings.home.recommendations.visible {
-        recommendations(app, ui);
+    if show_music {
+        new_releases(app, ui);
+        recently_played(app, ui);
+    }
+    if show_podcasts {
+        podcasts(app, ui);
+    }
+    if show_music {
+        top_artists(app, ui);
+        top_tracks(app, ui);
+        if app.settings.home.recommendations.visible {
+            recommendations(app, ui);
+        }
     }
 }
 
@@ -189,12 +215,29 @@ fn quick_access_tiles(app: &App) -> Vec<Tile> {
             tiles.push(tile);
         }
     }
-    tiles
+    match app.home.category_filter {
+        crate::model::HomeFilter::All => tiles,
+        crate::model::HomeFilter::Music => {
+            tiles.into_iter().filter(|t| !is_podcast_tile(t)).collect()
+        }
+        crate::model::HomeFilter::Podcasts => tiles.into_iter().filter(is_podcast_tile).collect(),
+    }
 }
 
-fn quick_access(app: &mut App, ui: &mut egui::Ui) {
+fn is_podcast_tile(tile: &Tile) -> bool {
+    matches!(tile.page, Page::Show(_))
+        || tile
+            .uri
+            .as_deref()
+            .is_some_and(|u| u.starts_with("spotify:show:") || u.starts_with("spotify:episode:"))
+}
+
+fn quick_access(app: &mut App, ui: &mut egui::Ui) -> bool {
     let palette = app.palette;
     let tiles = quick_access_tiles(app);
+    if tiles.is_empty() {
+        return false;
+    }
     let available = ui.available_width();
     let columns = ((available / 300.0).floor() as usize).clamp(2, 4);
     let gap = 10.0;
@@ -325,6 +368,7 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) {
             }
         });
     }
+    true
 }
 
 /// Renders session Home cards or approximate fallback cards in the same shelf.
@@ -685,6 +729,24 @@ fn podcasts(app: &mut App, ui: &mut egui::Ui) {
         jiff::Zoned::now().date(),
     );
     if episodes.is_empty() {
+        if app.home.category_filter == crate::model::HomeFilter::Podcasts {
+            ui.add_space(32.0);
+            ui.vertical_centered(|ui| {
+                theme::text(
+                    ui,
+                    gettext(app.locale, "No podcasts yet"),
+                    theme::bold(20.0),
+                    palette.text,
+                );
+                ui.add_space(8.0);
+                theme::text(
+                    ui,
+                    gettext(app.locale, "Followed podcasts appear here."),
+                    theme::regular(14.0),
+                    palette.secondary,
+                );
+            });
+        }
         return;
     }
     widgets::shelf(
@@ -834,7 +896,7 @@ fn track_list(
         Loadable::Loaded(tracks) => tracks,
         Loadable::Loading | Loadable::NotLoaded => {
             if let Some(page) = title_page {
-                if theme::link(ui, title, theme::bold(17.0), palette.text).clicked() {
+                if theme::section_link(ui, &palette, title).clicked() {
                     app.actions.push(Action::Open(page));
                 }
             } else {
@@ -855,7 +917,7 @@ fn track_list(
         return;
     }
     if let Some(page) = title_page {
-        if theme::link(ui, title, theme::bold(17.0), palette.text).clicked() {
+        if theme::section_link(ui, &palette, title).clicked() {
             app.actions.push(Action::Open(page));
         }
     } else {
@@ -909,7 +971,7 @@ fn top_tracks(app: &mut App, ui: &mut egui::Ui) {
     let more = gettext(app.locale, "Show more top songs");
     let tracks = app.home.top_tracks.clone();
 
-    if theme::link(ui, &*title, theme::bold(17.0), palette.text).clicked() {
+    if theme::section_link(ui, &palette, &title).clicked() {
         app.actions.push(Action::Open(Page::TopSongs));
     }
     ui.add_space(4.0);
@@ -1203,5 +1265,43 @@ mod tests {
         let shelf = podcast_episodes(&podcasts, |show| show.id == "s0", today());
         assert_eq!(shelf.len(), PODCAST_CARDS);
         assert!(!ids(&shelf).contains(&"s0-e"));
+    }
+
+    #[cfg(feature = "demo")]
+    #[test]
+    fn quick_access_tiles_filtered_by_category() {
+        let root =
+            std::env::temp_dir().join(format!("spotifast-filter-tiles-{}", std::process::id()));
+        let mut app = App::new(
+            &crate::backend::Waker::default(),
+            crate::paths::AppDirs {
+                config: root.join("config"),
+                state: root.join("state"),
+                cache: root.join("cache"),
+            },
+            crate::settings::Settings::default(),
+            crate::app::AppOptions {
+                media_controls: false,
+                restore_sign_in: false,
+                tray: false,
+                autostart: false,
+            },
+        );
+        crate::demo::populate(&mut app);
+
+        app.home.category_filter = crate::model::HomeFilter::All;
+        let all_tiles = quick_access_tiles(&app);
+        assert!(!all_tiles.is_empty());
+
+        app.home.category_filter = crate::model::HomeFilter::Music;
+        let music_tiles = quick_access_tiles(&app);
+        assert!(music_tiles.iter().all(|t| !is_podcast_tile(t)));
+
+        app.home.category_filter = crate::model::HomeFilter::Podcasts;
+        let podcast_tiles = quick_access_tiles(&app);
+        assert!(podcast_tiles.iter().all(is_podcast_tile));
+
+        app.backend.shutdown();
+        let _ = std::fs::remove_dir_all(root);
     }
 }

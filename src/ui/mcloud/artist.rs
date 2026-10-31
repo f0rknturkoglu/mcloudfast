@@ -435,7 +435,7 @@ fn latest_release(page: &ArtistPage) -> Option<&Album> {
 }
 
 fn title(ui: &mut egui::Ui, title: &str) {
-    theme::text(ui, title, theme::bold(17.0), Color32::WHITE);
+    theme::text(ui, title, theme::bold(20.0), Color32::WHITE);
     ui.add_space(10.0);
 }
 
