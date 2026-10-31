@@ -1301,13 +1301,66 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         ),
         pair_row(fastframe_theme::Base::Light),
         pair_row(fastframe_theme::Base::Dark),
+        RowText::new(
+            gettext(locale, "Interface style"),
+            gettext(
+                locale,
+                "mcloud draws an Apple Music style sidebar, colours and typeface.",
+            ),
+        ),
     ];
     for index in [8, 9, 10] {
         appearance_rows[index].available &= visualizers;
     }
+    // mcloud brings its own palette, so the theme pickers would change nothing.
+    for index in [0, 11, 12] {
+        appearance_rows[index].available &=
+            app.settings.interface == crate::settings::Interface::Spotifast;
+    }
     if section_matches(&needle, &appearance, &appearance_rows) {
         any_visible = true;
         section(ui, &palette, &appearance, |ui| {
+            {
+                use crate::settings::Interface;
+                // Names, so they read the same in every language.
+                let choices = [
+                    (Interface::Spotifast, "Spotifast"),
+                    (Interface::Mcloud, "mcloud"),
+                ];
+                let choice_gap = 6.0;
+                let choices_width = choices
+                    .iter()
+                    .map(|(_, label)| theme::soft_button_width(ui, label))
+                    .sum::<f32>()
+                    + choice_gap;
+                filtered_row_sized(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[13],
+                    choices_width,
+                    |ui| {
+                        // Laid right to left, so the last choice goes first.
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = choice_gap;
+                            for (interface, label) in choices.iter().rev() {
+                                if theme::soft_button(
+                                    ui,
+                                    &palette,
+                                    None,
+                                    label,
+                                    app.settings.interface == *interface,
+                                )
+                                .clicked()
+                                {
+                                    app.actions.push(Action::SetInterface(*interface));
+                                }
+                            }
+                        });
+                    },
+                );
+            }
             // Wide enough for the theme's two buttons side by side.
             let theme_buttons_width = theme::soft_button_width(ui, &theme_guide)
                 + theme::soft_button_width(ui, &themes_folder)

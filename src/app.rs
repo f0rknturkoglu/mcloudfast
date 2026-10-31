@@ -1368,6 +1368,9 @@ impl App {
     /// window is (re)created around this long-lived application state.
     pub fn attach(&mut self, ctx: &egui::Context) {
         theme::install(ctx);
+        if self.settings.interface == crate::settings::Interface::Mcloud {
+            theme::install_interface_fonts(ctx, self.settings.interface);
+        }
         ctx.add_bytes_loader(std::sync::Arc::new(self.backend.art().clone()));
         ctx.add_image_loader(std::sync::Arc::new(self.backend.art().scaler()));
         // The covers the last window's egui held are gone with it.
@@ -4545,12 +4548,20 @@ impl App {
     }
 
     /// The palette file's colours to show while the system is `dark` or
-    /// light, `None` for Spotifast's own Light or Dark.
+    /// light, `None` for Spotifast's own Light or Dark. mcloud's look
+    /// brings its own, whatever the theme.
     fn custom_palette(&self, dark: bool) -> Option<Palette> {
+        if self.settings.interface == crate::settings::Interface::Mcloud {
+            return Some(Palette::mcloud());
+        }
         self.settings.cached_palette(dark)
     }
 
     fn theme_preference(&self) -> egui::ThemePreference {
+        // mcloud is dark only, as its palette is.
+        if self.settings.interface == crate::settings::Interface::Mcloud {
+            return egui::ThemePreference::Dark;
+        }
         // One palette fixes light or dark; Follow system's light and dark
         // palettes keep following the system.
         if let Some(palette) = self.settings.fixed_palette() {
@@ -12148,6 +12159,15 @@ impl App {
                 self.mark_settings_dirty();
                 ctx.set_theme(self.theme_preference());
                 self.apply_theme(ctx);
+            }
+            Action::SetInterface(interface) => {
+                if self.settings.interface != interface {
+                    self.settings.interface = interface;
+                    self.mark_settings_dirty();
+                    theme::install_interface_fonts(ctx, interface);
+                    ctx.set_theme(self.theme_preference());
+                    self.apply_theme(ctx);
+                }
             }
             Action::SetLanguage(choice) => {
                 self.settings.language = choice;

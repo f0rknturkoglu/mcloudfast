@@ -1353,6 +1353,8 @@ pub enum Action {
     InstallUpdate,
     SettingsChanged,
     SetTheme(crate::settings::ThemeChoice),
+    /// Draw the main window in this look: its layout, palette and face.
+    SetInterface(crate::settings::Interface),
     /// Draw the interface in this language from the next frame on.
     SetLanguage(crate::settings::LanguageChoice),
     OpenThemesFolder,

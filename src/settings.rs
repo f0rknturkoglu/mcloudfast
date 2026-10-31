@@ -47,6 +47,17 @@ pub enum ThemeChoice {
     System,
 }
 
+/// Which look draws the main window: Spotifast's own, or mcloud's Apple
+/// Music style, with its own sidebar, dark palette and, on macOS, the
+/// system's San Francisco face.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Interface {
+    #[default]
+    Spotifast,
+    Mcloud,
+}
+
 /// How the tray icon is drawn on Linux and Windows: in colour, or white or
 /// black to match the panel. The macOS menu bar always gets the template
 /// image, which it draws black or white to match itself.
@@ -287,6 +298,9 @@ pub struct Settings {
     /// `spotify:local:` songs play from; `None` plays none.
     pub local_files_folder: Option<String>,
     pub theme: ThemeChoice,
+    /// The look of the main window. While mcloud draws it, its palette
+    /// stands in for the theme, which is kept for switching back.
+    pub interface: Interface,
     /// The interface language; older files without it follow the system.
     pub language: LanguageChoice,
     /// Filename selected from the local themes directory.
@@ -496,6 +510,7 @@ impl Default for Settings {
             audio_cache: true,
             audio_cache_mb: 1024,
             theme: ThemeChoice::System,
+            interface: Interface::Spotifast,
             language: LanguageChoice::System,
             custom_theme: None,
             custom_theme_cache: None,

@@ -85,6 +85,31 @@ impl Palette {
         }
     }
 
+    /// mcloud's palette, after Apple Music's dark appearance on macOS: the
+    /// neutral greys of its `color.ini` and Apple Music's red.
+    pub fn mcloud() -> Self {
+        Self {
+            dark: true,
+            window: Color32::from_rgb(0x1e, 0x1e, 0x1e),
+            panel: Color32::from_rgb(0x27, 0x27, 0x27),
+            surface: Color32::from_rgb(0x29, 0x29, 0x2b),
+            surface_hover: Color32::from_rgb(0x38, 0x38, 0x3b),
+            surface_active: Color32::from_rgb(0x48, 0x48, 0x48),
+            outline: Color32::from_rgb(0x38, 0x38, 0x3a),
+            text: Color32::from_rgb(0xf5, 0xf5, 0xf7),
+            secondary: Color32::from_rgb(0xa6, 0xa6, 0xaa),
+            dim: Color32::from_rgb(0x77, 0x77, 0x7a),
+            accent: Color32::from_rgb(0xfa, 0x2d, 0x48),
+            accent_hover: Color32::from_rgb(0xff, 0x40, 0x59),
+            on_accent: Color32::WHITE,
+            danger: Color32::from_rgb(0xe7, 0x51, 0x59),
+            warning: Color32::from_rgb(0xff, 0x9f, 0x0a),
+            overlay: Color32::from_rgb(0x2c, 0x2c, 0x2e),
+            shadow: Color32::from_black_alpha(140),
+            tint: Color32::TRANSPARENT,
+        }
+    }
+
     /// A colour derived from album art, softened so it can sit behind text.
     pub fn tint_from_art(&self, rgb: [u8; 3]) -> Color32 {
         let [r, g, b] = rgb.map(|c| c as f32 / 255.0);
@@ -430,12 +455,37 @@ fn apply_to_style(style: &mut egui::Style, palette: &Palette) {
 /// installed faces for the scripts Inter lacks, drawn the way the desktop
 /// renders text.
 fn install_fonts(ctx: &egui::Context) {
+    install_interface_face(ctx, fastframe_fonts::Primary::Inter);
+}
+
+fn install_interface_face(ctx: &egui::Context, primary: fastframe_fonts::Primary) {
     let emoji = egui::FontData::from_static(include_bytes!("../assets/fonts/NotoEmoji.ttf"));
     let mut fonts = fastframe_fonts::FontSetup::default()
+        .primary(primary)
         .companion("noto_emoji", std::sync::Arc::new(emoji))
         .definitions();
     text_rendering().apply_to(&mut fonts);
     ctx.set_fonts(fonts);
+}
+
+/// The face mcloud draws with: San Francisco on macOS, as Apple Music does,
+/// and Inter elsewhere, as mcloud itself falls back to.
+pub fn mcloud_face() -> fastframe_fonts::Primary {
+    if cfg!(target_os = "macos") {
+        fastframe_fonts::Primary::System
+    } else {
+        fastframe_fonts::Primary::Inter
+    }
+}
+
+/// Swaps the interface face for the look that draws the window. [`install`]
+/// sets Spotifast's own, Inter.
+pub fn install_interface_fonts(ctx: &egui::Context, interface: crate::settings::Interface) {
+    let primary = match interface {
+        crate::settings::Interface::Spotifast => fastframe_fonts::Primary::Inter,
+        crate::settings::Interface::Mcloud => mcloud_face(),
+    };
+    install_interface_face(ctx, primary);
 }
 
 fastframe_icons::icons! {

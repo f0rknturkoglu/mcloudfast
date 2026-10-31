@@ -12,6 +12,7 @@ mod keys;
 pub mod library;
 pub mod login;
 mod lyrics;
+pub mod mcloud;
 pub mod new_releases;
 pub mod player_bar;
 mod prerelease;
@@ -95,7 +96,10 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         lyrics::fullscreen(app, ui);
     } else {
         if app.settings.sidebar_visible {
-            sidebar::show(app, ui);
+            match app.settings.interface {
+                crate::settings::Interface::Spotifast => sidebar::show(app, ui),
+                crate::settings::Interface::Mcloud => mcloud::sidebar::show(app, ui),
+            }
         }
         if app.show_queue_panel {
             queue::side_panel(app, ui);
