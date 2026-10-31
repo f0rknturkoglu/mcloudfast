@@ -39,6 +39,10 @@ use crate::theme::{self, Icon};
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     let ctx = &ctx;
+    mcloud::set_active(
+        ctx,
+        app.settings.interface == crate::settings::Interface::Mcloud,
+    );
     keys::handle(app, ctx);
     for path in winamp::dropped_skins(ctx) {
         app.actions.push(Action::InstallSkin(path));
@@ -304,7 +308,11 @@ fn page_tint(app: &mut App) -> Option<Color32> {
         }
         _ => None,
     };
-    if !app.settings.accent_from_art && image.is_some() {
+    // mcloud's artist page always takes the artist's colour: it is the
+    // page's own, as in Apple Music, not an accent from the art.
+    let mcloud_artist = app.settings.interface == crate::settings::Interface::Mcloud
+        && matches!(page, Page::Artist(_));
+    if !app.settings.accent_from_art && image.is_some() && !mcloud_artist {
         return None;
     }
     match image {
@@ -336,7 +344,19 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
             // mcloud's playlist and album pages are flat, as Apple Music's.
             let flat = app.settings.interface == crate::settings::Interface::Mcloud
                 && matches!(page, Page::Playlist(_) | Page::Album(_) | Page::LikedSongs);
-            if let Some((top, bottom)) = header_wash(&palette, overview, tint).filter(|_| !flat) {
+            // mcloud's artist page fills the window with the artist's
+            // colour, deepening from 40% of its height down, and hides the
+            // toolbar under its own floating buttons.
+            let artist_tint = (app.settings.interface == crate::settings::Interface::Mcloud
+                && matches!(page, Page::Artist(_)))
+            .then(|| mcloud::artist::tint(tint.unwrap_or(palette.surface), palette.window));
+            if let Some((top, deep)) = artist_tint {
+                let fold = rect.top() + rect.height() * 0.4;
+                ui.painter().rect_filled(rect.with_max_y(fold), 0.0, top);
+                widgets::paint_vertical_gradient(ui, rect.with_min_y(fold), top, deep);
+            } else if let Some((top, bottom)) =
+                header_wash(&palette, overview, tint).filter(|_| !flat)
+            {
                 widgets::paint_vertical_gradient(ui, header_rect(rect, scrolled), top, bottom);
             }
             ui.spacing_mut().item_spacing = vec2(8.0, 6.0);
@@ -344,7 +364,9 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
             // colour, which shows as a pale band over a cover's tint; the
             // page casts a shadow under the header instead.
             ui.spacing_mut().scroll.fade.strength = 0.0;
-            topbar::show(app, ui);
+            if artist_tint.is_none() {
+                topbar::show(app, ui);
+            }
             // One banner at a time: a song that will not play matters more
             // than a slow app, which waits its turn.
             if app.dialog.is_none() && page != Page::Settings {

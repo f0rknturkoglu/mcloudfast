@@ -1516,6 +1516,14 @@ fn track_row_contents(
     if !ui.is_rect_visible(rect) && !response.has_focus() && !response.clicked() {
         return (response, None);
     }
+    // mcloud parts its rows with hairlines, as Apple Music does.
+    if super::mcloud::active(ui.ctx()) {
+        ui.painter().hline(
+            rect.x_range().shrink(8.0),
+            rect.bottom() - 0.5,
+            Stroke::new(1.0, Color32::from_white_alpha(23)),
+        );
+    }
     // Start a sidebar drag only after egui's drag threshold.
     if ui.is_enabled()
         && row.item.is_track()
@@ -2289,8 +2297,25 @@ pub fn table_header(
     use crate::model::SortColumn;
     let width = ui.available_width();
     let (rect, _) = ui.allocate_exact_size(vec2(width, 34.0), Sense::hover());
-    let font = theme::regular(12.0);
-    let color = palette.secondary;
+    // mcloud's headings are quieter and in sentence case.
+    let mcloud = super::mcloud::active(ui.ctx());
+    let font = if mcloud {
+        theme::medium(12.0)
+    } else {
+        theme::regular(12.0)
+    };
+    let color = if mcloud {
+        Color32::from_white_alpha(128)
+    } else {
+        palette.secondary
+    };
+    let cased = |text: std::borrow::Cow<'static, str>| -> String {
+        if mcloud {
+            super::mcloud::sentence_case(&text)
+        } else {
+            text.into_owned()
+        }
+    };
     let mut clicked = None;
     let mut heading = |ui: &mut Ui, x: f32, text: &str, column: SortColumn| {
         let active = sort.filter(|sort| sort.column == column);
@@ -2408,7 +2433,7 @@ pub fn table_header(
     heading(
         ui,
         x,
-        &pgettext(locale, "column heading", "TITLE"),
+        &cased(pgettext(locale, "column heading", "TITLE")),
         SortColumn::Title,
     );
     let medium = width > 560.0;
@@ -2437,7 +2462,7 @@ pub fn table_header(
         heading(
             ui,
             cx,
-            &pgettext(locale, "column heading", "ALBUM"),
+            &cased(pgettext(locale, "column heading", "ALBUM")),
             SortColumn::Album,
         );
         cx += album_width;
@@ -2446,7 +2471,7 @@ pub fn table_header(
         heading(
             ui,
             cx,
-            &pgettext(locale, "column heading", "ADDED BY"),
+            &cased(pgettext(locale, "column heading", "ADDED BY")),
             SortColumn::AddedBy,
         );
         cx += added_by_width;
@@ -2455,7 +2480,7 @@ pub fn table_header(
         heading(
             ui,
             cx,
-            &pgettext(locale, "column heading", "DATE ADDED"),
+            &cased(pgettext(locale, "column heading", "DATE ADDED")),
             SortColumn::Added,
         );
         cx += added_width;
@@ -2465,7 +2490,7 @@ pub fn table_header(
         ui.painter().text(
             pos2(cx, rect.center().y),
             egui::Align2::LEFT_CENTER,
-            pgettext(locale, "column heading", "PLAYS"),
+            cased(pgettext(locale, "column heading", "PLAYS")),
             font.clone(),
             color,
         );
@@ -2525,7 +2550,14 @@ pub fn table_header(
     ui.painter().hline(
         rect.x_range().shrink(8.0),
         rect.bottom() - 0.5,
-        Stroke::new(1.0, palette.outline),
+        Stroke::new(
+            1.0,
+            if mcloud {
+                Color32::from_white_alpha(23)
+            } else {
+                palette.outline
+            },
+        ),
     );
     ui.add_space(6.0);
     clicked

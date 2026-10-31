@@ -727,6 +727,9 @@ pub struct App {
     /// How often Spotify says each song was played, by track URI, for the
     /// albums and artists in `play_count_reads`.
     pub play_counts: HashMap<String, u64>,
+    /// Artists' wide header pictures by artist URI, read with their play
+    /// counts.
+    pub artist_headers: HashMap<String, String>,
     /// Albums and artists whose play counts were asked for, by URI.
     pub play_count_reads: HashMap<String, PlayCountRead>,
     /// User ids resolved to avatar picture urls, asked for alongside the
@@ -1298,6 +1301,7 @@ impl App {
                 .collect(),
             user_names: HashMap::new(),
             play_counts: HashMap::new(),
+            artist_headers: HashMap::new(),
             play_count_reads: HashMap::new(),
             user_names_revision: 0,
             user_images: HashMap::new(),
@@ -6800,11 +6804,20 @@ impl App {
         self.play_count_reads.get(uri) == Some(&PlayCountRead::Answered)
     }
 
-    fn receive_play_counts(&mut self, uri: String, result: Result<HashMap<String, u64>, String>) {
+    fn receive_play_counts(
+        &mut self,
+        uri: String,
+        result: Result<crate::session_reads::PageExtras, String>,
+    ) {
+        if let Ok(extras) = &result
+            && let Some(url) = &extras.header_image
+        {
+            self.artist_headers.insert(uri.clone(), url.clone());
+        }
         let read = match result {
             // An answer without a single count has nothing to show.
-            Ok(counts) if !counts.is_empty() => {
-                self.play_counts.extend(counts);
+            Ok(extras) if !extras.counts.is_empty() => {
+                self.play_counts.extend(extras.counts);
                 PlayCountRead::Answered
             }
             Ok(_) | Err(_) => PlayCountRead::Failed(Instant::now()),
@@ -25839,13 +25852,19 @@ mod tests {
 
         app.receive_play_counts(
             album.into(),
-            Ok(HashMap::from([("spotify:track:t".to_string(), 5)])),
+            Ok(crate::session_reads::PageExtras {
+                counts: HashMap::from([("spotify:track:t".to_string(), 5)]),
+                header_image: None,
+            }),
         );
         assert!(app.has_play_counts(album));
         assert_eq!(app.play_counts.get("spotify:track:t"), Some(&5));
 
         // An answer with no counts shows no column.
-        app.receive_play_counts("spotify:artist:b".into(), Ok(HashMap::new()));
+        app.receive_play_counts(
+            "spotify:artist:b".into(),
+            Ok(crate::session_reads::PageExtras::default()),
+        );
         assert!(!app.has_play_counts("spotify:artist:b"));
     }
 

@@ -381,18 +381,31 @@ const PLAY_COUNT_PAGE: usize = 50;
 /// No album runs longer; a page that never ends stops here.
 const MAX_PLAY_COUNT_ROWS: usize = 1000;
 
+/// What an album or artist page's Pathfinder read carries that the Web API
+/// does not.
+#[derive(Debug, Default)]
+pub struct PageExtras {
+    /// Play counts by track URI.
+    pub counts: HashMap<String, u64>,
+    /// An artist's wide header picture, as Spotify's own artist page shows
+    /// it across the top; the Web API has only the square portrait.
+    pub header_image: Option<String>,
+}
+
 /// Spotify's play count for each song of an album, or of an artist's
-/// popular songs, by track URI. Only the Pathfinder queries Spotify's own
-/// apps make carry them: the Web API has none. A song Spotify gives no
-/// count is left out, and the caller shows nothing for it.
+/// popular songs, by track URI, and an artist's header picture. Only the
+/// Pathfinder queries Spotify's own apps make carry them: the Web API has
+/// none. A song Spotify gives no count is left out, and the caller shows
+/// nothing for it.
 pub async fn play_counts(
     session: &Session,
     web: &crate::api::ApiClient,
     uri: &str,
-) -> anyhow::Result<HashMap<String, u64>> {
+) -> anyhow::Result<PageExtras> {
     let login = session.login5().auth_token().await?;
     let client_token = session.spclient().client_token().await?;
     let mut counts = HashMap::new();
+    let mut header_image = None;
     match crate::util::uri_kind(uri) {
         Some("album") => {
             let mut offset = 0;
@@ -438,10 +451,31 @@ pub async fn play_counts(
                 .pointer("/data/artistUnion/discography/topTracks")
                 .ok_or_else(|| anyhow::anyhow!("Spotify answered without the popular songs"))?;
             play_counts_from(top, &mut counts);
+            header_image = header_image_from(&body);
         }
         _ => anyhow::bail!("Spotify counts plays only for album and artist songs"),
     }
-    Ok(counts)
+    Ok(PageExtras {
+        counts,
+        header_image,
+    })
+}
+
+/// The widest source of an artist overview's header image.
+fn header_image_from(body: &serde_json::Value) -> Option<String> {
+    body.pointer("/data/artistUnion/visuals/headerImage/sources")?
+        .as_array()?
+        .iter()
+        .filter_map(|source| {
+            let url = source.get("url")?.as_str()?;
+            let width = source
+                .get("width")
+                .and_then(|width| width.as_u64())
+                .unwrap_or(0);
+            Some((width, url))
+        })
+        .max_by_key(|(width, _)| *width)
+        .map(|(_, url)| url.to_string())
 }
 
 /// Adds the counts of a Pathfinder list of `{track: {uri, playcount}}`
@@ -1951,6 +1985,22 @@ fn iso8601(timestamp_ms: i64) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+
+    /// The header picture is the overview's widest source.
+    #[test]
+    fn the_widest_header_source_wins() {
+        let body = serde_json::json!({"data": {"artistUnion": {"visuals": {"headerImage": {
+            "sources": [
+                {"url": "https://i.scdn.co/small", "width": 640, "height": 260},
+                {"url": "https://i.scdn.co/large", "width": 2660, "height": 1140}
+            ]
+        }}}}});
+        assert_eq!(
+            super::header_image_from(&body).as_deref(),
+            Some("https://i.scdn.co/large")
+        );
+        assert_eq!(super::header_image_from(&serde_json::json!({})), None);
+    }
 
     /// Pathfinder's counts arrive as strings of digits; rows without a
     /// track URI or a count are left out, and every row counts toward the

@@ -27,7 +27,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
         Loadable::Loaded(artist)
             if app.settings.interface == crate::settings::Interface::Mcloud =>
         {
-            super::mcloud::artist::loaded(app, ui, id, &page, artist);
+            super::mcloud::artist::loaded(app, ui, &page, artist, id);
         }
         Loadable::Loaded(artist) => {
             artist_hero(app, ui, artist, preview.as_deref());

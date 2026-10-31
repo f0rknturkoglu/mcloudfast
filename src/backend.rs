@@ -1086,11 +1086,11 @@ pub enum Event {
         name: Option<String>,
         image: Option<String>,
     },
-    /// Play counts by track URI for the album or artist `uri`, or why they
-    /// could not be read.
+    /// Play counts by track URI for the album or artist `uri`, with an
+    /// artist's header picture, or why they could not be read.
     PlayCounts {
         uri: String,
-        result: Result<std::collections::HashMap<String, u64>, String>,
+        result: Result<session_reads::PageExtras, String>,
     },
     /// Saved shows that Spotify's metadata marks as audiobooks. librespot
     /// cannot play them, so the Podcasts shelf leaves them out.
