@@ -505,6 +505,7 @@ pub struct Table<'a> {
     /// Play the rows on screen rather than the Spotify context, even
     /// unsorted: some of the context's songs are hidden here (#779).
     pub plays_shown_rows: bool,
+    pub genre: Option<&'a str>,
 }
 
 /// The server's row space, including unloaded and unavailable entries.
@@ -521,6 +522,7 @@ pub struct TablePagination<'a> {
 pub struct TableCache {
     pub sort: Option<TableSort>,
     pub needle: String,
+    pub genre: Option<String>,
     pub items_revision: u64,
     pub user_names_revision: u64,
     /// Which scan of the local files folder decided the playable rows.
@@ -613,6 +615,7 @@ pub struct ViewOptions<'a> {
     pub needle: &'a str,
     pub sort: Option<TableSort>,
     pub plays_shown_rows: bool,
+    pub genre: Option<&'a str>,
 }
 
 /// Tells one scan of the local files folder from another.
@@ -634,6 +637,7 @@ pub fn prepare_table_view(
         needle,
         sort,
         plays_shown_rows,
+        genre,
     } = view;
     let cache_id = egui::Id::new("table-view-cache").with(page);
     let cached = ui.data(|d| d.get_temp::<Arc<TableCache>>(cache_id));
@@ -642,6 +646,7 @@ pub fn prepare_table_view(
         c.sort == sort
             && c.plays_shown_rows == plays_shown_rows
             && c.needle == needle
+            && c.genre.as_deref() == genre
             && c.items_revision == items_revision
             && c.user_names_revision == app.user_names_revision
             && c.local_files == local_files_scan(app)
@@ -650,24 +655,28 @@ pub fn prepare_table_view(
     if let Some(entry) = cached.filter(|_| is_valid) {
         entry
     } else {
-        let visible = view_indices(items, needle, sort);
+        let visible = view_indices(items, needle, sort, genre, Some(app));
         let mut view_positions = Vec::new();
-        let view_uris = (sort.is_some() || !needle.is_empty() || plays_shown_rows).then(|| {
-            let mut uris = Vec::new();
-            view_positions.resize(items.len(), None);
-            for &index in &visible {
-                let item = &items[index].0;
-                view_positions[index] = app.row_playable(item).then(|| {
-                    let position = uris.len();
-                    uris.push(item.uri().to_string());
-                    position
-                });
-            }
-            Arc::<[String]>::from(uris)
-        });
+        let view_uris =
+            (sort.is_some() || !needle.is_empty() || genre.is_some() || plays_shown_rows).then(
+                || {
+                    let mut uris = Vec::new();
+                    view_positions.resize(items.len(), None);
+                    for &index in &visible {
+                        let item = &items[index].0;
+                        view_positions[index] = app.row_playable(item).then(|| {
+                            let position = uris.len();
+                            uris.push(item.uri().to_string());
+                            position
+                        });
+                    }
+                    Arc::<[String]>::from(uris)
+                },
+            );
         let entry = Arc::new(TableCache {
             sort,
             needle: needle.to_string(),
+            genre: genre.map(|s| s.to_string()),
             items_revision,
             user_names_revision: app.user_names_revision,
             local_files: local_files_scan(app),
@@ -739,6 +748,7 @@ fn table_contents(app: &mut App, ui: &mut egui::Ui, table: Table<'_>) {
             needle: &needle,
             sort,
             plays_shown_rows: table.plays_shown_rows,
+            genre: table.genre,
         },
         table.items_revision,
     );
@@ -1368,13 +1378,25 @@ fn sort_by_album(visible: &mut [usize], ascending: bool, items: &[TableItem]) {
 }
 
 /// The indices of `items` as a view presents them: filtered by `needle`
-/// (already lowercased), then ordered by `sort`.
-fn view_indices(items: &[TableItem], needle: &str, sort: Option<TableSort>) -> Vec<usize> {
+/// (already lowercased) and `genre`, then ordered by `sort`.
+fn view_indices(
+    items: &[TableItem],
+    needle: &str,
+    sort: Option<TableSort>,
+    genre: Option<&str>,
+    app: Option<&App>,
+) -> Vec<usize> {
     let mut visible: Vec<usize> = items
         .iter()
         .enumerate()
         .filter(|(_, (item, _, _))| {
             if item.uri().is_empty() {
+                return false;
+            }
+            if let Some(target) = genre
+                && let Some(app) = app
+                && !track_matches_genre(item, target, app)
+            {
                 return false;
             }
             if needle.is_empty() {
@@ -1402,6 +1424,17 @@ fn view_indices(items: &[TableItem], needle: &str, sort: Option<TableSort>) -> V
             SortColumn::Title => sort_by_text_key(&mut visible, sort.ascending, |index| {
                 items[index].0.name().to_lowercase()
             }),
+            SortColumn::Artist => sort_by_text_key(&mut visible, sort.ascending, |index| {
+                match &items[index].0 {
+                    PlayableItem::Track(track) => track.artist_names().to_lowercase(),
+                    PlayableItem::Episode(ep) => ep
+                        .show
+                        .as_ref()
+                        .map(|s| s.name.as_str())
+                        .unwrap_or("")
+                        .to_lowercase(),
+                }
+            }),
             SortColumn::Album => sort_by_album(&mut visible, sort.ascending, items),
             SortColumn::AddedBy => sort_by_text_key(&mut visible, sort.ascending, |index| {
                 items[index].2.as_deref().unwrap_or_default().to_lowercase()
@@ -1426,6 +1459,78 @@ fn view_indices(items: &[TableItem], needle: &str, sort: Option<TableSort>) -> V
         }
     }
     visible
+}
+
+pub(crate) fn track_matches_genre(item: &PlayableItem, target: &str, app: &App) -> bool {
+    let PlayableItem::Track(track) = item else {
+        return false;
+    };
+    let target = target.to_lowercase();
+    for artist_ref in &track.artists {
+        if let Some(artist) = app.library.artists.items.iter().find(|a| {
+            artist_ref.id.as_deref() == Some(&a.id) || a.name.eq_ignore_ascii_case(&artist_ref.name)
+        }) && artist.genres.iter().any(|g| g.to_lowercase() == target)
+        {
+            return true;
+        }
+        if let Some(id) = &artist_ref.id
+            && let Some(page) = app.artist_pages.get(id)
+            && let Some(artist) = page.artist.get()
+            && artist.genres.iter().any(|g| g.to_lowercase() == target)
+        {
+            return true;
+        }
+    }
+    if let Some(album_ref) = &track.album
+        && let Some(page) = app.album_pages.get(&album_ref.id)
+        && let Some(album) = page.album.get()
+        && album.genres.iter().any(|g| g.to_lowercase() == target)
+    {
+        return true;
+    }
+    false
+}
+
+pub(crate) fn liked_genres(app: &App) -> Vec<String> {
+    use std::collections::{HashMap, HashSet};
+    let mut counts: HashMap<String, usize> = HashMap::new();
+    for saved in &app.library.liked.items {
+        let mut track_genres = HashSet::new();
+        for artist_ref in &saved.track.artists {
+            let artist_genres: Option<&[String]> = if let Some(id) = &artist_ref.id {
+                app.library
+                    .artists
+                    .items
+                    .iter()
+                    .find(|a| &a.id == id)
+                    .map(|a| a.genres.as_slice())
+                    .or_else(|| {
+                        app.artist_pages
+                            .get(id)
+                            .and_then(|p| p.artist.get())
+                            .map(|a| a.genres.as_slice())
+                    })
+            } else {
+                app.library
+                    .artists
+                    .items
+                    .iter()
+                    .find(|a| a.name.eq_ignore_ascii_case(&artist_ref.name))
+                    .map(|a| a.genres.as_slice())
+            };
+            if let Some(genres) = artist_genres {
+                for g in genres {
+                    track_genres.insert(g.to_lowercase());
+                }
+            }
+        }
+        for g in track_genres {
+            *counts.entry(g).or_default() += 1;
+        }
+    }
+    let mut sorted: Vec<(String, usize)> = counts.into_iter().collect();
+    sorted.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    sorted.into_iter().take(10).map(|(g, _)| g).collect()
 }
 
 fn total_duration(items: &[TableItem]) -> u64 {
@@ -1677,6 +1782,7 @@ pub fn top_songs(app: &mut App, ui: &mut egui::Ui) {
             filter: "",
             items_revision: app.home.top_songs_generation,
             plays_shown_rows: false,
+            genre: None,
         },
     );
 }
@@ -1783,6 +1889,7 @@ pub fn playlist(app: &mut App, ui: &mut egui::Ui, id: &str) {
                     needle: &needle,
                     sort,
                     plays_shown_rows: hides,
+                    genre: None,
                 },
                 items_revision,
             );
@@ -1840,6 +1947,7 @@ pub fn playlist(app: &mut App, ui: &mut egui::Ui, id: &str) {
                     filter: &page.filter,
                     items_revision,
                     plays_shown_rows: hides,
+                    genre: None,
                 },
             );
         }
@@ -1967,6 +2075,7 @@ pub fn album(app: &mut App, ui: &mut egui::Ui, id: &str) {
                     needle: "",
                     sort,
                     plays_shown_rows: false,
+                    genre: None,
                 },
                 page.tracks.revision,
             );
@@ -2008,6 +2117,7 @@ pub fn album(app: &mut App, ui: &mut egui::Ui, id: &str) {
                     filter: "",
                     items_revision: page.tracks.revision,
                     plays_shown_rows: false,
+                    genre: None,
                 },
             );
             if crate::ui::mcloud::active(ui.ctx()) {
@@ -2396,6 +2506,16 @@ pub fn liked(app: &mut App, ui: &mut egui::Ui) {
         .unwrap_or_default();
     let needle = filter.trim().to_lowercase();
     let sort = app.table_sorts.get(&Page::LikedSongs).copied();
+
+    let genre_filter_id = egui::Id::new("liked-genre-filter");
+    let mut selected_genre = ui
+        .data(|data| data.get_temp::<Option<String>>(genre_filter_id))
+        .flatten();
+
+    if app.network_reachable && !app.library.artists.loaded_once {
+        app.load_more(Page::Artists);
+    }
+
     let table_view = prepare_table_view(
         ui,
         app,
@@ -2405,6 +2525,7 @@ pub fn liked(app: &mut App, ui: &mut egui::Ui) {
             needle: &needle,
             sort,
             plays_shown_rows: false,
+            genre: selected_genre.as_deref(),
         },
         app.library.liked.revision,
     );
@@ -2427,6 +2548,11 @@ pub fn liked(app: &mut App, ui: &mut egui::Ui) {
         actions_row(app, ui, actions, Some(&mut filter));
     }
     ui.data_mut(|data| data.insert_temp(filter_id, filter.clone()));
+
+    if crate::ui::mcloud::active(ui.ctx()) {
+        super::mcloud::pages::liked_genre_chips(app, ui, &mut selected_genre);
+        ui.data_mut(|data| data.insert_temp(genre_filter_id, selected_genre.clone()));
+    }
     let uris: Arc<[String]> = items
         .iter()
         .map(|(item, _, _)| item.uri().to_string())
@@ -2463,6 +2589,7 @@ pub fn liked(app: &mut App, ui: &mut egui::Ui) {
             filter: &filter,
             items_revision: app.library.liked.revision,
             plays_shown_rows: false,
+            genre: selected_genre.as_deref(),
         },
     );
 }
@@ -2625,6 +2752,10 @@ mod tests {
 
     fn adders(ids: &[&str]) -> std::collections::BTreeSet<String> {
         ids.iter().map(|id| (*id).to_string()).collect()
+    }
+
+    fn view_indices(items: &[TableItem], needle: &str, sort: Option<TableSort>) -> Vec<usize> {
+        super::view_indices(items, needle, sort, None, None)
     }
 
     #[test]
@@ -3094,6 +3225,7 @@ mod tests {
                             filter: "",
                             items_revision: 0,
                             plays_shown_rows: false,
+                            genre: None,
                         },
                     )
                 })
@@ -3183,6 +3315,7 @@ mod tests {
                     filter: "unmatched",
                     items_revision: 0,
                     plays_shown_rows: false,
+                    genre: None,
                 },
             )
         });
@@ -3486,6 +3619,7 @@ mod tests {
         let cache = TableCache {
             sort,
             needle: "desp".to_string(),
+            genre: None,
             items_revision: 5,
             user_names_revision: 2,
             local_files: 0,
@@ -3664,6 +3798,7 @@ mod tests {
                                 filter: &self.filter,
                                 items_revision: self.items_revision,
                                 plays_shown_rows: false,
+                                genre: None,
                             },
                         );
                     });
@@ -4925,5 +5060,96 @@ mod tests {
             app.table_rows.contains_key(&Page::Playlist("pl4".into())),
             "the open page stays"
         );
+    }
+
+    #[test]
+    fn sort_by_artist_orders_tracks_by_artist_name() {
+        let mut items = make_test_tracks();
+        if let PlayableItem::Track(t) = &mut items[0].0 {
+            t.artists[0].name = "Zoe".into();
+        }
+        if let PlayableItem::Track(t) = &mut items[1].0 {
+            t.artists[0].name = "Alice".into();
+        }
+        if let PlayableItem::Track(t) = &mut items[2].0 {
+            t.artists[0].name = "Charlie".into();
+        }
+        if let PlayableItem::Track(t) = &mut items[3].0 {
+            t.artists[0].name = "Bob".into();
+        }
+
+        let asc = super::view_indices(
+            &items,
+            "",
+            Some(TableSort {
+                column: SortColumn::Artist,
+                ascending: true,
+            }),
+            None,
+            None,
+        );
+        assert_eq!(asc, vec![1, 3, 2, 0]);
+
+        let desc = super::view_indices(
+            &items,
+            "",
+            Some(TableSort {
+                column: SortColumn::Artist,
+                ascending: false,
+            }),
+            None,
+            None,
+        );
+        assert_eq!(desc, vec![0, 2, 3, 1]);
+    }
+
+    #[test]
+    fn genre_filter_selects_matching_artist_genres() {
+        let mut app = test_app();
+        let items = make_test_tracks();
+
+        let artist1 = crate::api::models::Artist {
+            id: "art_rock".into(),
+            name: "Queen".into(),
+            genres: vec!["classic rock".into(), "rock".into()],
+            ..Default::default()
+        };
+
+        let artist2 = crate::api::models::Artist {
+            id: "art_electronic".into(),
+            name: "Kraftwerk".into(),
+            genres: vec!["electronic".into(), "ambient".into()],
+            ..Default::default()
+        };
+
+        app.library.artists.items = vec![artist1, artist2];
+
+        let mut track0 = items[0].clone();
+        if let PlayableItem::Track(t) = &mut track0.0 {
+            t.artists[0].id = Some("art_rock".into());
+            t.artists[0].name = "Queen".into();
+        }
+
+        let mut track1 = items[1].clone();
+        if let PlayableItem::Track(t) = &mut track1.0 {
+            t.artists[0].id = Some("art_electronic".into());
+            t.artists[0].name = "Kraftwerk".into();
+        }
+
+        let test_items = vec![track0, track1];
+
+        let rock_matches = super::view_indices(&test_items, "", None, Some("rock"), Some(&app));
+        assert_eq!(rock_matches, vec![0]);
+
+        let electronic_matches =
+            super::view_indices(&test_items, "", None, Some("electronic"), Some(&app));
+        assert_eq!(electronic_matches, vec![1]);
+
+        let ambient_matches =
+            super::view_indices(&test_items, "", None, Some("ambient"), Some(&app));
+        assert_eq!(ambient_matches, vec![1]);
+
+        let pop_matches = super::view_indices(&test_items, "", None, Some("pop"), Some(&app));
+        assert!(pop_matches.is_empty());
     }
 }

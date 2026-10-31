@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 01:22+0300\n"
+"POT-Creation-Date: 2026-11-01 01:54+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: French\n"
@@ -29,12 +29,12 @@ msgid "Play {name}"
 msgstr "Lire {name}"
 
 #: src/ui/sidebar.rs:302 src/app.rs:3593 src/app.rs:23540
-#: src/ui/collection.rs:2151 src/ui/collection.rs:2380
+#: src/ui/collection.rs:2261 src/ui/collection.rs:2490
 msgid "Playlist"
 msgstr "Playlist"
 
 #: src/ui/sidebar.rs:312 src/ui/friends.rs:304 src/app.rs:3567 src/app.rs:23545
-#: src/ui/collection.rs:2373 src/ui/home.rs:96 src/ui/keys.rs:337
+#: src/ui/collection.rs:2483 src/ui/home.rs:96 src/ui/keys.rs:337
 #: src/ui/winamp/playlist.rs:653
 msgid "Liked Songs"
 msgstr "Titres likés"
@@ -52,7 +52,8 @@ msgstr "Écoutés récemment"
 msgid "Name"
 msgstr "Nom"
 
-#: src/ui/sidebar.rs:361
+#: src/ui/sidebar.rs:361 src/ui/mcloud/pages.rs:260 src/ui/mcloud/pages.rs:263
+#: src/ui/mcloud/pages.rs:373
 msgid "Recently added"
 msgstr "Ajoutés récemment"
 
@@ -146,6 +147,7 @@ msgstr "Rechercher dans votre bibliothèque"
 #: src/ui/sidebar.rs:1243 src/app.rs:3628 src/ui/artist.rs:226
 #: src/ui/artist.rs:369 src/ui/home.rs:794 src/ui/library.rs:101
 #: src/ui/search.rs:159 src/ui/search.rs:491 src/ui/winamp/playlist.rs:746
+#: src/ui/mcloud/pages.rs:265 src/ui/mcloud/pages.rs:347
 msgid "Artist"
 msgstr "Artiste"
 
@@ -170,7 +172,7 @@ msgstr "Trier par écoute récente"
 #: src/ui/sidebar.rs:1988 src/ui/player_bar.rs:798 src/ui/widgets.rs:1213
 #: src/ui/artist.rs:401 src/ui/collection.rs:310 src/ui/new_releases.rs:117
 #: src/ui/prerelease.rs:309 src/ui/search.rs:408 src/ui/show.rs:390
-#: src/ui/mcloud/player.rs:226 src/ui/mcloud/pages.rs:262
+#: src/ui/mcloud/player.rs:226 src/ui/mcloud/pages.rs:474
 #: src/ui/mcloud/artist.rs:252
 msgid "Play"
 msgstr "Lire"
@@ -194,8 +196,8 @@ msgstr[1] "Playlist • {count} titres"
 #. Translators: Keep {count} exactly as written. It becomes a number of songs.
 #. Translators: Keep {count} exactly as written. It becomes the number of selected songs.
 #. Translators: {count} is a number of songs.
-#: src/i18n.rs:201 src/ui/widgets.rs:696 src/ui/collection.rs:2475
-#: src/ui/mcloud/pages.rs:497
+#: src/i18n.rs:201 src/ui/widgets.rs:696 src/ui/collection.rs:2602
+#: src/ui/mcloud/pages.rs:709
 #, rust-format
 msgid "{count} song"
 msgid_plural "{count} songs"
@@ -256,7 +258,7 @@ msgstr "Retirer des Titres likés"
 
 #: src/ui/player_bar.rs:742 src/ui/player_bar.rs:749 src/ui/collection.rs:364
 #: src/ui/new_releases.rs:146 src/ui/mcloud/player.rs:196
-#: src/ui/mcloud/pages.rs:272
+#: src/ui/mcloud/pages.rs:484
 msgid "Shuffle"
 msgstr "Lecture aléatoire"
 
@@ -265,7 +267,7 @@ msgid "Previous"
 msgstr "Précédent"
 
 #: src/ui/player_bar.rs:796 src/ui/friends.rs:208 src/ui/collection.rs:308
-#: src/ui/mcloud/player.rs:224 src/ui/mcloud/pages.rs:260
+#: src/ui/mcloud/player.rs:224 src/ui/mcloud/pages.rs:472
 #: src/ui/mcloud/artist.rs:250
 msgid "Pause"
 msgstr "Pause"
@@ -368,7 +370,7 @@ msgid "Next up"
 msgstr "Ensuite"
 
 #: src/ui/queue.rs:625 src/ui/queue.rs:658 src/ui/widgets.rs:2976
-#: src/ui/collection.rs:1259 src/ui/prerelease.rs:242
+#: src/ui/collection.rs:1269 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr "Réessayer"
 
@@ -398,20 +400,20 @@ msgid "Play a song to see its lyrics."
 msgstr "Lancez un titre pour voir ses paroles."
 
 #: src/ui/lyrics.rs:143 src/ui/lyrics.rs:160 src/ui/artist.rs:284
-#: src/ui/artist.rs:312 src/ui/collection.rs:710 src/ui/collection.rs:1722
-#: src/ui/collection.rs:1858 src/ui/collection.rs:1884
-#: src/ui/collection.rs:1948 src/ui/collection.rs:2068
-#: src/ui/collection.rs:2094 src/ui/collection.rs:2353 src/ui/home.rs:25
+#: src/ui/artist.rs:312 src/ui/collection.rs:719 src/ui/collection.rs:1828
+#: src/ui/collection.rs:1966 src/ui/collection.rs:1992
+#: src/ui/collection.rs:2056 src/ui/collection.rs:2178
+#: src/ui/collection.rs:2204 src/ui/collection.rs:2463 src/ui/home.rs:25
 #: src/ui/library.rs:259 src/ui/search.rs:91 src/ui/show.rs:66
 #: src/ui/show.rs:112 src/ui/show.rs:142
 msgid "You're offline"
 msgstr "Vous êtes hors ligne"
 
 #: src/ui/lyrics.rs:146 src/ui/lyrics.rs:163 src/ui/artist.rs:287
-#: src/ui/artist.rs:315 src/ui/collection.rs:713 src/ui/collection.rs:1725
-#: src/ui/collection.rs:1861 src/ui/collection.rs:1887
-#: src/ui/collection.rs:1951 src/ui/collection.rs:2071
-#: src/ui/collection.rs:2097 src/ui/collection.rs:2356 src/ui/home.rs:34
+#: src/ui/artist.rs:315 src/ui/collection.rs:722 src/ui/collection.rs:1831
+#: src/ui/collection.rs:1969 src/ui/collection.rs:1995
+#: src/ui/collection.rs:2059 src/ui/collection.rs:2181
+#: src/ui/collection.rs:2207 src/ui/collection.rs:2466 src/ui/home.rs:34
 #: src/ui/library.rs:262 src/ui/show.rs:69 src/ui/show.rs:115
 #: src/ui/show.rs:145
 msgid "Spotifast will reconnect automatically when your connection returns."
@@ -447,7 +449,7 @@ msgid "No timed lyrics for this track."
 msgstr "Aucune parole synchronisée pour ce titre."
 
 #: src/ui/lyrics.rs:462 src/ui/widgets.rs:2874 src/ui/widgets.rs:2914
-#: src/ui/widgets.rs:2942 src/app.rs:13707 src/ui/collection.rs:910
+#: src/ui/widgets.rs:2942 src/app.rs:13707 src/ui/collection.rs:920
 msgid "Loading…"
 msgstr "Chargement…"
 
@@ -567,12 +569,12 @@ msgctxt "artist"
 msgid "Follow"
 msgstr "S’abonner"
 
-#: src/ui/widgets.rs:1247 src/ui/collection.rs:2201 src/ui/collection.rs:2224
+#: src/ui/widgets.rs:1247 src/ui/collection.rs:2311 src/ui/collection.rs:2334
 #: src/ui/show.rs:242
 msgid "Remove from Your Library"
 msgstr "Retirer de votre bibliothèque"
 
-#: src/ui/widgets.rs:1248 src/ui/collection.rs:2200
+#: src/ui/widgets.rs:1248 src/ui/collection.rs:2310
 msgid "Add to Your Library"
 msgstr "Ajouter à votre bibliothèque"
 
@@ -604,7 +606,7 @@ msgstr "Lire {title}, {subtitle}"
 
 #: src/ui/widgets.rs:2051 src/ui/artist.rs:431 src/ui/collection.rs:413
 #: src/ui/show.rs:260 src/ui/show.rs:468 src/ui/mcloud/player.rs:580
-#: src/ui/mcloud/pages.rs:331 src/ui/mcloud/artist.rs:361
+#: src/ui/mcloud/pages.rs:543 src/ui/mcloud/artist.rs:361
 msgid "More"
 msgstr "Plus"
 
@@ -640,7 +642,7 @@ msgctxt "column heading"
 msgid "ALBUM"
 msgstr "ALBUM"
 
-#: src/ui/widgets.rs:2474
+#: src/ui/widgets.rs:2474 src/ui/mcloud/pages.rs:269
 msgctxt "column heading"
 msgid "ADDED BY"
 msgstr "AJOUTÉ PAR"
@@ -816,6 +818,7 @@ msgid "Radio"
 msgstr "Radio"
 
 #: src/app.rs:3609 src/api/models.rs:299 src/ui/prerelease.rs:71
+#: src/ui/mcloud/pages.rs:266 src/ui/mcloud/pages.rs:360
 msgid "Album"
 msgstr "Album"
 
@@ -2447,7 +2450,7 @@ msgstr "Calculé d’après vos écoutes des 6 derniers mois environ."
 msgid "Calculated from several years of listening history."
 msgstr "Calculé d’après plusieurs années d’historique d’écoute."
 
-#: src/model.rs:803 src/model.rs:930
+#: src/model.rs:803 src/model.rs:930 src/ui/mcloud/pages.rs:441
 msgctxt "filter"
 msgid "All"
 msgstr "Tout"
@@ -2587,7 +2590,7 @@ msgstr "Abonné"
 msgid "Enlarge cover"
 msgstr "Agrandir la pochette"
 
-#: src/ui/collection.rs:315 src/ui/mcloud/pages.rs:286
+#: src/ui/collection.rs:315 src/ui/mcloud/pages.rs:498
 msgid "No playable songs in this view"
 msgstr "Aucun titre lisible dans cette vue"
 
@@ -2595,12 +2598,12 @@ msgstr "Aucun titre lisible dans cette vue"
 msgid "Shuffle off"
 msgstr "Désactiver la lecture aléatoire"
 
-#: src/ui/collection.rs:400 src/ui/collection.rs:426 src/ui/mcloud/pages.rs:319
-#: src/ui/mcloud/pages.rs:343
+#: src/ui/collection.rs:400 src/ui/collection.rs:426 src/ui/mcloud/pages.rs:531
+#: src/ui/mcloud/pages.rs:555
 msgid "Save as playlist"
 msgstr "Enregistrer comme playlist"
 
-#: src/ui/collection.rs:453 src/ui/mcloud/pages.rs:241
+#: src/ui/collection.rs:453 src/ui/mcloud/pages.rs:243
 msgid "Filter"
 msgstr "Filtrer"
 
@@ -2612,41 +2615,41 @@ msgstr "Actualisation…"
 msgid "Refresh"
 msgstr "Actualiser"
 
-#: src/ui/collection.rs:902 src/ui/collection.rs:929
+#: src/ui/collection.rs:912 src/ui/collection.rs:939
 msgid "Unavailable"
 msgstr "Indisponible"
 
-#: src/ui/collection.rs:908
+#: src/ui/collection.rs:918
 msgid "You're offline. Reconnect to load more songs."
 msgstr ""
 "Vous êtes hors ligne. Reconnectez-vous pour charger davantage de titres."
 
-#: src/ui/collection.rs:1064
+#: src/ui/collection.rs:1074
 msgid "Nothing here yet"
 msgstr "Rien pour l’instant"
 
-#: src/ui/collection.rs:1065
+#: src/ui/collection.rs:1075
 msgid "Added songs appear here."
 msgstr "Les titres ajoutés s’affichent ici."
 
-#: src/ui/collection.rs:1604 src/ui/home.rs:908
+#: src/ui/collection.rs:1709 src/ui/home.rs:908
 msgid "Your top songs"
 msgstr "Vos titres préférés"
 
-#: src/ui/collection.rs:2147
+#: src/ui/collection.rs:2257
 msgid "Collaborative Playlist"
 msgstr "Playlist collaborative"
 
-#: src/ui/collection.rs:2149
+#: src/ui/collection.rs:2259
 msgid "Public Playlist"
 msgstr "Playlist publique"
 
-#: src/ui/collection.rs:2223
+#: src/ui/collection.rs:2333
 msgid "Save to Your Library"
 msgstr "Enregistrer dans votre bibliothèque"
 
 #. Translators: {count} is the number of people who saved a playlist.
-#: src/ui/collection.rs:2487
+#: src/ui/collection.rs:2614
 #, rust-format
 msgid "{count} save"
 msgid_plural "{count} saves"
@@ -2655,7 +2658,7 @@ msgstr[1] "{count} sauvegardes"
 
 #. Translators: {count} is a number of songs and {duration} their total
 #. length, such as "2 hr 13 min".
-#: src/ui/collection.rs:2500
+#: src/ui/collection.rs:2627
 #, rust-format
 msgid "{count} song, {duration}"
 msgid_plural "{count} songs, {duration}"
@@ -2663,19 +2666,19 @@ msgstr[0] "{count} titre, {duration}"
 msgstr[1] "{count} titres, {duration}"
 
 #. Translators: {name} is the name of someone who added songs to the playlist.
-#: src/ui/collection.rs:2570
+#: src/ui/collection.rs:2697
 #, rust-format
 msgid "with {name}"
 msgstr "avec {name}"
 
 #. Translators: {first} and {second} are names of people who added songs.
-#: src/ui/collection.rs:2574
+#: src/ui/collection.rs:2701
 #, rust-format
 msgid "with {first} and {second}"
 msgstr "avec {first} et {second}"
 
 #. Translators: {count} is how many other people added songs to the playlist.
-#: src/ui/collection.rs:2581
+#: src/ui/collection.rs:2708
 #, rust-format
 msgid "and {count} other"
 msgid_plural "and {count} others"
@@ -3369,7 +3372,8 @@ msgstr "Préenregistrer sur Spotify"
 msgid "Track list preview"
 msgstr "Aperçu des titres"
 
-#: src/ui/prerelease.rs:260
+#: src/ui/prerelease.rs:260 src/ui/mcloud/pages.rs:264
+#: src/ui/mcloud/pages.rs:334
 msgctxt "column"
 msgid "Title"
 msgstr "Titre"
@@ -3401,42 +3405,42 @@ msgstr ""
 "La radio provient de la lecture sur cet ordinateur. Activez-la dans les "
 "Paramètres."
 
-#: src/ui/radio.rs:207
+#: src/ui/radio.rs:208
 msgid "Based on this playlist"
 msgstr "Basée sur cette playlist"
 
-#: src/ui/radio.rs:208
+#: src/ui/radio.rs:209
 msgid "Based on this album"
 msgstr "Basée sur cet album"
 
-#: src/ui/radio.rs:209
+#: src/ui/radio.rs:210
 msgid "Based on this artist"
 msgstr "Basée sur cet artiste"
 
-#: src/ui/radio.rs:210
+#: src/ui/radio.rs:211
 msgid "Based on this song"
 msgstr "Basée sur ce titre"
 
 #. Translators: {first} is an artist name.
-#: src/ui/radio.rs:229
+#: src/ui/radio.rs:230
 #, rust-format
 msgid "With {first}"
 msgstr "Avec {first}"
 
 #. Translators: {first} and {second} are artist names.
-#: src/ui/radio.rs:232
+#: src/ui/radio.rs:233
 #, rust-format
 msgid "With {first} and {second}"
 msgstr "Avec {first} et {second}"
 
 #. Translators: {first}, {second} and {third} are artist names.
-#: src/ui/radio.rs:238
+#: src/ui/radio.rs:239
 #, rust-format
 msgid "With {first}, {second} and {third}"
 msgstr "Avec {first}, {second} et {third}"
 
 #. Translators: {first}, {second} and {third} are artist names; more follow.
-#: src/ui/radio.rs:245
+#: src/ui/radio.rs:246
 #, rust-format
 msgid "With {first}, {second}, {third} and more"
 msgstr "Avec {first}, {second}, {third} et d’autres"
@@ -3987,8 +3991,17 @@ msgstr ""
 msgid "Show all"
 msgstr "Tout afficher"
 
+#: src/ui/mcloud/pages.rs:261 src/ui/mcloud/pages.rs:268
+#: src/ui/mcloud/pages.rs:329
+msgid "Custom order"
+msgstr "Ordre personnalisé"
+
+#: src/ui/mcloud/pages.rs:267 src/ui/mcloud/pages.rs:402
+msgid "Duration"
+msgstr "Durée"
+
 #. Translators: Heading for other albums by this artist below an album page.
-#: src/ui/mcloud/pages.rs:587
+#: src/ui/mcloud/pages.rs:799
 #, rust-format
 msgid "More by {artist}"
 msgstr "Plus de titres par {artist}"

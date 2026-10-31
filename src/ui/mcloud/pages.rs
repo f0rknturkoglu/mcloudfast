@@ -12,8 +12,8 @@ use egui::{Align, Color32, CornerRadius, Id, Layout, Rect, Sense, UiBuilder, pos
 
 use crate::api::models::{Album, Track, pick_image};
 use crate::app::App;
-use crate::i18n::{gettext, ngettext};
-use crate::model::{Action, Dialog, Page, RowContext};
+use crate::i18n::{gettext, ngettext, pgettext};
+use crate::model::{Action, Dialog, Page, RowContext, SortColumn, TableSort};
 use crate::theme::{self, Icon, Palette};
 use crate::ui::collection::{Actions, Hero};
 use crate::ui::widgets;
@@ -232,6 +232,8 @@ pub(in crate::ui) fn actions_row(
         // all the height left below it.
         ui.horizontal(|ui| {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                sort_menu_button(app, ui);
+                ui.add_space(8.0);
                 widgets::search_field(
                     ui,
                     &palette,
@@ -245,6 +247,216 @@ pub(in crate::ui) fn actions_row(
         });
         ui.add_space(6.0);
     }
+}
+
+pub(crate) fn sort_menu_button(app: &mut App, ui: &mut egui::Ui) {
+    let page = app.page().clone();
+    let current_sort = app.table_sorts.get(&page).copied();
+    let locale = app.locale;
+    let palette = app.palette;
+
+    let is_liked = matches!(page, Page::LikedSongs);
+    let label = match current_sort {
+        None if is_liked => gettext(locale, "Recently added"),
+        None => gettext(locale, "Custom order"),
+        Some(s) => match s.column {
+            SortColumn::Added => gettext(locale, "Recently added"),
+            SortColumn::Title => pgettext(locale, "column", "Title"),
+            SortColumn::Artist => gettext(locale, "Artist"),
+            SortColumn::Album => gettext(locale, "Album"),
+            SortColumn::Duration => gettext(locale, "Duration"),
+            SortColumn::Index => gettext(locale, "Custom order"),
+            SortColumn::AddedBy => pgettext(locale, "column heading", "ADDED BY"),
+        },
+    };
+
+    let height = 34.0;
+    let icon_size = 15.0;
+    let font = theme::medium(13.0);
+    let galley = crate::bidi::layout_line(ui.painter(), label.as_ref(), font, palette.text);
+    let padding_x = 12.0;
+    let spacing = 6.0;
+    let total_width = padding_x * 2.0 + galley.size().x + spacing + icon_size;
+    let (rect, response) = ui.allocate_exact_size(vec2(total_width, height), Sense::click());
+
+    if ui.is_rect_visible(rect) {
+        let fill = if response.hovered() {
+            palette.surface_hover
+        } else {
+            palette.surface
+        };
+        ui.painter().rect_filled(rect, 8.0, fill);
+        let text_pos = pos2(
+            rect.left() + padding_x,
+            rect.center().y - galley.size().y / 2.0,
+        );
+        ui.painter().galley(text_pos, galley, palette.text);
+        let icon_rect = Rect::from_center_size(
+            pos2(rect.right() - padding_x - icon_size / 2.0, rect.center().y),
+            egui::Vec2::splat(icon_size),
+        );
+        Icon::LayoutList
+            .image(palette.secondary, icon_size)
+            .paint_at(ui, icon_rect);
+    }
+
+    if ui.is_enabled() {
+        egui::Popup::menu(&response)
+            .frame(widgets::menu_frame(&palette))
+            .show(|ui| {
+                ui.set_min_width(170.0);
+                let is_custom = (current_sort.is_none() && !is_liked)
+                    || current_sort
+                        == Some(TableSort {
+                            column: SortColumn::Index,
+                            ascending: true,
+                        });
+                let is_recent = (current_sort.is_none() && is_liked)
+                    || current_sort
+                        == Some(TableSort {
+                            column: SortColumn::Added,
+                            ascending: false,
+                        });
+                let is_title = current_sort.is_some_and(|s| s.column == SortColumn::Title);
+                let is_artist = current_sort.is_some_and(|s| s.column == SortColumn::Artist);
+                let is_album = current_sort.is_some_and(|s| s.column == SortColumn::Album);
+                let is_duration = current_sort.is_some_and(|s| s.column == SortColumn::Duration);
+
+                let mut next_sort = None;
+                let mut clear_sort = false;
+
+                let check = if is_custom { Some(Icon::Check) } else { None };
+                if widgets::menu_item(ui, &palette, check, &gettext(locale, "Custom order")) {
+                    clear_sort = true;
+                }
+
+                let check = if is_title { Some(Icon::Check) } else { None };
+                if widgets::menu_item(ui, &palette, check, &pgettext(locale, "column", "Title")) {
+                    let asc = if is_title {
+                        !current_sort.unwrap().ascending
+                    } else {
+                        true
+                    };
+                    next_sort = Some(TableSort {
+                        column: SortColumn::Title,
+                        ascending: asc,
+                    });
+                }
+
+                let check = if is_artist { Some(Icon::Check) } else { None };
+                if widgets::menu_item(ui, &palette, check, &gettext(locale, "Artist")) {
+                    let asc = if is_artist {
+                        !current_sort.unwrap().ascending
+                    } else {
+                        true
+                    };
+                    next_sort = Some(TableSort {
+                        column: SortColumn::Artist,
+                        ascending: asc,
+                    });
+                }
+
+                let check = if is_album { Some(Icon::Check) } else { None };
+                if widgets::menu_item(ui, &palette, check, &gettext(locale, "Album")) {
+                    let asc = if is_album {
+                        !current_sort.unwrap().ascending
+                    } else {
+                        true
+                    };
+                    next_sort = Some(TableSort {
+                        column: SortColumn::Album,
+                        ascending: asc,
+                    });
+                }
+
+                let check = if is_recent { Some(Icon::Check) } else { None };
+                if widgets::menu_item(ui, &palette, check, &gettext(locale, "Recently added")) {
+                    if is_liked {
+                        let asc = if is_recent {
+                            current_sort.is_none_or(|s| !s.ascending)
+                        } else {
+                            false
+                        };
+                        if !asc {
+                            clear_sort = true;
+                        } else {
+                            next_sort = Some(TableSort {
+                                column: SortColumn::Added,
+                                ascending: true,
+                            });
+                        }
+                    } else {
+                        let asc = if is_recent {
+                            !current_sort.unwrap().ascending
+                        } else {
+                            false
+                        };
+                        next_sort = Some(TableSort {
+                            column: SortColumn::Added,
+                            ascending: asc,
+                        });
+                    }
+                }
+
+                let check = if is_duration { Some(Icon::Check) } else { None };
+                if widgets::menu_item(ui, &palette, check, &gettext(locale, "Duration")) {
+                    let asc = if is_duration {
+                        !current_sort.unwrap().ascending
+                    } else {
+                        true
+                    };
+                    next_sort = Some(TableSort {
+                        column: SortColumn::Duration,
+                        ascending: asc,
+                    });
+                }
+
+                if clear_sort {
+                    app.table_sorts.remove(&page);
+                    app.note_session_change();
+                    ui.close();
+                } else if let Some(sort) = next_sort {
+                    app.table_sorts.insert(page.clone(), sort);
+                    app.note_session_change();
+                    app.actions.push(Action::LoadMore(page.clone()));
+                    ui.close();
+                }
+            });
+    }
+}
+
+pub(crate) fn liked_genre_chips(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    selected_genre: &mut Option<String>,
+) {
+    let genres = crate::ui::collection::liked_genres(app);
+    if genres.is_empty() {
+        return;
+    }
+
+    let palette = app.palette;
+    let locale = app.locale;
+
+    let all_label = pgettext(locale, "filter", "All");
+    let mut options = Vec::with_capacity(genres.len() + 1);
+    options.push((None, all_label.into_owned()));
+
+    for g in &genres {
+        let label = crate::ui::mcloud::sentence_case(g);
+        options.push((Some(g.clone()), label));
+    }
+
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = 8.0;
+        for (value, label) in &options {
+            let is_active = value.as_deref() == selected_genre.as_deref();
+            if theme::soft_button(ui, &palette, None, label, is_active).clicked() {
+                *selected_genre = value.clone();
+            }
+        }
+    });
+    ui.add_space(8.0);
 }
 
 fn controls(app: &mut App, ui: &mut egui::Ui, actions: &Actions<'_>, filtered: bool) {
@@ -653,5 +865,20 @@ mod tests {
         assert_eq!(others.len(), 2);
         assert_eq!(others[0].id, "alb0");
         assert_eq!(others[1].id, "alb2");
+    }
+
+    #[test]
+    fn genre_frequency_ranking_orders_by_count() {
+        use std::collections::HashMap;
+        let mut counts: HashMap<String, usize> = HashMap::new();
+        counts.insert("rock".into(), 5);
+        counts.insert("electronic".into(), 12);
+        counts.insert("ambient".into(), 8);
+
+        let mut sorted: Vec<(String, usize)> = counts.into_iter().collect();
+        sorted.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        let top: Vec<String> = sorted.into_iter().map(|(g, _)| g).collect();
+
+        assert_eq!(top, vec!["electronic", "ambient", "rock"]);
     }
 }

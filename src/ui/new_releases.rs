@@ -179,6 +179,7 @@ pub fn page(app: &mut App, ui: &mut egui::Ui) {
             filter: "",
             items_revision: generation,
             plays_shown_rows: false,
+            genre: None,
         },
     );
 }

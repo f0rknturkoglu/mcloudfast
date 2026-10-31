@@ -10986,6 +10986,7 @@ mod tests {
                                 },
                                 items_revision: u64::from(empty),
                                 plays_shown_rows: false,
+                                genre: None,
                             },
                         );
                     },
