@@ -13,6 +13,16 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
     ui.add_space(8.0);
     let locale = app.locale;
     let (title, empty_title, empty_body) = match page {
+        Page::RecentlyAdded => (
+            gettext(locale, "Recently Added"),
+            gettext(locale, "Nothing added yet"),
+            gettext(locale, "Recently added music appears here."),
+        ),
+        Page::AllPlaylists => (
+            gettext(locale, "All Playlists"),
+            gettext(locale, "No playlists yet"),
+            gettext(locale, "Your playlists appear here."),
+        ),
         Page::Albums => (
             gettext(locale, "Albums"),
             gettext(locale, "No saved albums"),
@@ -37,6 +47,148 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
     theme::text(ui, title.as_ref(), theme::bold(28.0), palette.text);
     ui.add_space(14.0);
     match page {
+        Page::RecentlyAdded => {
+            let card_art = app.art_px(widgets::CARD_ART);
+            let mut items: Vec<RecentItem> = Vec::new();
+            for saved in &app.library.albums.items {
+                let album = &saved.album;
+                let subtitle = join_names(album.artists.iter().map(|artist| artist.name.as_str()));
+                items.push(RecentItem {
+                    uri: album.uri.clone(),
+                    name: album.name.clone(),
+                    subtitle,
+                    image: pick_image(&album.images, card_art).map(str::to_string),
+                    page: Page::Album(album.id.clone()),
+                    added_at: saved.added_at.clone(),
+                });
+            }
+            if let Some(playlists) = app.library.playlists.get() {
+                for pl in playlists {
+                    items.push(RecentItem {
+                        uri: pl.uri.clone(),
+                        name: pl.name.clone(),
+                        subtitle: pl.owner_name().to_string(),
+                        image: pick_image(&pl.images, card_art).map(str::to_string),
+                        page: Page::Playlist(pl.id.clone()),
+                        added_at: None,
+                    });
+                }
+            }
+            items.sort_by(|a, b| b.added_at.cmp(&a.added_at));
+
+            let count = items.len();
+            let card_height = widgets::card_row_height(ui);
+            widgets::virtual_wrapped_cards(ui, count, card_height, |ui, index| {
+                let item = &items[index];
+                let uri = item.uri.clone();
+                let context_here = app.playing_context_uri().as_deref() == Some(uri.as_str());
+                let playing_here = context_here && app.believed_playing();
+                let card = widgets::card(
+                    ui,
+                    app,
+                    item.image.as_deref(),
+                    &item.name,
+                    &item.subtitle,
+                    widgets::CardCover::square(playing_here),
+                );
+                if card.play {
+                    if context_here {
+                        app.actions.push(Action::TogglePlay);
+                    } else {
+                        app.actions.push(Action::PlayContext {
+                            uri: uri.clone(),
+                            offset_uri: None,
+                            offset_index: None,
+                        });
+                    }
+                }
+                if card.clicked {
+                    app.actions.push(Action::Open(item.page.clone()));
+                }
+                egui::Popup::context_menu(&card.response)
+                    .id(ui.make_persistent_id(("library-recent-menu", &item.uri)))
+                    .frame(widgets::menu_frame(&palette))
+                    .show(|ui| widgets::context_menu_items(ui, app, &item.uri, &item.name, None));
+            });
+            let list = &app.library.albums;
+            let loading = list.loading || app.library.playlists_loading_since.is_some();
+            let empty = items.is_empty() && list.loaded_once;
+            footer(
+                app,
+                ui,
+                page,
+                loading,
+                list.error.clone(),
+                list.can_load_more(),
+                empty,
+                &empty_title,
+                &empty_body,
+                Icon::McloudClock,
+            );
+        }
+        Page::AllPlaylists => {
+            let playlists = app.library.playlists.get().cloned().unwrap_or_default();
+            let count = playlists.len();
+            let card_height = widgets::card_row_height(ui);
+            widgets::virtual_wrapped_cards(ui, count, card_height, |ui, index| {
+                let playlist = &playlists[index];
+                let uri = playlist.uri.clone();
+                let id = playlist.id.clone();
+                let subtitle = playlist.owner_name();
+                let context_here = app.playing_context_uri().as_deref() == Some(uri.as_str());
+                let playing_here = context_here && app.believed_playing();
+                let card_art = app.art_px(widgets::CARD_ART);
+                let card = widgets::card(
+                    ui,
+                    app,
+                    pick_image(&playlist.images, card_art),
+                    &playlist.name,
+                    subtitle,
+                    widgets::CardCover::square(playing_here),
+                );
+                if card.play {
+                    if context_here {
+                        app.actions.push(Action::TogglePlay);
+                    } else {
+                        app.actions.push(Action::PlayContext {
+                            uri: uri.clone(),
+                            offset_uri: None,
+                            offset_index: None,
+                        });
+                    }
+                }
+                if card.clicked {
+                    app.actions.push(Action::Open(Page::Playlist(id)));
+                }
+                egui::Popup::context_menu(&card.response)
+                    .id(ui.make_persistent_id(("library-playlist-menu", &playlist.uri)))
+                    .frame(widgets::menu_frame(&palette))
+                    .show(|ui| {
+                        let owned = app.user_id().is_some_and(|id| playlist.owned_by(id));
+                        widgets::context_menu_items(
+                            ui,
+                            app,
+                            &playlist.uri,
+                            &playlist.name,
+                            owned.then_some(playlist),
+                        );
+                    });
+            });
+            let loading = app.library.playlists_loading_since.is_some();
+            let empty = playlists.is_empty() && !loading;
+            footer(
+                app,
+                ui,
+                page,
+                loading,
+                None,
+                false,
+                empty,
+                &empty_title,
+                &empty_body,
+                Icon::ListMusic,
+            );
+        }
         Page::Albums => {
             let card_height = widgets::card_row_height(ui);
             let count = app.library.albums.items.len();
@@ -275,4 +427,13 @@ fn footer(
         widgets::empty_state(ui, &palette, icon, empty_title, empty_body);
     }
     widgets::load_more_when_near_end(ui, app, page, can_load && !loading);
+}
+
+struct RecentItem {
+    uri: String,
+    name: String,
+    subtitle: String,
+    image: Option<String>,
+    page: Page,
+    added_at: Option<String>,
 }

@@ -65,7 +65,16 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             &gettext(locale, "Show sidebar (Cmd+B)"),
         )
         .to_owned();
-        if circle(ui, rect, Icon::PanelLeft, true, &label).clicked() {
+        if circle(
+            ui,
+            rect,
+            Icon::PanelLeft,
+            true,
+            &label,
+            app.settings.mcloud_glass,
+        )
+        .clicked()
+        {
             app.actions.push(Action::ToggleSidebar);
         }
         left = rect.right() + 12.0;
@@ -76,11 +85,14 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         pos2(left, y - BUTTON / 2.0),
         vec2(2.0 * BUTTON + 8.0, BUTTON),
     );
-    ui.painter().rect_filled(
-        capsule,
-        CornerRadius::same((BUTTON / 2.0) as u8),
-        fill(false),
-    );
+    let glass = super::glass::paint(ui, capsule, app.settings.mcloud_glass);
+    if !glass {
+        ui.painter().rect_filled(
+            capsule,
+            CornerRadius::same((BUTTON / 2.0) as u8),
+            fill(false),
+        );
+    }
     ui.painter().rect_stroke(
         capsule,
         CornerRadius::same((BUTTON / 2.0) as u8),
@@ -138,20 +150,49 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let group = BUTTON + 8.0 + search_width;
     let start = (rest.center().x - group / 2.0).max(rest.left());
     let home = Rect::from_center_size(pos2(start + BUTTON / 2.0, y), Vec2::splat(BUTTON));
-    if circle(ui, home, Icon::McloudHome, true, &gettext(locale, "Home")).clicked() {
+    if circle(
+        ui,
+        home,
+        Icon::McloudHome,
+        true,
+        &gettext(locale, "Home"),
+        app.settings.mcloud_glass,
+    )
+    .clicked()
+    {
         app.actions.push(Action::Open(Page::Home));
     }
     let field = Rect::from_min_size(pos2(home.right() + 8.0, y - 17.0), vec2(search_width, 34.0));
+    let glass = super::glass::paint(ui, field, app.settings.mcloud_glass);
+    if !glass {
+        ui.painter()
+            .rect_filled(field, CornerRadius::same(17), fill(false));
+    }
+    ui.painter()
+        .rect_stroke(field, CornerRadius::same(17), ring(), StrokeKind::Inside);
     let mut field_ui = ui.new_child(egui::UiBuilder::new().max_rect(field));
     crate::ui::topbar::search_box(app, &mut field_ui, search_width);
 }
 
 /// A round toolbar button.
-fn circle(ui: &mut egui::Ui, rect: Rect, icon: Icon, enabled: bool, label: &str) -> egui::Response {
+fn circle(
+    ui: &mut egui::Ui,
+    rect: Rect,
+    icon: Icon,
+    enabled: bool,
+    label: &str,
+    effect: crate::settings::GlassEffect,
+) -> egui::Response {
     let response = ui.interact(rect, Id::new(("mcloud-toolbar", label)), Sense::click());
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, label));
     let painter = ui.painter();
-    painter.circle_filled(rect.center(), BUTTON / 2.0, fill(response.hovered()));
+    let hovered = response.hovered();
+    let glass = super::glass::paint(ui, rect, effect);
+    if !glass {
+        painter.circle_filled(rect.center(), BUTTON / 2.0, fill(hovered));
+    } else if hovered {
+        painter.circle_filled(rect.center(), BUTTON / 2.0, Color32::from_white_alpha(18));
+    }
     painter.circle_stroke(rect.center(), BUTTON / 2.0 - 0.25, ring());
     let color = if response.hovered() {
         Color32::WHITE

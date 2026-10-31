@@ -135,6 +135,11 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
     heading(ui, &gettext(locale, "Library"), None);
     for (icon, label, target) in [
         (
+            Icon::McloudClock,
+            gettext(locale, "Recently Added"),
+            Page::RecentlyAdded,
+        ),
+        (
             Icon::McloudArtist,
             gettext(locale, "Artists"),
             Page::Artists,
@@ -180,6 +185,19 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page) {
             public: false,
             add_uris: Vec::new(),
         }));
+    }
+
+    let all_playlists = gettext(locale, "All Playlists");
+    if row(
+        ui,
+        Leading::Icon(Icon::McloudGrid),
+        &all_playlists,
+        *page == Page::AllPlaylists,
+        false,
+    )
+    .clicked()
+    {
+        app.actions.push(Action::Open(Page::AllPlaylists));
     }
 
     let Some(all) = app.library.playlists.get() else {

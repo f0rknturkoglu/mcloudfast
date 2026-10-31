@@ -403,9 +403,12 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                                 Page::NewReleases => new_releases::page(app, ui),
                                 Page::Search => search::show(app, ui),
                                 Page::LikedSongs => collection::liked(app, ui),
-                                Page::Albums | Page::Artists | Page::Podcasts | Page::Episodes => {
-                                    library::show(app, ui, page)
-                                }
+                                Page::Albums
+                                | Page::Artists
+                                | Page::Podcasts
+                                | Page::Episodes
+                                | Page::RecentlyAdded
+                                | Page::AllPlaylists => library::show(app, ui, page),
                                 Page::Playlist(id) => collection::playlist(app, ui, &id),
                                 Page::Album(id) => collection::album(app, ui, &id),
                                 Page::Artist(id) => artist::show(app, ui, &id),

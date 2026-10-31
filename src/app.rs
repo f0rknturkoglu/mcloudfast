@@ -3155,6 +3155,20 @@ impl App {
                     self.load_more(Page::Episodes);
                 }
             }
+            Page::RecentlyAdded => {
+                if !self.library.albums.loaded_once || self.library.albums.error.is_some() {
+                    self.library.albums.error = None;
+                    self.load_more(Page::Albums);
+                }
+                if self.library.playlists.get().is_none() {
+                    self.load_playlists();
+                }
+            }
+            Page::AllPlaylists => {
+                if self.library.playlists.get().is_none() {
+                    self.load_playlists();
+                }
+            }
             Page::Playlist(id) => {
                 let incomplete = match self.playlist_pages.get(&id) {
                     None => true,
@@ -5405,6 +5419,19 @@ impl App {
                     self.load_more(Page::Episodes);
                 }
             }
+            Page::RecentlyAdded => {
+                if self.network_reachable && !self.library.albums.loaded_once {
+                    self.load_more(Page::Albums);
+                }
+                if self.library.playlists.get().is_none() {
+                    self.load_playlists();
+                }
+            }
+            Page::AllPlaylists => {
+                if self.library.playlists.get().is_none() {
+                    self.load_playlists();
+                }
+            }
             Page::Playlist(id) => {
                 let needs_generation = self
                     .playlist_pages
@@ -5947,6 +5974,22 @@ impl App {
                     self.backend.api(ApiRequest::SavedEpisodes { offset });
                 }
             }
+            Page::RecentlyAdded => {
+                let list = &mut self.library.albums;
+                if let Some(offset) = list.next_offset.filter(|_| list.can_load_more()) {
+                    list.loading = true;
+                    self.backend.api(ApiRequest::SavedAlbums { offset });
+                }
+            }
+            Page::AllPlaylists => {
+                if let Some(offset) = self.library.playlists_next.take() {
+                    self.library.playlists_asked = Some(offset);
+                    self.backend.api(ApiRequest::MyPlaylists {
+                        offset,
+                        generation: self.library.playlists_generation,
+                    });
+                }
+            }
             Page::Playlist(id) => {
                 if self.playlist_pages.get(&id).is_some_and(|page| {
                     page.pending_writes > 0
@@ -6146,6 +6189,11 @@ impl App {
             Page::Artists => self.library.artists.reset(),
             Page::Podcasts => self.library.shows.reset(),
             Page::Episodes => self.library.episodes.reset(),
+            Page::RecentlyAdded => {
+                self.library.albums.reset();
+                self.load_playlists();
+            }
+            Page::AllPlaylists => self.load_playlists(),
             Page::Playlist(id) => {
                 if let Some(playlist) = self.playlist_pages.get_mut(id) {
                     playlist.items.loading = true;

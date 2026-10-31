@@ -89,16 +89,17 @@ memnun), albüm ve playlist başlığı ile butonlar, tablo başlıkları ve sat
 sayfasının altı (tam tarih, süre/parça özeti, telif ve "More by [Sanatçı]" rafı),
 Liked Songs sayfası (tür çipleri filtreleme ve sağdaki "Recently added ☰" sıralama açılır menüsü),
 Ana sayfa (All/Music/Podcasts kategori filtre çipleri, filtrelere göre raf ve kısayol gösterimi,
-20.0 pt Apple Music bölüm ve raf başlıkları ile raf boşlukları).
+20.0 pt Apple Music bölüm ve raf başlıkları ile raf boşlukları),
+Recently Added ve All Playlists kütüphane görünümleri (`Page::RecentlyAdded`, `Page::AllPlaylists`),
+Sidebar'a "Son Eklenen" ve "Tüm Listeler" bağlantılarının eklenmesi,
+Topbar liquid glass kontrolleri (geri/ileri kapsülü, Home daire butonu ve arama kutusu).
 
 ## Kalanlar (sırayla önerilen)
 
-1. **Recently Added ve All Playlists:** mcloud'un kütüphane görünümleri
-   (`theme.js` -> `openLibrary`). Yeni sayfalar gerekiyor.
-2. **Browse sayfası:** renkli kategori karoları. Spotifast'te yok; Web API'nin
-   kategori isteğiyle yeni bir sayfa yazılmalı.
-3. **Sidebar:** mcloud'daki gibi sayfanın arkasından renk sızdıran parlama
-   (sidebar glow).
+1. **Browse sayfası:** renkli kategori karoları. Spotifast'te yok; Web API'nin
+   kategori isteğiyle yeni bir sayfa yazılmalı (`Page::Browse`).
+2. **Sidebar glow:** mcloud'daki gibi sayfanın arkasından renk sızdıran parlama
+   (sidebar glow, `#am-sidebar-glow`).
 
 ## Bilinen durumlar
 
@@ -106,8 +107,4 @@ Ana sayfa (All/Music/Podcasts kategori filtre çipleri, filtrelere göre raf ve 
   Mode quota is exhausted"). Bu yüzden diskografi gelmiyor; sanatçı
   sayfasında Latest Release ve albüm rafları boş görünüyor. Kod tarafında
   sorun yok.
-- mcloud'un kütüphane görünümleri yalnızca mcloud sidebar'ına tıklayınca
-  açılıyor (`spotify:collection` bağlantıları Liked Songs'a gidiyor). Bu
-  oturumda masaüstüne tıklayabilen bir araç olmadığı için yakalanamadılar;
-  `theme.js`'ten okunmaları gerekiyor.
 - Liquid glass referansı: github.com/emribilemir/liquid-glass-research

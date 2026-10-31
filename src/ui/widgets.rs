@@ -3278,17 +3278,26 @@ pub fn search_field(
     let height = 34.0;
     let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
     let has_focus = ui.memory(|memory| memory.has_focus(id));
-    let fill = if has_focus {
-        palette.surface_hover
-    } else {
-        palette.surface
-    };
-    ui.painter().rect_filled(rect, height / 2.0, fill);
+    let is_mcloud_topbar =
+        crate::ui::mcloud::active(ui.ctx()) && id == egui::Id::new("global-search");
+    if !is_mcloud_topbar {
+        let fill = if has_focus {
+            palette.surface_hover
+        } else {
+            palette.surface
+        };
+        ui.painter().rect_filled(rect, height / 2.0, fill);
+    }
     if has_focus {
+        let stroke_color = if is_mcloud_topbar {
+            palette.accent
+        } else {
+            palette.text.gamma_multiply(0.6)
+        };
         ui.painter().rect_stroke(
             rect,
             height / 2.0,
-            Stroke::new(1.5, palette.text.gamma_multiply(0.6)),
+            Stroke::new(1.5, stroke_color),
             egui::StrokeKind::Inside,
         );
     }
