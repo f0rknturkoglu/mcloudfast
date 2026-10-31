@@ -1,3 +1,17 @@
+# mcloudfast
+
+**Apple Music's look on a fast, native Spotify client.** mcloudfast brings
+[mcloud](https://github.com/bulutakbulutt/mcloud), an Apple Music theme for
+Spotify, to Spotifast as a native interface style: a red-accented sidebar,
+a floating glass player, and Apple Music style album, playlist and artist
+pages. Choose it under **Settings → Appearance → Interface style → mcloud**.
+
+mcloudfast is built on [Spotifast](https://github.com/crmne/spotifast) by
+Carmine Paolino and its contributors, under the MIT License
+([LICENSE](LICENSE)). The rest of this README is Spotifast's own.
+
+---
+
 <p align="center">
   <img src="docs/assets/images/logo.svg" alt="Spotifast logo" width="88" height="88">
 </p>
