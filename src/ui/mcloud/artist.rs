@@ -482,7 +482,7 @@ fn album_shelf(app: &mut App, ui: &mut egui::Ui, id: &str, label: &str, albums: 
 
 /// mcloud's card: the artwork with a faint inner ring, the name in two
 /// lines at most, and a quieter line under it.
-fn card(
+pub(crate) fn card(
     app: &mut App,
     ui: &mut egui::Ui,
     image: Option<&str>,

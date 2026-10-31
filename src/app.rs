@@ -5457,10 +5457,25 @@ impl App {
                         },
                     );
                 }
-                let page = self.album_pages.entry(id.clone()).or_default();
-                if page.album.needs_load() && self.network_reachable {
-                    page.album = Loadable::Loading;
+                let (needs_load, artist_id) = {
+                    let page = self.album_pages.entry(id.clone()).or_default();
+                    let artist_id = page
+                        .album
+                        .get()
+                        .and_then(|a| a.artists.first())
+                        .and_then(|a| a.id.clone());
+                    (page.album.needs_load(), artist_id)
+                };
+                if needs_load && self.network_reachable {
+                    if let Some(page) = self.album_pages.get_mut(&id) {
+                        page.album = Loadable::Loading;
+                    }
                     self.backend.api(ApiRequest::Album { id: id.clone() });
+                } else if self.network_reachable
+                    && let Some(artist_id) = artist_id
+                {
+                    self.artist_pages.entry(artist_id.clone()).or_default();
+                    self.load_artist_albums(&artist_id, DiscographyFilter::All);
                 }
                 if self.network_reachable {
                     self.request_contains(vec![format!("spotify:album:{id}")]);
@@ -8470,13 +8485,14 @@ impl App {
                 {
                     self.tint_for(Some(image));
                 }
-                if let Some(page) = self.album_pages.get_mut(&id) {
+                let artist_id = if let Some(page) = self.album_pages.get_mut(&id) {
                     match result {
                         Ok(mut album) => {
                             if let Some(tracks) = album.tracks.take() {
                                 uris = tracks.items.iter().map(|track| track.uri.clone()).collect();
                                 page.tracks.absorb(0, tracks);
                             }
+                            let artist_id = album.artists.first().and_then(|a| a.id.clone());
                             page.album = Loadable::Loaded(album);
                             if !page.tracks.loaded_once {
                                 page.tracks.loading = true;
@@ -8486,11 +8502,19 @@ impl App {
                                     generation: page.generation,
                                 });
                             }
+                            artist_id
                         }
                         Err(error) => {
-                            page.album = Loadable::Failed(friendly_api_error(self.locale, &error))
+                            page.album = Loadable::Failed(friendly_api_error(self.locale, &error));
+                            None
                         }
                     }
+                } else {
+                    None
+                };
+                if let Some(artist_id) = artist_id {
+                    self.artist_pages.entry(artist_id.clone()).or_default();
+                    self.load_artist_albums(&artist_id, DiscographyFilter::All);
                 }
                 self.request_contains(uris);
             }

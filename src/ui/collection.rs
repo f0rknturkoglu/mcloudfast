@@ -2010,43 +2010,47 @@ pub fn album(app: &mut App, ui: &mut egui::Ui, id: &str) {
                     plays_shown_rows: false,
                 },
             );
-            ui.add_space(24.0);
-            if let Some(date) = &album.release_date {
-                theme::text(
-                    ui,
-                    util::format_date(app.locale, date),
-                    theme::regular(12.5),
-                    palette.secondary,
-                );
-            }
-            // Labels file the same line under both kinds of copyright;
-            // one line wearing both marks reads better than the line twice.
-            let mut credits: Vec<(String, Vec<&str>)> = Vec::new();
-            for copyright in &album.copyrights {
-                let core = copyright
-                    .text
-                    .trim_start_matches(['©', '℗'])
-                    .trim_start_matches("(C)")
-                    .trim_start_matches("(P)")
-                    .trim()
-                    .to_string();
-                let mark = if copyright.kind == "P" { "℗" } else { "©" };
-                match credits.iter_mut().find(|(held, _)| *held == core) {
-                    Some((_, marks)) => {
-                        if !marks.contains(&mark) {
-                            marks.push(mark);
-                        }
-                    }
-                    None => credits.push((core, vec![mark])),
+            if crate::ui::mcloud::active(ui.ctx()) {
+                crate::ui::mcloud::pages::album_footer(app, ui, album, &page.tracks.items);
+            } else {
+                ui.add_space(24.0);
+                if let Some(date) = &album.release_date {
+                    theme::text(
+                        ui,
+                        util::format_date(app.locale, date),
+                        theme::regular(12.5),
+                        palette.secondary,
+                    );
                 }
-            }
-            for (core, marks) in credits {
-                theme::text(
-                    ui,
-                    format!("{} {core}", marks.join(" ")),
-                    theme::regular(11.5),
-                    palette.dim,
-                );
+                // Labels file the same line under both kinds of copyright;
+                // one line wearing both marks reads better than the line twice.
+                let mut credits: Vec<(String, Vec<&str>)> = Vec::new();
+                for copyright in &album.copyrights {
+                    let core = copyright
+                        .text
+                        .trim_start_matches(['©', '℗'])
+                        .trim_start_matches("(C)")
+                        .trim_start_matches("(P)")
+                        .trim()
+                        .to_string();
+                    let mark = if copyright.kind == "P" { "℗" } else { "©" };
+                    match credits.iter_mut().find(|(held, _)| *held == core) {
+                        Some((_, marks)) => {
+                            if !marks.contains(&mark) {
+                                marks.push(mark);
+                            }
+                        }
+                        None => credits.push((core, vec![mark])),
+                    }
+                }
+                for (core, marks) in credits {
+                    theme::text(
+                        ui,
+                        format!("{} {core}", marks.join(" ")),
+                        theme::regular(11.5),
+                        palette.dim,
+                    );
+                }
             }
         }
         Loadable::Loading | Loadable::NotLoaded => {

@@ -10,9 +10,10 @@ use std::sync::Arc;
 
 use egui::{Align, Color32, CornerRadius, Id, Layout, Rect, Sense, UiBuilder, pos2, vec2};
 
+use crate::api::models::{Album, Track, pick_image};
 use crate::app::App;
-use crate::i18n::gettext;
-use crate::model::{Action, Dialog, RowContext};
+use crate::i18n::{gettext, ngettext};
+use crate::model::{Action, Dialog, Page, RowContext};
 use crate::theme::{self, Icon, Palette};
 use crate::ui::collection::{Actions, Hero};
 use crate::ui::widgets;
@@ -475,5 +476,182 @@ fn round_button(
         response
     } else {
         response.on_hover_text(label)
+    }
+}
+
+/// The bottom of an album page as mcloud / Apple Music draws it:
+/// song count, total duration, full release date, copyright credits,
+/// and a "More by [Artist]" shelf showing the artist's other releases.
+pub(in crate::ui) fn album_footer(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    album: &Album,
+    tracks: &[Track],
+) {
+    let palette = app.palette;
+    ui.add_space(24.0);
+
+    // Track count and length.
+    let count = album.total_tracks.unwrap_or(tracks.len() as u32);
+    let duration: u64 = tracks.iter().map(|track| track.duration_ms as u64).sum();
+    let count_text = ngettext(app.locale, "{count} song", "{count} songs", count)
+        .replace("{count}", &count.to_string());
+    let length_text = crate::util::format_total_ms(app.locale, duration);
+    theme::text(
+        ui,
+        format!("{count_text}, {length_text}"),
+        theme::medium(13.0),
+        Color32::from_white_alpha(153),
+    );
+
+    // Release date.
+    if let Some(date) = &album.release_date {
+        ui.add_space(4.0);
+        theme::text(
+            ui,
+            crate::util::format_date(app.locale, date),
+            theme::regular(12.0),
+            Color32::from_white_alpha(128),
+        );
+    }
+
+    // Copyright lines.
+    let mut credits: Vec<(String, Vec<&str>)> = Vec::new();
+    for copyright in &album.copyrights {
+        let core = copyright
+            .text
+            .trim_start_matches(['©', '℗'])
+            .trim_start_matches("(C)")
+            .trim_start_matches("(P)")
+            .trim()
+            .to_string();
+        let mark = if copyright.kind == "P" { "℗" } else { "©" };
+        match credits.iter_mut().find(|(held, _)| *held == core) {
+            Some((_, marks)) => {
+                if !marks.contains(&mark) {
+                    marks.push(mark);
+                }
+            }
+            None => credits.push((core, vec![mark])),
+        }
+    }
+    for (core, marks) in credits {
+        ui.add_space(2.0);
+        theme::text(
+            ui,
+            format!("{} {core}", marks.join(" ")),
+            theme::regular(11.0),
+            palette.dim,
+        );
+    }
+
+    // More by artist shelf.
+    if let Some(artist) = album.artists.first()
+        && let Some(artist_id) = &artist.id
+    {
+        more_by_shelf(app, ui, artist_id, &artist.name, &album.id);
+    }
+}
+
+fn more_by_shelf(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    artist_id: &str,
+    artist_name: &str,
+    current_album_id: &str,
+) {
+    let other_albums: Vec<Album> = if let Some(artist_page) = app.artist_pages.get(artist_id) {
+        let all = artist_page
+            .albums
+            .get(crate::model::DiscographyFilter::All.groups())
+            .or_else(|| artist_page.albums.get(artist_page.filter.groups()));
+        if let Some(list) = all {
+            list.items
+                .iter()
+                .filter(|other| other.id != current_album_id)
+                .cloned()
+                .collect()
+        } else {
+            Vec::new()
+        }
+    } else {
+        Vec::new()
+    };
+
+    if other_albums.is_empty() {
+        return;
+    }
+
+    ui.add_space(32.0);
+    // Translators: Heading for other albums by this artist below an album page.
+    let title = gettext(app.locale, "More by {artist}").replace("{artist}", artist_name);
+    theme::text(ui, &title, theme::bold(17.0), Color32::WHITE);
+    ui.add_space(12.0);
+
+    const CARD_SIZE: f32 = 160.0;
+    const CARD_GAP: f32 = 16.0;
+
+    egui::ScrollArea::horizontal()
+        .id_salt("mcloud-album-more-by")
+        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+        .show(ui, |ui| {
+            ui.horizontal_top(|ui| {
+                ui.spacing_mut().item_spacing.x = CARD_GAP;
+                for other in &other_albums {
+                    let image = pick_image(&other.images, app.art_px(CARD_SIZE));
+                    let year = other.year().unwrap_or("").to_string();
+                    let response = super::artist::card(
+                        app,
+                        ui,
+                        image,
+                        &other.name,
+                        Some(&year),
+                        CARD_SIZE,
+                        false,
+                    );
+                    if response.clicked() {
+                        app.actions
+                            .push(Action::Open(Page::Album(other.id.clone())));
+                    }
+                    egui::Popup::context_menu(&response)
+                        .id(ui.make_persistent_id(("album-more-by-menu", &other.uri)))
+                        .frame(widgets::menu_frame(&app.palette))
+                        .show(|ui| {
+                            widgets::context_menu_items(ui, app, &other.uri, &other.name, None)
+                        });
+                }
+            });
+        });
+    ui.add_space(20.0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn other_albums_filters_out_the_currently_viewed_album() {
+        let current = "alb1";
+        let albums = vec![
+            Album {
+                id: "alb0".into(),
+                name: "First".into(),
+                ..Default::default()
+            },
+            Album {
+                id: "alb1".into(),
+                name: "Current".into(),
+                ..Default::default()
+            },
+            Album {
+                id: "alb2".into(),
+                name: "Second".into(),
+                ..Default::default()
+            },
+        ];
+        let others: Vec<_> = albums.into_iter().filter(|a| a.id != current).collect();
+        assert_eq!(others.len(), 2);
+        assert_eq!(others[0].id, "alb0");
+        assert_eq!(others[1].id, "alb2");
     }
 }

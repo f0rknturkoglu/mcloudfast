@@ -85,20 +85,19 @@ Spotifast'te kancaların olduğu yerler:
 
 Palet ve SF Pro fontu, sidebar, üst çubuk, yüzen player, liquid glass (kullanıcı
 memnun), albüm ve playlist başlığı ile butonlar, tablo başlıkları ve satır
-çizgileri, sanatçı sayfası, ana sayfa selamlamasının kaldırılması.
+çizgileri, sanatçı sayfası, ana sayfa selamlamasının kaldırılması, albüm
+sayfasının altı (tam tarih, süre/parça özeti, telif ve "More by [Sanatçı]" rafı).
 
 ## Kalanlar (sırayla önerilen)
 
-1. **Browse sayfası:** renkli kategori karoları. Spotifast'te yok; Web API'nin
-   kategori isteğiyle yeni bir sayfa yazılmalı.
-2. **Recently Added ve All Playlists:** mcloud'un kütüphane görünümleri
-   (`theme.js` → `openLibrary`). Yeni sayfalar gerekiyor.
-3. **Ana sayfa:** All/Music/Podcasts çipleri, "Made For …" ve "Recents" gibi
+1. **Liked Songs:** tür çipleri ve sağdaki "Recently added ☰" sıralaması.
+2. **Ana sayfa:** All/Music/Podcasts çipleri, "Made For …" ve "Recents" gibi
    bölüm başlıkları.
-4. **Albüm sayfasının altı:** tam tarih ("November 29, 1984") ve "More by …"
-   rafı.
-5. **Liked Songs:** tür çipleri ve sağdaki "Recently added ☰" sıralaması.
-6. **Sidebar:** mcloud'daki gibi sayfanın arkasından renk sızdıran parlama
+3. **Recently Added ve All Playlists:** mcloud'un kütüphane görünümleri
+   (`theme.js` → `openLibrary`). Yeni sayfalar gerekiyor.
+4. **Browse sayfası:** renkli kategori karoları. Spotifast'te yok; Web API'nin
+   kategori isteğiyle yeni bir sayfa yazılmalı.
+5. **Sidebar:** mcloud'daki gibi sayfanın arkasından renk sızdıran parlama
    (sidebar glow).
 
 ## Bilinen durumlar
