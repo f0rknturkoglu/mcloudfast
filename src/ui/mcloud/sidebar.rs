@@ -47,8 +47,99 @@ fn material(under: Color32) -> Color32 {
     under.lerp_to_gamma(Color32::from_rgb(0x25, 0x25, 0x25), 0.76)
 }
 
+/// The edge glow along the right side of the sidebar, matching mcloud's `#am-sidebar-glow`
+/// (user.css line 206): a heavily blurred, saturated and brightened backdrop reaching
+/// 160px inward from the sidebar edge, with a soft compression roll-off to avoid blow-out.
+fn glow_color(tint: Color32) -> Option<Color32> {
+    let r = tint.r() as f32 / 255.0;
+    let g = tint.g() as f32 / 255.0;
+    let b = tint.b() as f32 / 255.0;
+
+    let l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    let max_c = r.max(g).max(b);
+    let min_c = r.min(g).min(b);
+    if max_c - min_c < 0.04 && l < 0.25 {
+        return None;
+    }
+
+    // Boost saturation (3.5x as in mcloud CSS backdrop-filter: saturate(3.5))
+    let mut sr = l + (r - l) * 3.5;
+    let mut sg = l + (g - l) * 3.5;
+    let mut sb = l + (b - l) * 3.5;
+
+    // Brightness (1.25x as in mcloud CSS backdrop-filter: brightness(1.25))
+    sr *= 1.25;
+    sg *= 1.25;
+    sb *= 1.25;
+
+    // Soft cap roll-off above 0.4 up to ~0.66 (matching #am-glow-cap tableValues)
+    let cap = |v: f32| -> f32 {
+        let v = v.clamp(0.0, 3.0);
+        if v <= 0.4 {
+            v
+        } else {
+            0.4 + (v - 0.4).atan() * (0.26 / (std::f32::consts::PI / 2.0))
+        }
+    };
+
+    let cr = (cap(sr).clamp(0.0, 1.0) * 255.0).round() as u8;
+    let cg = (cap(sg).clamp(0.0, 1.0) * 255.0).round() as u8;
+    let cb = (cap(sb).clamp(0.0, 1.0) * 255.0).round() as u8;
+
+    Some(Color32::from_rgb(cr, cg, cb))
+}
+
+fn paint_sidebar_glow(
+    painter: &egui::Painter,
+    edge_x: f32,
+    top_y: f32,
+    bottom_y: f32,
+    tint: Color32,
+) {
+    let Some(glow_rgb) = glow_color(tint) else {
+        return;
+    };
+
+    let mut mesh = egui::Mesh::default();
+    // 160px inward matching linear-gradient(90deg, transparent calc(var(--am-side) - 160px), #0007 calc(var(--am-side) - 70px), #000 calc(var(--am-side) - 1px), transparent var(--am-side))
+    let xs = [edge_x - 160.0, edge_x - 70.0, edge_x - 1.0, edge_x];
+    let x_mult = [0.0, 0.44, 1.0, 0.0];
+    let ys = [top_y, top_y + 160.0, top_y + 320.0, top_y + 540.0, bottom_y];
+    let y_mult = [1.0, 1.0, 0.75, 0.30, 0.05];
+
+    let r = glow_rgb.r();
+    let g = glow_rgb.g();
+    let b = glow_rgb.b();
+    const PEAK_ALPHA: f32 = 85.0;
+
+    for (iy, &y) in ys.iter().enumerate() {
+        for (ix, &x) in xs.iter().enumerate() {
+            let a = (PEAK_ALPHA * x_mult[ix] * y_mult[iy]).clamp(0.0, 255.0) as u8;
+            let col = Color32::from_rgba_unmultiplied(r, g, b, a);
+            mesh.colored_vertex(pos2(x, y), col);
+        }
+    }
+
+    let cols = xs.len() as u32;
+    for iy in 0..(ys.len() - 1) {
+        let row_start = iy as u32 * cols;
+        let next_row = row_start + cols;
+        for ix in 0..(xs.len() - 1) {
+            let tl = row_start + ix as u32;
+            let tr = tl + 1;
+            let bl = next_row + ix as u32;
+            let br = bl + 1;
+            mesh.add_triangle(tl, tr, br);
+            mesh.add_triangle(tl, br, bl);
+        }
+    }
+
+    painter.add(egui::Shape::mesh(mesh));
+}
+
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
-    let under = super::super::page_tint(app).unwrap_or(app.palette.window);
+    let tint = super::super::page_tint(app).or_else(|| app.now_playing_tint());
+    let under = tint.unwrap_or(app.palette.window);
     let beside = if app.show_queue_panel || app.show_lyrics_panel || app.show_friends_panel {
         theme::SIDE_PANEL_MIN_WIDTH
     } else {
@@ -76,10 +167,18 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         }))
         .show(ui, |ui| {
             let area = ui.max_rect();
+            let edge_x = area.right() + SIDE_PADDING;
+            let top_y = area.top() - TOP;
+            let bottom_y = area.bottom() + 12.0;
+
+            if let Some(t) = tint {
+                paint_sidebar_glow(ui.painter(), edge_x, top_y, bottom_y, t);
+            }
+
             // A hairline along the right edge, as macOS draws it.
             ui.painter().vline(
-                area.right() + SIDE_PADDING - 0.5,
-                (area.top() - TOP)..=(area.bottom() + 12.0),
+                edge_x - 0.5,
+                top_y..=bottom_y,
                 Stroke::new(1.0, Color32::from_white_alpha(10)),
             );
             let list = area.with_max_y(area.bottom() - ACCOUNT_HEIGHT);

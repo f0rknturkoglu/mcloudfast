@@ -92,14 +92,13 @@ Ana sayfa (All/Music/Podcasts kategori filtre çipleri, filtrelere göre raf ve 
 20.0 pt Apple Music bölüm ve raf başlıkları ile raf boşlukları),
 Recently Added ve All Playlists kütüphane görünümleri (`Page::RecentlyAdded`, `Page::AllPlaylists`),
 Sidebar'a "Son Eklenen" ve "Tüm Listeler" bağlantılarının eklenmesi,
-Topbar liquid glass kontrolleri (geri/ileri kapsülü, Home daire butonu ve arama kutusu).
+Topbar liquid glass kontrolleri (geri/ileri kapsülü, Home daire butonu ve arama kutusu),
+Sidebar glow (mcloud `user.css:206` `#am-sidebar-glow` ile sayfa kapağının/renginin kenardan sızması).
 
 ## Kalanlar (sırayla önerilen)
 
 1. **Browse sayfası:** renkli kategori karoları. Spotifast'te yok; Web API'nin
    kategori isteğiyle yeni bir sayfa yazılmalı (`Page::Browse`).
-2. **Sidebar glow:** mcloud'daki gibi sayfanın arkasından renk sızdıran parlama
-   (sidebar glow, `#am-sidebar-glow`).
 
 ## Bilinen durumlar
 
