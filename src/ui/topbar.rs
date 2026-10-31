@@ -193,6 +193,10 @@ fn nav_button(
 }
 
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
+    if app.settings.interface == crate::settings::Interface::Mcloud {
+        super::mcloud::topbar::show(app, ui);
+        return;
+    }
     let palette = app.palette;
     let locale = app.locale;
     let width = ui.available_width();
@@ -350,48 +354,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             ui.ctx().data_mut(|data| data.insert_temp(lead_id(), lead));
             let fit = topbar_fit(search_room, controls, badges(true), badges(false));
             let search_width = fit.search;
-            let id = egui::Id::new("global-search");
-            let before = app.search.query.clone();
-            let selected = egui::TextEdit::load_state(ui.ctx(), id)
-                .and_then(|state| state.cursor.char_range())
-                .is_some_and(|range| !range.is_empty());
-            let response = super::widgets::search_field(
-                ui,
-                &palette,
-                app.locale,
-                id,
-                &mut app.search.query,
-                &gettext(locale, "What do you want to play?"),
-                search_width,
-            );
-            if app.search.focus_requested {
-                app.search.focus_requested = false;
-                response.request_focus();
-            }
-            // Clear empties the field and hands it focus in the same frame.
-            // Neither should leave the page: only typing a query does.
-            let cleared = app.search.query.is_empty() && !before.is_empty();
-            if response.gained_focus() && !cleared && !matches!(app.page(), Page::Search) {
-                app.actions.push(Action::Open(Page::Search));
-            }
-            if app.search.query != before {
-                // Typing over a selection, or emptying the field, starts a
-                // new query rather than editing the last one.
-                if selected || app.search.query.is_empty() {
-                    app.actions.push(Action::EndSearchRun);
-                }
-                app.search.typed_at = Some(std::time::Instant::now());
-                if !cleared && !matches!(app.page(), Page::Search) {
-                    app.actions.push(Action::Open(Page::Search));
-                }
-            }
-            if response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter)) {
-                let query = app.search.query.clone();
-                app.actions.push(Action::Search(query));
-            }
-            if response.has_focus() && ui.input(|input| input.key_pressed(egui::Key::Escape)) {
-                response.surrender_focus();
-            }
+            search_box(app, ui, search_width);
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.add_space(window_controls.topbar_width);
@@ -636,6 +599,55 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             });
         },
     );
+}
+
+/// The search field: typing opens Search and Enter runs the query. Shared
+/// with mcloud's toolbar.
+pub(super) fn search_box(app: &mut App, ui: &mut egui::Ui, search_width: f32) {
+    let palette = app.palette;
+    let locale = app.locale;
+    let id = egui::Id::new("global-search");
+    let before = app.search.query.clone();
+    let selected = egui::TextEdit::load_state(ui.ctx(), id)
+        .and_then(|state| state.cursor.char_range())
+        .is_some_and(|range| !range.is_empty());
+    let response = super::widgets::search_field(
+        ui,
+        &palette,
+        app.locale,
+        id,
+        &mut app.search.query,
+        &gettext(locale, "What do you want to play?"),
+        search_width,
+    );
+    if app.search.focus_requested {
+        app.search.focus_requested = false;
+        response.request_focus();
+    }
+    // Clear empties the field and hands it focus in the same frame.
+    // Neither should leave the page: only typing a query does.
+    let cleared = app.search.query.is_empty() && !before.is_empty();
+    if response.gained_focus() && !cleared && !matches!(app.page(), Page::Search) {
+        app.actions.push(Action::Open(Page::Search));
+    }
+    if app.search.query != before {
+        // Typing over a selection, or emptying the field, starts a
+        // new query rather than editing the last one.
+        if selected || app.search.query.is_empty() {
+            app.actions.push(Action::EndSearchRun);
+        }
+        app.search.typed_at = Some(std::time::Instant::now());
+        if !cleared && !matches!(app.page(), Page::Search) {
+            app.actions.push(Action::Open(Page::Search));
+        }
+    }
+    if response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter)) {
+        let query = app.search.query.clone();
+        app.actions.push(Action::Search(query));
+    }
+    if response.has_focus() && ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+        response.surrender_focus();
+    }
 }
 
 fn capitalize(text: &str) -> String {

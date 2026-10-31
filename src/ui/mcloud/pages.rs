@@ -17,14 +17,12 @@ use crate::theme::{self, Icon, Palette};
 use crate::ui::collection::{Actions, Hero};
 use crate::ui::widgets;
 
-const ART: f32 = 240.0;
-const ART_NARROW: f32 = 170.0;
-const ART_RADIUS: f32 = 8.0;
-const COLUMN_GAP: f32 = 28.0;
-const PILL_HEIGHT: f32 = 32.0;
-/// Wide enough for the longest translation of Pause, so a pill keeps its
-/// size when its label changes.
-const PILL_MIN_WIDTH: f32 = 112.0;
+const ART_RADIUS: f32 = 10.0;
+/// The action buttons' height, and the round ones' width.
+const BUTTON: f32 = 36.0;
+/// Play's width, enough for the longest translation of Pause, so it keeps
+/// its size when its label changes.
+const PLAY_WIDTH: f32 = 128.0;
 const ACTIONS_ID: &str = "mcloud-hero-actions";
 
 pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
@@ -34,13 +32,11 @@ pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
         .images
         .thumbnail
         .and_then(|uri| app.softened_covers.texture(ui.ctx(), &art_loader, uri));
-    ui.add_space(16.0);
-    let size = if ui.available_width() > 720.0 {
-        ART
-    } else {
-        ART_NARROW
-    };
-    let (row, _) = ui.allocate_exact_size(vec2(ui.available_width(), size), Sense::hover());
+    ui.add_space(12.0);
+    let page_width = ui.available_width();
+    let size = (page_width * 0.24).clamp(150.0, 270.0);
+    let gap = (page_width * 0.024).clamp(20.0, 32.0);
+    let (row, _) = ui.allocate_exact_size(vec2(page_width, size), Sense::hover());
     let art = Rect::from_min_size(row.min, egui::Vec2::splat(size));
     let radius = if hero.round { size / 2.0 } else { ART_RADIUS };
 
@@ -68,7 +64,18 @@ pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
             }));
         }
     }
-    widgets::paint_shadow(ui, &palette, art, radius);
+    // Two shadows, a wide soft one and a close one, as mcloud's.
+    for (offset, blur, alpha) in [(12, 32, 89), (2, 6, 51)] {
+        ui.painter().add(
+            egui::epaint::Shadow {
+                offset: [0, offset],
+                blur,
+                spread: 0,
+                color: Color32::from_black_alpha(alpha),
+            }
+            .as_shape(art, CornerRadius::same(radius.min(127.0) as u8)),
+        );
+    }
     if hero.liked {
         crate::ui::sidebar::liked_cover(ui, art, radius);
     } else {
@@ -89,115 +96,91 @@ pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
         );
     }
 
-    let left = art.right() + COLUMN_GAP;
+    let left = art.right() + gap;
     let width = (row.right() - left).max(0.0);
-    // The pills take the band along the artwork's bottom edge.
-    let actions = Rect::from_min_max(pos2(left, art.bottom() - PILL_HEIGHT), row.max);
+    // The buttons take the band along the artwork's bottom edge.
+    let actions = Rect::from_min_max(pos2(left, art.bottom() - BUTTON), row.max);
     // The pass is read before the data lock: egui's context locks are not
     // reentrant.
     let pass = ui.ctx().cumulative_pass_nr();
     ui.ctx()
         .data_mut(|data| data.insert_temp(Id::new(ACTIONS_ID), (pass, actions)));
 
-    // The words stand above the pills, the title's top a little below the
-    // artwork's, as in Apple Music.
-    let mut y = art.top() + size * 0.1;
-    let paint = |ui: &egui::Ui, y: &mut f32, galley: Arc<egui::Galley>, color: Color32| {
-        let rect = Rect::from_min_size(pos2(left, *y), galley.size());
-        ui.painter().galley(rect.min, galley, color);
-        *y = rect.bottom();
-        rect
-    };
-
-    let kind = widgets::ellipsized(
-        ui,
-        &hero.kind.to_uppercase(),
-        theme::semibold(11.5),
-        palette.dim,
-        width,
-        1,
-    );
-    paint(ui, &mut y, kind, palette.dim);
-    y += 4.0;
-
-    let mut title_size = if size >= ART { 30.0 } else { 24.0 };
-    let title = loop {
-        let galley = widgets::ellipsized(
-            ui,
-            hero.title,
-            theme::bold(title_size),
-            palette.text,
-            width,
-            2,
-        );
-        if galley.rows.len() < 2 || title_size <= 20.0 {
-            break galley;
-        }
-        title_size -= 2.0;
-    };
-    paint(ui, &mut y, title, palette.text);
-    y += 2.0;
-
-    // The names that open a page lead in the accent: the owner, or the
-    // album's artists. The rest of the byline follows quietly.
-    let names: Vec<_> = hero
+    // The title and the creator share one size, the creator in the accent
+    // and regular weight; the details and the description follow at half
+    // white. The block is centred in the room above the buttons.
+    let size = (page_width * 0.021).clamp(20.0, 28.0);
+    let half_white = Color32::from_white_alpha(128);
+    let title = widgets::ellipsized(ui, hero.title, theme::bold(size), palette.text, width, 2);
+    // The names that open a page lead: the owner, or the album's artists. A
+    // playlist whose owner has no page still leads with the owner.
+    let mut names: Vec<_> = hero
         .byline
         .iter()
         .take_while(|(_, page)| page.is_some())
         .collect();
-    let mut x = left;
-    for (index, (name, page)) in names.iter().enumerate() {
-        let text = if index + 1 < names.len() {
-            format!("{name},")
-        } else {
-            name.clone()
-        };
-        let galley = ui.painter().layout_no_wrap(
-            text,
-            theme::semibold(if size >= ART { 19.0 } else { 16.0 }),
-            palette.accent,
-        );
-        let rect = Rect::from_min_size(pos2(x, y), galley.size());
-        if rect.right() > row.right() {
-            break;
-        }
-        let response = ui
-            .interact(rect, Id::new(("mcloud-hero-name", index)), Sense::click())
-            .on_hover_cursor(egui::CursorIcon::PointingHand);
-        let color = if response.hovered() {
-            palette.accent_hover
-        } else {
-            palette.accent
-        };
-        ui.painter().galley(rect.min, galley, color);
-        if response.clicked()
-            && let Some(page) = page
-        {
-            app.actions.push(Action::Open(page.clone()));
-        }
-        x = rect.right() + 6.0;
-        if index + 1 == names.len() {
-            y = rect.bottom();
-        }
+    if names.is_empty() && !hero.round {
+        names.extend(hero.byline.first());
     }
-
+    let creator = (!names.is_empty()).then(|| {
+        names
+            .iter()
+            .map(|(name, _)| name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    });
+    let creator = creator
+        .map(|text| widgets::ellipsized(ui, &text, theme::regular(size), palette.accent, width, 1));
     let details: Vec<&str> = hero
         .byline
         .iter()
         .skip(names.len())
         .map(|(text, _)| text.as_str())
         .collect();
-    if !details.is_empty() {
-        y += 4.0;
-        let galley = widgets::ellipsized(
+    let details = (!details.is_empty()).then(|| {
+        widgets::ellipsized(
             ui,
-            &details.join(" · "),
-            theme::regular(12.5),
-            palette.secondary,
+            &details.join(" • "),
+            theme::regular(12.0),
+            half_white,
             width,
             1,
-        );
-        let rect = paint(ui, &mut y, galley, palette.secondary);
+        )
+    });
+    let description = hero
+        .description
+        .as_deref()
+        .filter(|text| !text.is_empty())
+        .map(|text| widgets::ellipsized(ui, text, theme::regular(12.0), half_white, width, 2));
+    let height = title.size().y
+        + creator.as_ref().map_or(0.0, |galley| galley.size().y + 6.0)
+        + details.as_ref().map_or(0.0, |galley| galley.size().y)
+        + description
+            .as_ref()
+            .map_or(0.0, |galley| galley.size().y + 4.0);
+    let room = Rect::from_min_max(art.min, pos2(art.right(), actions.top() - 12.0));
+    let mut y = (room.center().y - height / 2.0).max(art.top());
+    let mut paint = |galley: Arc<egui::Galley>, color: Color32, after: f32| {
+        let rect = Rect::from_min_size(pos2(left, y), galley.size());
+        ui.painter().galley(rect.min, galley, color);
+        y = rect.bottom() + after;
+        rect
+    };
+    paint(title, palette.text, 0.0);
+    if let Some(creator) = creator {
+        let rect = paint(creator, palette.accent, 6.0);
+        let target = names.iter().find_map(|(_, page)| page.clone());
+        if let Some(target) = target {
+            let response = ui
+                .interact(rect, Id::new("mcloud-hero-creator"), Sense::click())
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+            if response.clicked() {
+                app.actions.push(Action::Open(target));
+            }
+        }
+    }
+    if let Some(details) = details {
+        let rect = paint(details, half_white, 4.0);
         if let Some((at, tooltip)) = &hero.byline_tooltip
             && *at >= names.len()
         {
@@ -205,29 +188,13 @@ pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
                 .on_hover_text(tooltip);
         }
     }
-
-    if let Some(description) = hero.description.as_deref().filter(|text| !text.is_empty()) {
-        y += 8.0;
-        // Only what fits above the pills.
-        let room = actions.top() - 10.0 - y;
-        let line = 18.0;
-        let rows = (room / line).floor().clamp(0.0, 3.0) as usize;
-        if rows > 0 {
-            let galley = widgets::ellipsized(
-                ui,
-                description,
-                theme::regular(13.0),
-                palette.secondary,
-                width,
-                rows,
-            );
-            paint(ui, &mut y, galley, palette.secondary);
-        }
+    if let Some(description) = description {
+        paint(description, half_white, 0.0);
     }
     ui.add_space(20.0);
 }
 
-/// Play and Shuffle as pills, then the save, radio and "…" buttons, in the
+/// Shuffle, Play, then the save, radio and "…" buttons, in the
 /// band [`hero`] left for them, or on a row of their own on pages without
 /// one. A filter field takes its own row, at the right.
 pub(in crate::ui) fn actions_row(
@@ -289,10 +256,27 @@ fn controls(app: &mut App, ui: &mut egui::Ui, actions: &Actions<'_>, filtered: b
         let can_start = actions.view.as_ref().is_none_or(|uris| !uris.is_empty());
         let pending = app.play_pending(uri);
         let (icon, label) = if playing_here {
-            (Icon::PauseFilled, gettext(locale, "Pause"))
+            (Icon::McloudPause, gettext(locale, "Pause"))
         } else {
-            (Icon::PlayFilled, gettext(locale, "Play"))
+            (Icon::McloudPlay, gettext(locale, "Play"))
         };
+        // Shuffle leads, as in Apple Music, a round button in the accent.
+        let shuffle = ui
+            .add_enabled_ui(can_start, |ui| {
+                round_button(
+                    ui,
+                    &palette,
+                    Icon::McloudShuffle,
+                    palette.accent,
+                    &gettext(locale, "Shuffle"),
+                )
+            })
+            .inner;
+        if shuffle.clicked() {
+            // Apple Music's Shuffle starts the list shuffled from the top.
+            app.actions.push(Action::SetShuffle(true));
+            start(app, actions, uri, filtered, true);
+        }
         let play = ui
             .add_enabled_ui(context_here || can_start, |ui| {
                 pill(ui, &palette, icon, &label, pending)
@@ -306,51 +290,31 @@ fn controls(app: &mut App, ui: &mut egui::Ui, actions: &Actions<'_>, filtered: b
                 start(app, actions, uri, filtered, app.playing_context_shuffle());
             }
         }
-        let shuffle = ui
-            .add_enabled_ui(can_start, |ui| {
-                pill(
-                    ui,
-                    &palette,
-                    Icon::Shuffle,
-                    &gettext(locale, "Shuffle"),
-                    false,
-                )
-            })
-            .inner;
-        if shuffle.clicked() {
-            // Apple Music's Shuffle starts the list shuffled from the top.
-            app.actions.push(Action::SetShuffle(true));
-            start(app, actions, uri, filtered, true);
-        }
-        ui.add_space(6.0);
     }
     if let Some((uri, saved)) = &actions.saved {
-        let (icon, tooltip, color, hover) = if *saved {
+        let (icon, tooltip, color) = if *saved {
             (
                 actions.saved_icons.1,
                 &actions.saved_tooltips.1,
                 palette.accent,
-                palette.accent_hover,
             )
         } else {
             (
                 actions.saved_icons.0,
                 &actions.saved_tooltips.0,
                 palette.secondary,
-                palette.text,
             )
         };
-        if theme::icon_button(ui, icon, 20.0, color, hover, tooltip).clicked() {
+        if round_button(ui, &palette, icon, color, tooltip).clicked() {
             app.actions.push(Action::ToggleSaved(uri.clone()));
         }
     }
     if let Some(seed) = &actions.save_radio
-        && theme::icon_button(
+        && round_button(
             ui,
-            Icon::CirclePlus,
-            20.0,
+            &palette,
+            Icon::McloudPlus,
             palette.secondary,
-            palette.text,
             &gettext(locale, "Save as playlist"),
         )
         .clicked()
@@ -358,12 +322,11 @@ fn controls(app: &mut App, ui: &mut egui::Ui, actions: &Actions<'_>, filtered: b
         app.actions.push(Action::SaveRadio(seed.clone()));
     }
     if let Some(uri) = &actions.play_uri {
-        let more = theme::icon_button(
+        let more = round_button(
             ui,
-            Icon::Ellipsis,
-            20.0,
+            &palette,
+            Icon::McloudMore,
             palette.secondary,
-            palette.text,
             &gettext(locale, "More"),
         );
         egui::Popup::menu(&more)
@@ -423,8 +386,8 @@ fn start(app: &mut App, actions: &Actions<'_>, uri: &str, filtered: bool, shuffl
     }
 }
 
-/// Apple Music's filled accent button: an icon and a word, or a spinner
-/// while the play request is on its way.
+/// mcloud's Play: a grey capsule with the icon and the word in the
+/// accent, or a spinner while the play request is on its way.
 fn pill(
     ui: &mut egui::Ui,
     palette: &Palette,
@@ -435,41 +398,82 @@ fn pill(
     let font = theme::semibold(13.5);
     let text = ui
         .painter()
-        .layout_no_wrap(label.to_owned(), font, palette.on_accent);
-    let content = 14.0 + 6.0 + text.size().x;
-    let width = (content + 32.0).max(PILL_MIN_WIDTH);
-    let (rect, response) = ui.allocate_exact_size(vec2(width, PILL_HEIGHT), Sense::click());
+        .layout_no_wrap(label.to_owned(), font, palette.accent);
+    let content = 15.0 + 5.0 + text.size().x;
+    let width = (content + 32.0).max(PLAY_WIDTH);
+    let (rect, response) = ui.allocate_exact_size(vec2(width, BUTTON), Sense::click());
     response.widget_info(|| {
         egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label)
     });
     if ui.is_rect_visible(rect) {
-        let fill = if !ui.is_enabled() {
-            palette.accent.gamma_multiply(0.4)
-        } else if response.hovered() {
-            palette.accent_hover
+        let fill = if response.hovered() {
+            Color32::from_white_alpha(38)
         } else {
-            palette.accent
+            Color32::from_white_alpha(26)
         };
-        ui.painter().rect_filled(rect, CornerRadius::same(8), fill);
+        let color = if ui.is_enabled() {
+            palette.accent
+        } else {
+            palette.accent.gamma_multiply(0.4)
+        };
+        ui.painter()
+            .rect_filled(rect, CornerRadius::same((BUTTON / 2.0) as u8), fill);
         if busy {
             let mut cell = ui.new_child(
                 UiBuilder::new()
                     .max_rect(rect)
                     .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
             );
-            theme::spinner(&mut cell, 16.0, palette.on_accent);
+            theme::spinner(&mut cell, 16.0, color);
         } else {
             let start = rect.center().x - content / 2.0;
             let icon_rect =
-                Rect::from_center_size(pos2(start + 7.0, rect.center().y), egui::Vec2::splat(14.0));
-            theme::paint_icon(ui, icon, icon_rect, 14.0, palette.on_accent);
+                Rect::from_center_size(pos2(start + 7.5, rect.center().y), egui::Vec2::splat(15.0));
+            theme::paint_icon(ui, icon, icon_rect, 15.0, color);
             ui.painter().galley(
                 pos2(start + 20.0, rect.center().y - text.size().y / 2.0),
                 text,
-                palette.on_accent,
+                color,
             );
         }
     }
     theme::focus_ring(ui, &response);
     response
+}
+
+/// A round action button with a faint fill.
+fn round_button(
+    ui: &mut egui::Ui,
+    palette: &Palette,
+    icon: Icon,
+    color: Color32,
+    label: &str,
+) -> egui::Response {
+    let (rect, response) = ui.allocate_exact_size(egui::Vec2::splat(BUTTON), Sense::click());
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label)
+    });
+    if ui.is_rect_visible(rect) {
+        let (fill, color) = if response.hovered() {
+            (
+                Color32::from_white_alpha(33),
+                if color == palette.secondary {
+                    Color32::WHITE
+                } else {
+                    color
+                },
+            )
+        } else {
+            (Color32::from_white_alpha(20), color)
+        };
+        ui.painter()
+            .circle_filled(rect.center(), BUTTON / 2.0, fill);
+        theme::paint_icon(ui, icon, rect, 17.0, color);
+    }
+    theme::focus_ring(ui, &response);
+    if label.is_empty() {
+        response
+    } else {
+        response.on_hover_text(label)
+    }
 }

@@ -333,7 +333,10 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                 .ctx()
                 .data(|data| data.get_temp::<f32>(scrolled_id))
                 .unwrap_or(0.0);
-            if let Some((top, bottom)) = header_wash(&palette, overview, tint) {
+            // mcloud's playlist and album pages are flat, as Apple Music's.
+            let flat = app.settings.interface == crate::settings::Interface::Mcloud
+                && matches!(page, Page::Playlist(_) | Page::Album(_) | Page::LikedSongs);
+            if let Some((top, bottom)) = header_wash(&palette, overview, tint).filter(|_| !flat) {
                 widgets::paint_vertical_gradient(ui, header_rect(rect, scrolled), top, bottom);
             }
             ui.spacing_mut().item_spacing = vec2(8.0, 6.0);

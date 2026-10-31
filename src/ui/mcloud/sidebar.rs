@@ -1,38 +1,54 @@
-//! The sidebar after Apple Music on macOS: navigation, the library's
-//! shelves and the playlists, each led by an accent-coloured icon or its
-//! artwork, with the account in the bottom-left corner.
+//! The sidebar as mcloud draws it (user.css `#am-sidebar`), after Apple
+//! Music on macOS 26: a dark material over the page that lets about a
+//! quarter of it through, navigation and the library's shelves led by
+//! accent-coloured icons, the playlists with their artwork under a heading
+//! with a "+", and the account with friends in the bottom-left corner.
 
-use egui::{CornerRadius, Frame, Margin, Rect, Sense, UiBuilder, Vec2, pos2, vec2};
+use egui::{
+    Color32, CornerRadius, Frame, Margin, Rect, Sense, Stroke, UiBuilder, Vec2, pos2, vec2,
+};
 
 use crate::api::models::{Playlist, pick_image};
 use crate::app::App;
 use crate::i18n::gettext;
-use crate::model::{Action, Page};
-use crate::theme::{self, Icon, Palette};
+use crate::model::{Action, Dialog, Page};
+use crate::theme::{self, Icon};
 
 const ROW_HEIGHT: f32 = 32.0;
-const ROW_RADIUS: u8 = 7;
+const ROW_RADIUS: u8 = 8;
+const ROW_PADDING: f32 = 16.0;
 const ICON_SIZE: f32 = 18.0;
 const ART_SIZE: f32 = 22.0;
-/// Where a row's label starts, past its icon or artwork.
-const LABEL_LEFT: f32 = 38.0;
-const ACCOUNT_HEIGHT: f32 = 48.0;
+/// The gap between a row's icon or artwork and its name.
+const ICON_GAP: f32 = 10.0;
+/// The first row's top, level with the page under the toolbar.
+const TOP: f32 = 76.0;
+const SIDE_PADDING: f32 = 10.0;
+const ACCOUNT_HEIGHT: f32 = 54.0;
 /// The recently played playlists listed under the pinned ones while the
 /// list is short, as mcloud's default.
 const RECENT_PLAYLISTS: usize = 5;
+
+const TEXT: Color32 = Color32::from_rgb(0xf2, 0xf2, 0xf2);
+const HEADING: Color32 = Color32::from_rgba_premultiplied(92, 92, 92, 92);
+const QUIET: Color32 = Color32::from_rgba_premultiplied(140, 140, 140, 140);
 
 /// What leads a row.
 enum Leading<'a> {
     Icon(Icon),
     Art(Option<&'a str>, &'a crate::images::ArtLoader),
+    /// "Show all": a small chevron in the icon column.
+    Chevron,
+}
+
+/// The sidebar's material: #252525 at 76% over the page beside it, so a
+/// coloured page shows through as a deep version of itself.
+fn material(under: Color32) -> Color32 {
+    under.lerp_to_gamma(Color32::from_rgb(0x25, 0x25, 0x25), 0.76)
 }
 
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
-    let palette = app.palette;
-    // The traffic lights float over the sidebar's top-left corner.
-    let top = 12
-        + theme::titlebar_inset(ui.ctx()) as i8
-        + super::super::linux_left_controls_inset(ui.ctx()) as i8;
+    let under = super::super::page_tint(app).unwrap_or(app.palette.window);
     let beside = if app.show_queue_panel || app.show_lyrics_panel || app.show_friends_panel {
         theme::SIDE_PANEL_MIN_WIDTH
     } else {
@@ -52,24 +68,31 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         .default_size(app.settings.sidebar_width)
         .size_range(fit.range.clone())
         .show_separator_line(false)
-        .frame(Frame::new().fill(palette.panel).inner_margin(Margin {
-            left: 10,
-            right: 10,
-            top,
-            bottom: 8,
+        .frame(Frame::new().fill(material(under)).inner_margin(Margin {
+            left: SIDE_PADDING as i8,
+            right: SIDE_PADDING as i8,
+            top: TOP as i8,
+            bottom: 12,
         }))
         .show(ui, |ui| {
             let area = ui.max_rect();
+            // A hairline along the right edge, as macOS draws it.
+            ui.painter().vline(
+                area.right() + SIDE_PADDING - 0.5,
+                (area.top() - TOP)..=(area.bottom() + 12.0),
+                Stroke::new(1.0, Color32::from_white_alpha(10)),
+            );
             let list = area.with_max_y(area.bottom() - ACCOUNT_HEIGHT);
             ui.scope_builder(UiBuilder::new().max_rect(list), |ui| {
                 egui::ScrollArea::vertical()
                     .id_salt("mcloud-sidebar")
                     .auto_shrink(false)
+                    .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
                     .show(ui, |ui| contents(app, ui));
             });
             let account = Rect::from_min_max(pos2(area.left(), list.bottom()), area.max);
             ui.scope_builder(UiBuilder::new().max_rect(account), |ui| {
-                account_chip(app, ui);
+                account_row(app, ui);
             });
         });
     let width = response.response.rect.width();
@@ -82,14 +105,12 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
 }
 
 fn contents(app: &mut App, ui: &mut egui::Ui) {
-    let palette = app.palette;
     let locale = app.locale;
     let page = app.page().clone();
-    ui.spacing_mut().item_spacing.y = 2.0;
+    ui.spacing_mut().item_spacing.y = 0.0;
 
     if row(
         ui,
-        &palette,
         Leading::Icon(Icon::Search),
         &gettext(locale, "Search"),
         page == Page::Search,
@@ -99,65 +120,69 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
     {
         app.actions.push(Action::FocusSearch);
     }
-    for (icon, label, target) in [
-        (Icon::House, gettext(locale, "Home"), Page::Home),
-        (
-            Icon::Sparkles,
-            gettext(locale, "New releases"),
-            Page::NewReleases,
-        ),
-    ] {
-        if row(
-            ui,
-            &palette,
-            Leading::Icon(icon),
-            &label,
-            page == target,
-            false,
-        )
-        .clicked()
-        {
-            app.actions.push(Action::Open(target));
-        }
+    if row(
+        ui,
+        Leading::Icon(Icon::McloudHome),
+        &gettext(locale, "Home"),
+        page == Page::Home,
+        false,
+    )
+    .clicked()
+    {
+        app.actions.push(Action::Open(Page::Home));
     }
 
-    heading(ui, &palette, &gettext(locale, "Library"));
+    heading(ui, &gettext(locale, "Library"), None);
     for (icon, label, target) in [
-        (Icon::Mic, gettext(locale, "Artists"), Page::Artists),
-        (Icon::Disc, gettext(locale, "Albums"), Page::Albums),
-        (Icon::Music, gettext(locale, "Songs"), Page::LikedSongs),
-        (Icon::Radio, gettext(locale, "Podcasts"), Page::Podcasts),
+        (
+            Icon::McloudArtist,
+            gettext(locale, "Artists"),
+            Page::Artists,
+        ),
+        (Icon::McloudAlbum, gettext(locale, "Albums"), Page::Albums),
+        (
+            Icon::McloudMusic,
+            gettext(locale, "Songs"),
+            Page::LikedSongs,
+        ),
     ] {
-        if row(
-            ui,
-            &palette,
-            Leading::Icon(icon),
-            &label,
-            page == target,
-            false,
-        )
-        .clicked()
-        {
+        if row(ui, Leading::Icon(icon), &label, page == target, false).clicked() {
             app.actions.push(Action::Open(target));
         }
     }
 
     playlists(app, ui, &page);
-    ui.add_space(8.0);
+    ui.add_space(20.0);
 }
 
 /// Pinned playlists first, in pin order, then the most recently played,
 /// as Spotify's own sidebar sorted by Recents; "Show all" lists the rest.
 fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page) {
-    let palette = app.palette;
     let locale = app.locale;
     let expanded_id = egui::Id::new("mcloud-playlists-expanded");
     let mut expanded = ui
         .data(|data| data.get_temp::<bool>(expanded_id))
         .unwrap_or(false);
 
+    let add = gettext(locale, "Create a playlist");
+    let show_less = gettext(locale, "Show less");
+    let (less, create) = heading(
+        ui,
+        &gettext(locale, "Playlists"),
+        Some((expanded.then_some(show_less.as_ref()), add.as_ref())),
+    );
+    if less {
+        expanded = false;
+    }
+    if create {
+        app.actions.push(Action::ShowDialog(Dialog::CreatePlaylist {
+            name: String::new(),
+            public: false,
+            add_uris: Vec::new(),
+        }));
+    }
+
     let Some(all) = app.library.playlists.get() else {
-        heading(ui, &palette, &gettext(locale, "Playlists"));
         return;
     };
     let order = playlist_order(
@@ -167,16 +192,6 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page) {
         expanded,
     );
     let more = !expanded && order.len() < all.len();
-
-    let show_less = gettext(locale, "Show less");
-    if heading_with_action(
-        ui,
-        &palette,
-        &gettext(locale, "Playlists"),
-        expanded.then_some(show_less.as_ref()),
-    ) {
-        expanded = false;
-    }
 
     let playing = app.playing_context_uri();
     let art_px = app.art_px(ART_SIZE);
@@ -188,7 +203,6 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page) {
         let here = playing.as_deref() == Some(playlist.uri.as_str());
         if row(
             ui,
-            &palette,
             Leading::Art(image, app.backend.art()),
             &playlist.name,
             active,
@@ -202,8 +216,7 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page) {
     if more
         && row(
             ui,
-            &palette,
-            Leading::Icon(Icon::LayoutGrid),
+            Leading::Chevron,
             &gettext(locale, "Show all"),
             false,
             false,
@@ -255,61 +268,74 @@ fn playlist_order(
     order
 }
 
-fn heading(ui: &mut egui::Ui, palette: &Palette, label: &str) {
-    heading_with_action(ui, palette, label, None);
-}
-
-/// A section heading, with a quiet text button on its right when `action`
-/// is given. Returns whether that button was clicked.
-fn heading_with_action(
-    ui: &mut egui::Ui,
-    palette: &Palette,
-    label: &str,
-    action: Option<&str>,
-) -> bool {
-    ui.add_space(14.0);
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 20.0), Sense::hover());
+/// A section heading. With `buttons`, it carries "Show less" (when given)
+/// and a "+" on its right; returns whether each was clicked.
+fn heading(ui: &mut egui::Ui, label: &str, buttons: Option<(Option<&str>, &str)>) -> (bool, bool) {
+    ui.add_space(16.0);
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 13.0), Sense::hover());
+    ui.add_space(4.0);
     ui.painter().text(
-        pos2(rect.left() + 8.0, rect.center().y),
+        pos2(rect.left() + 6.0, rect.center().y),
         egui::Align2::LEFT_CENTER,
         label,
-        theme::semibold(11.5),
-        palette.dim,
+        theme::semibold(11.0),
+        HEADING,
     );
-    let Some(action) = action else {
-        return false;
+    let Some((less, add)) = buttons else {
+        return (false, false);
     };
-    let galley =
+    // The "+" sits over the pin column, 5 points from the edge.
+    let plus = Rect::from_center_size(
+        pos2(rect.right() - 5.0 - 11.0, rect.center().y + 1.0),
+        Vec2::splat(22.0),
+    );
+    let plus_response = ui.interact(plus, ui.id().with(("heading-add", label)), Sense::click());
+    plus_response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, add));
+    if plus_response.hovered() {
         ui.painter()
-            .layout_no_wrap(action.to_owned(), theme::medium(11.5), palette.accent);
-    let button = Rect::from_min_size(
-        pos2(rect.right() - galley.size().x - 8.0, rect.top()),
-        vec2(galley.size().x + 8.0, rect.height()),
+            .rect_filled(plus, CornerRadius::same(6), Color32::from_white_alpha(20));
+    }
+    theme::paint_icon(
+        ui,
+        Icon::McloudPlus,
+        plus,
+        15.0,
+        if plus_response.hovered() { TEXT } else { QUIET },
     );
-    let response = ui.interact(
-        button,
-        ui.id().with(("heading-action", label)),
-        Sense::click(),
-    );
-    let color = if response.hovered() {
-        palette.accent_hover
-    } else {
-        palette.accent
-    };
-    ui.painter().galley(
-        pos2(button.left(), button.center().y - galley.size().y / 2.0),
-        galley,
-        color,
-    );
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, action));
-    response.clicked()
+    let mut less_clicked = false;
+    if let Some(less) = less {
+        let galley = ui
+            .painter()
+            .layout_no_wrap(less.to_owned(), theme::semibold(11.0), QUIET);
+        let pill = Rect::from_min_size(
+            pos2(
+                plus.left() - 4.0 - galley.size().x - 16.0,
+                rect.center().y - 10.0,
+            ),
+            vec2(galley.size().x + 16.0, 20.0),
+        );
+        let response = ui.interact(pill, ui.id().with(("heading-less", label)), Sense::click());
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, less));
+        let (fill, color) = if response.hovered() {
+            (Color32::from_white_alpha(31), TEXT)
+        } else {
+            (Color32::from_white_alpha(15), QUIET)
+        };
+        ui.painter().rect_filled(pill, CornerRadius::same(10), fill);
+        ui.painter().galley(
+            pos2(pill.left() + 8.0, pill.center().y - galley.size().y / 2.0),
+            galley,
+            color,
+        );
+        less_clicked = response.clicked();
+    }
+    (less_clicked, plus_response.on_hover_text(add).clicked())
 }
 
 /// A navigation or playlist row. `playing` marks the playlist that is
 /// playing with a speaker at the row's end.
 fn row(
     ui: &mut egui::Ui,
-    palette: &Palette,
     leading: Leading<'_>,
     label: &str,
     active: bool,
@@ -319,61 +345,85 @@ fn row(
         ui.allocate_exact_size(vec2(ui.available_width(), ROW_HEIGHT), Sense::click());
     if ui.is_rect_visible(rect) {
         let fill = if active {
-            palette.surface_active
+            Color32::from_white_alpha(31)
         } else if response.hovered() {
-            palette.surface_hover
+            Color32::from_white_alpha(13)
         } else {
-            egui::Color32::TRANSPARENT
+            Color32::TRANSPARENT
         };
         ui.painter()
             .rect_filled(rect, CornerRadius::same(ROW_RADIUS), fill);
-        let lead = Rect::from_center_size(
-            pos2(rect.left() + 8.0 + ART_SIZE / 2.0, rect.center().y),
-            Vec2::splat(ART_SIZE),
+        // Playlist rows sit two points further left, so their artwork's
+        // centre lines up with the icons above.
+        let (lead_left, lead_size) = match leading {
+            Leading::Art(..) => (rect.left() + 14.0, ART_SIZE),
+            _ => (rect.left() + ROW_PADDING, ICON_SIZE),
+        };
+        let lead = Rect::from_min_size(
+            pos2(lead_left, rect.center().y - lead_size / 2.0),
+            Vec2::splat(lead_size),
         );
+        let mut color = TEXT;
         match leading {
             Leading::Icon(icon) => {
-                let icon_rect = Rect::from_center_size(lead.center(), Vec2::splat(ICON_SIZE));
-                icon.image(palette.accent, ICON_SIZE)
-                    .paint_at(ui, icon_rect);
+                icon.image(accent(), ICON_SIZE).paint_at(ui, lead);
             }
             Leading::Art(url, art) => {
-                super::super::widgets::paint_cover(
+                ui.painter().rect_filled(
+                    lead,
+                    CornerRadius::same(4),
+                    Color32::from_white_alpha(20),
+                );
+                crate::ui::widgets::paint_cover(
                     ui,
-                    palette,
+                    &crate::theme::Palette::mcloud(),
                     url,
                     lead,
                     4.0,
-                    Icon::Music,
+                    Icon::McloudMusic,
                     Some(art),
                 );
             }
+            Leading::Chevron => {
+                color = QUIET;
+                theme::paint_icon(ui, Icon::McloudChevron, lead, 12.0, QUIET);
+            }
         }
-        let trailing = if playing { 24.0 } else { 8.0 };
-        let galley = super::super::widgets::ellipsized(
+        let font = if active {
+            theme::semibold(13.0)
+        } else {
+            theme::medium(13.0)
+        };
+        let gap = if matches!(leading, Leading::Art(..)) {
+            8.0
+        } else {
+            ICON_GAP
+        };
+        let text_left = lead.right() + gap;
+        let trailing = if playing {
+            14.0 + 8.0 + ROW_PADDING
+        } else {
+            ROW_PADDING
+        };
+        let galley = crate::ui::widgets::ellipsized(
             ui,
             label,
-            theme::medium(14.0),
-            palette.text,
-            rect.width() - LABEL_LEFT - trailing,
+            font,
+            color,
+            (rect.right() - trailing - text_left).max(0.0),
             1,
         );
         ui.painter().galley(
-            pos2(
-                rect.left() + LABEL_LEFT,
-                rect.center().y - galley.size().y / 2.0,
-            ),
+            pos2(text_left, rect.center().y - galley.size().y / 2.0),
             galley,
-            palette.text,
+            color,
         );
         if playing {
             let speaker = Rect::from_center_size(
-                pos2(rect.right() - 14.0, rect.center().y),
+                pos2(rect.right() - ROW_PADDING - 7.0, rect.center().y),
                 Vec2::splat(14.0),
             );
-            Icon::Volume2
-                .image(palette.accent, 14.0)
-                .paint_at(ui, speaker);
+            theme::paint_icon(ui, Icon::McloudVolume2, speaker, 14.0, accent());
         }
     }
     response.widget_info(|| {
@@ -383,10 +433,17 @@ fn row(
     response
 }
 
-/// The account in the bottom-left corner, as in Apple Music. It opens
-/// Settings, where the account card is.
-fn account_chip(app: &mut App, ui: &mut egui::Ui) {
+/// mcloud's accent: its palette is fixed.
+fn accent() -> Color32 {
+    crate::theme::Palette::mcloud().accent
+}
+
+/// The account in the bottom-left corner, as in Apple Music: the chip opens
+/// Settings, where the account card is, and the button beside it shows
+/// what friends are listening to.
+fn account_row(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
+    let locale = app.locale;
     let (name, avatar) = app
         .user
         .as_ref()
@@ -398,64 +455,67 @@ fn account_chip(app: &mut App, ui: &mut egui::Ui) {
         })
         .unwrap_or_default();
     let area = ui.max_rect();
-    let rect = Rect::from_min_max(pos2(area.left(), area.bottom() - 40.0), area.max);
-    let response = ui.interact(rect, ui.id().with("mcloud-account"), Sense::click());
-    if ui.is_rect_visible(rect) {
-        ui.painter().hline(
-            area.x_range(),
-            rect.top() - 4.0,
-            egui::Stroke::new(1.0, palette.outline),
-        );
-        if response.hovered() {
-            ui.painter()
-                .rect_filled(rect, CornerRadius::same(ROW_RADIUS), palette.surface_hover);
-        }
-        let face = Rect::from_center_size(
-            pos2(rect.left() + 8.0 + 14.0, rect.center().y),
-            Vec2::splat(28.0),
-        );
-        match avatar.as_deref() {
-            Some(url) => super::super::widgets::paint_cover(
-                ui,
-                &palette,
-                Some(url),
-                face,
-                14.0,
-                Icon::User,
-                Some(app.backend.art()),
-            ),
-            None => {
-                let initial = name
-                    .chars()
-                    .next()
-                    .unwrap_or('?')
-                    .to_uppercase()
-                    .to_string();
-                ui.painter()
-                    .circle_filled(face.center(), 14.0, palette.accent);
-                ui.painter().text(
-                    face.center(),
-                    egui::Align2::CENTER_CENTER,
-                    initial,
-                    theme::bold(13.0),
-                    palette.on_accent,
-                );
-            }
-        }
-        let galley = super::super::widgets::ellipsized(
-            ui,
-            &name,
-            theme::semibold(13.0),
-            palette.text,
-            rect.width() - 46.0 - 8.0,
-            1,
-        );
-        ui.painter().galley(
-            pos2(face.right() + 10.0, rect.center().y - galley.size().y / 2.0),
-            galley,
-            palette.text,
-        );
+    let line = Rect::from_min_max(pos2(area.left(), area.bottom() - 40.0), area.max);
+    let friends = Rect::from_center_size(
+        pos2(line.right() - 15.0, line.center().y),
+        Vec2::splat(30.0),
+    );
+    let chip = Rect::from_min_max(line.min, pos2(friends.left() - 2.0, line.bottom()));
+
+    let response = ui.interact(chip, ui.id().with("mcloud-account"), Sense::click());
+    if response.hovered() {
+        ui.painter()
+            .rect_filled(chip, CornerRadius::same(8), Color32::from_white_alpha(13));
     }
+    let face = Rect::from_center_size(
+        pos2(chip.left() + 8.0 + 14.0, chip.center().y),
+        Vec2::splat(28.0),
+    );
+    match avatar.as_deref() {
+        Some(url) => crate::ui::widgets::paint_cover(
+            ui,
+            &palette,
+            Some(url),
+            face,
+            14.0,
+            Icon::User,
+            Some(app.backend.art()),
+        ),
+        None => {
+            crate::ui::widgets::paint_vertical_gradient(
+                ui,
+                face,
+                Color32::from_rgb(0xa6, 0xb4, 0xd6),
+                Color32::from_rgb(0x6d, 0x7b, 0xa0),
+            );
+            let initial = name
+                .chars()
+                .next()
+                .unwrap_or('?')
+                .to_uppercase()
+                .to_string();
+            ui.painter().text(
+                face.center(),
+                egui::Align2::CENTER_CENTER,
+                initial,
+                theme::semibold(11.0),
+                Color32::WHITE,
+            );
+        }
+    }
+    let galley = crate::ui::widgets::ellipsized(
+        ui,
+        &name,
+        theme::semibold(13.0),
+        TEXT,
+        (chip.right() - 8.0 - face.right() - 10.0).max(0.0),
+        1,
+    );
+    ui.painter().galley(
+        pos2(face.right() + 10.0, chip.center().y - galley.size().y / 2.0),
+        galley,
+        TEXT,
+    );
     if response.clicked() {
         app.actions.push(Action::Open(Page::Settings));
     }
@@ -463,6 +523,29 @@ fn account_chip(app: &mut App, ui: &mut egui::Ui) {
         egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), &name)
     });
     theme::focus_ring(ui, &response);
+
+    let label = gettext(locale, "Listening activity");
+    let response = ui.interact(friends, ui.id().with("mcloud-friends"), Sense::click());
+    response
+        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label.as_ref()));
+    let color = if app.show_friends_panel {
+        accent()
+    } else if response.hovered() {
+        TEXT
+    } else {
+        Color32::from_rgb(0xa9, 0xa9, 0xa9)
+    };
+    if response.hovered() {
+        ui.painter().rect_filled(
+            friends,
+            CornerRadius::same(8),
+            Color32::from_white_alpha(13),
+        );
+    }
+    theme::paint_icon(ui, Icon::McloudFriends, friends, 18.0, color);
+    if response.on_hover_text(label.as_ref()).clicked() {
+        app.actions.push(Action::ToggleFriendsPanel);
+    }
 }
 
 #[cfg(test)]

@@ -1,17 +1,21 @@
-//! Liquid glass: the page behind a surface, blurred, saturated and bent at
-//! the surface's edges, drawn on the GPU before the surface's own tint.
+//! Liquid Glass, as mcloud fits it to macOS's own (theme.js `toolbarLens`,
+//! state `player`, after github.com/emribilemir/liquid-glass-research): the
+//! page behind the surface stays sharp and is bent at the rim, so the
+//! outermost points show the page about one radius further in and the bend
+//! flattens out half a radius inside; bright detail is pulled toward its
+//! darker surroundings by a wide halo; a tone curve by luminance lifts black
+//! and holds white down while keeping each colour's hue; and a highlight
+//! runs along the top and bottom edges. No tint, border or shadow goes over
+//! it.
 //!
 //! egui paints a layer's shapes in order into the window's framebuffer, so
 //! when the glass's paint callback runs, everything under it is already
-//! there. The callback copies that region into a texture, blurs it at a
-//! fraction of its resolution with a separable Gaussian, ping-ponging
-//! between two textures, and draws it back inside the surface's rounded
-//! rectangle. Near the edge each pixel samples a little further inside,
-//! as a lens would, which is what makes the glass read as liquid rather
-//! than frosted. The tint, hairlines and highlights egui draws next.
+//! there. The callback copies that region into a texture, makes the halo
+//! from it with a separable Gaussian at a fraction of its resolution, and
+//! draws the glass back inside the surface's capsule.
 //!
-//! [`crate::settings::GlassEffect::Eco`] draws no glass at all, and a GPU
-//! that cannot compile the shaders falls back to the same solid surface.
+//! [`crate::settings::GlassEffect::Eco`] draws no glass, and a GPU that
+//! cannot compile the shaders falls back to the same solid surface.
 
 use std::sync::{Arc, Mutex};
 
@@ -21,17 +25,33 @@ use egui::{Id, Rect};
 
 use crate::settings::GlassEffect;
 
-/// How finely an effect blurs, and how far its edges bend.
+/// The halo's blur, in points: the shader mixes a min with it in at 70%.
+const HALO_BLUR: f32 = 13.5;
+/// Output luminance (0–255) at each 1/32 of input luminance.
+const TONE: [f32; 33] = [
+    32.0, 36.0, 45.0, 56.0, 65.0, 71.0, 78.0, 86.0, 90.0, 96.0, 102.0, 109.0, 116.0, 120.0, 122.0,
+    125.0, 130.0, 135.0, 141.0, 147.0, 152.0, 156.0, 156.0, 157.0, 161.0, 167.0, 170.0, 170.0,
+    174.0, 178.0, 179.0, 181.0, 185.0,
+];
+/// Colour gain by luminance: macOS's glass boosts dark colours more.
+const GAIN: [f32; 33] = [
+    1.2962, 1.2833, 1.2705, 1.2576, 1.2447, 1.2319, 1.219, 1.2062, 1.1933, 1.1805, 1.1676, 1.1547,
+    1.1419, 1.129, 1.1162, 1.1033, 1.0905, 1.0776, 1.0647, 1.0519, 1.039, 1.0262, 1.0133, 1.0005,
+    1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+];
+/// The highlight along the top and bottom edges, every half point inward.
+const HIGHLIGHT: [f32; 15] = [
+    0.13, 0.085, 0.032, 0.019, 0.014, 0.011, 0.009, 0.007, 0.005, 0.004, 0.003, 0.002, 0.001,
+    0.0005, 0.0,
+];
+
+/// How finely the halo is made.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Quality {
     /// Screen pixels per blurred texel.
     downscale: i32,
     /// Horizontal and vertical pass pairs.
     iterations: u32,
-    /// How far apart the kernel's taps sit, in blurred texels.
-    spread: f32,
-    /// How far, in points, the edge pulls its samples inward.
-    refraction: f32,
 }
 
 impl Quality {
@@ -39,33 +59,40 @@ impl Quality {
         match effect {
             GlassEffect::Full => Some(Self {
                 downscale: 2,
-                iterations: 3,
-                spread: 2.0,
-                refraction: 10.0,
+                iterations: 4,
             }),
             GlassEffect::Balanced => Some(Self {
                 downscale: 4,
-                iterations: 2,
-                spread: 1.6,
-                refraction: 8.0,
+                iterations: 3,
             }),
             GlassEffect::Eco => None,
         }
     }
 
-    /// How far outside the surface, in screen pixels, the blur and the bend
-    /// read the page. The nine-tap kernel reaches four taps either side.
+    /// The halo's standard deviation in screen pixels.
+    fn sigma_px(self, pixels_per_point: f32) -> f32 {
+        HALO_BLUR * pixels_per_point
+    }
+
+    /// How far apart, in blurred texels, a pass's taps sit for the halo to
+    /// reach its blur over all the passes. The nine-tap kernel's standard
+    /// deviation is 1.64 steps.
+    fn spread(self, pixels_per_point: f32) -> f32 {
+        self.sigma_px(pixels_per_point)
+            / (self.downscale as f32 * 1.64 * (self.iterations as f32).sqrt())
+    }
+
+    /// How far outside the surface, in screen pixels, the halo reads the
+    /// page: three standard deviations. The bend only reads inside it.
     fn reach_px(self, pixels_per_point: f32) -> i32 {
-        let blur = self.iterations as f32 * 4.0 * self.spread * self.downscale as f32;
-        (blur + self.refraction * pixels_per_point).ceil() as i32
+        (3.0 * self.sigma_px(pixels_per_point)).ceil() as i32 + 2
     }
 }
 
-/// Paints glass in `rect`, rounded by `radius` points, under whatever the
-/// caller draws next. Returns `false` when it drew nothing: the effect is
-/// Eco or the GPU could not run it, and the caller's surface should be
-/// solid.
-pub fn paint(ui: &egui::Ui, rect: Rect, radius: f32, effect: GlassEffect) -> bool {
+/// Paints glass in the capsule `rect` under whatever the caller draws next.
+/// Returns `false` when it drew nothing: the effect is Eco or the GPU could
+/// not run it, and the caller's surface should be solid.
+pub fn paint(ui: &egui::Ui, rect: Rect, effect: GlassEffect) -> bool {
     let Some(quality) = Quality::of(effect) else {
         return false;
     };
@@ -95,7 +122,7 @@ pub fn paint(ui: &egui::Ui, rect: Rect, radius: f32, effect: GlassEffect) -> boo
             };
         }
         if let Renderer::Ready(resources) = &mut *renderer {
-            resources.draw(painter, &info, radius, quality);
+            resources.draw(painter, &info, quality);
         }
     });
     ui.painter().add(egui::PaintCallback {
@@ -118,23 +145,29 @@ struct Target {
     size: [i32; 2],
 }
 
+struct Uniforms {
+    tex: Option<glow::UniformLocation>,
+    halo: Option<glow::UniformLocation>,
+    rect: Option<glow::UniformLocation>,
+    capture: Option<glow::UniformLocation>,
+    ppp: Option<glow::UniformLocation>,
+    tone: Option<glow::UniformLocation>,
+    gain: Option<glow::UniformLocation>,
+    highlight: Option<glow::UniformLocation>,
+}
+
 struct Resources {
     blur: glow::Program,
     blur_tex: Option<glow::UniformLocation>,
     blur_dir: Option<glow::UniformLocation>,
     composite: glow::Program,
-    composite_tex: Option<glow::UniformLocation>,
-    composite_rect: Option<glow::UniformLocation>,
-    composite_capture: Option<glow::UniformLocation>,
-    composite_radius: Option<glow::UniformLocation>,
-    composite_refraction: Option<glow::UniformLocation>,
-    composite_bend: Option<glow::UniformLocation>,
+    uniforms: Uniforms,
     vertex_array: glow::VertexArray,
     _quad: glow::Buffer,
     framebuffer: glow::Framebuffer,
     /// The page under the surface, at full resolution.
     capture: Target,
-    /// The blur's two halves, at the effect's fraction of it.
+    /// The halo's two halves, at the effect's fraction of it.
     ping: Target,
     pong: Target,
     /// GLES wants an unsized internal format, desktop GL a sized one.
@@ -192,42 +225,97 @@ void main() {
 }
 ";
 
-/// The blurred page inside the rounded rectangle, bent inward near its
-/// edge and a little more saturated and brighter, as Apple's glass is.
-/// Positions are window pixels from the bottom left, as `gl_FragCoord`.
+/// The glass inside the capsule `u_rect`. Positions are window pixels from
+/// the bottom left, as `gl_FragCoord`; `u_ppp` turns them into points.
 const COMPOSITE: &str = r"
 uniform sampler2D u_tex;
+uniform sampler2D u_halo;
 uniform vec4 u_rect;
 uniform vec4 u_capture;
-uniform float u_radius;
-uniform float u_refraction;
-uniform float u_bend;
+uniform float u_ppp;
+uniform float u_tone[33];
+uniform float u_gain[33];
+uniform float u_highlight[15];
 
-float rounded(vec2 p, vec2 half_size, float radius) {
-    vec2 q = abs(p) - half_size + radius;
-    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+float tone_at(float luma) {
+    float f = clamp(luma, 0.0, 1.0) * 32.0;
+    float value = u_tone[32];
+    for (int i = 0; i < 32; i++) {
+        if (f < float(i + 1)) {
+            value = mix(u_tone[i], u_tone[i + 1], f - float(i));
+            break;
+        }
+    }
+    return value / 255.0;
+}
+
+float gain_at(float luma) {
+    float f = clamp(luma, 0.0, 1.0) * 32.0;
+    float value = u_gain[32];
+    for (int i = 0; i < 32; i++) {
+        if (f < float(i + 1)) {
+            value = mix(u_gain[i], u_gain[i + 1], f - float(i));
+            break;
+        }
+    }
+    return value;
+}
+
+float highlight_at(float points) {
+    float f = points * 2.0;
+    float value = 0.0;
+    for (int i = 0; i < 14; i++) {
+        if (f < float(i + 1)) {
+            value = mix(u_highlight[i], u_highlight[i + 1], f - float(i));
+            break;
+        }
+    }
+    return value;
 }
 
 void main() {
-    vec2 half_size = u_rect.zw * 0.5;
-    vec2 p = gl_FragCoord.xy - (u_rect.xy + half_size);
-    float d = rounded(p, half_size, u_radius);
-    float alpha = clamp(0.5 - d, 0.0, 1.0);
+    vec2 p = gl_FragCoord.xy - u_rect.xy;
+    float radius = u_rect.w * 0.5;
+    // The nearest point on the capsule's spine; the rim is a radius away.
+    vec2 spine = vec2(clamp(p.x, radius, u_rect.z - radius), radius);
+    vec2 inward = spine - p;
+    float distance = length(inward);
+    float edge = radius - distance;
+    float alpha = clamp(edge + 0.5, 0.0, 1.0);
     if (alpha <= 0.0) {
         discard;
     }
-    vec2 normal = vec2(
-        rounded(p + vec2(1.0, 0.0), half_size, u_radius)
-            - rounded(p - vec2(1.0, 0.0), half_size, u_radius),
-        rounded(p + vec2(0.0, 1.0), half_size, u_radius)
-            - rounded(p - vec2(0.0, 1.0), half_size, u_radius));
-    normal /= max(length(normal), 0.0001);
-    float edge = clamp(1.0 + d / u_bend, 0.0, 1.0);
-    vec2 at = gl_FragCoord.xy - normal * edge * edge * u_refraction;
-    vec3 colour = texture2D(u_tex, (at - u_capture.xy) / u_capture.zw).rgb;
+    vec2 normal = distance > 0.0001 ? inward / distance : vec2(0.0);
+
+    // The bend: a circular profile, the page one radius further in at the
+    // rim, flat from half a radius inside.
+    float reach = 1.01 * radius;
+    float flat_from = 0.495 * radius;
+    float t = min(1.0, max(edge, 0.0) / flat_from);
+    float shift = reach * (1.0 - sqrt((2.0 - t) * t));
+    vec2 at = gl_FragCoord.xy + normal * shift;
+    vec2 uv = (at - u_capture.xy) / u_capture.zw;
+    vec3 core = texture2D(u_tex, uv).rgb;
+    vec3 halo = texture2D(u_halo, uv).rgb;
+
+    // Bright detail darkens toward its surroundings; dark detail stays.
+    vec3 colour = mix(core, min(core, halo), 0.7);
+
+    // The tone by luminance, keeping the hue.
     float luma = dot(colour, vec3(0.2126, 0.7152, 0.0722));
-    colour = clamp(mix(vec3(luma), colour, 1.6) * 1.06, 0.0, 1.0);
-    gl_FragColor = vec4(colour * alpha, alpha);
+    colour = tone_at(luma) + (colour - luma) * gain_at(luma);
+
+    // The highlight along the top and bottom edges, none at the round ends'
+    // middles, raising the luminance as on grey while keeping the hue.
+    float lit = highlight_at(max(edge, 0.0) / u_ppp) * pow(abs(normal.y), 3.5);
+    float lit_luma = max(dot(colour, vec3(0.2126, 0.7152, 0.0722)), 0.001);
+    colour *= 1.0 + lit * min(16.0, (2.0 - lit_luma) / lit_luma);
+
+    // The hairline: the outermost pixel takes the page's own colour.
+    vec3 page = texture2D(u_halo, (gl_FragCoord.xy - u_capture.xy) / u_capture.zw).rgb;
+    colour = mix(colour, page, 0.8 * clamp(1.0 - edge, 0.0, 1.0));
+
+    gl_FragColor = vec4(clamp(colour, 0.0, 1.0) * alpha, alpha);
 }
 ";
 
@@ -267,16 +355,21 @@ impl Resources {
             gl.bind_vertex_array(None);
             gl.bind_buffer(glow::ARRAY_BUFFER, None);
             let framebuffer = gl.create_framebuffer()?;
+            let uniform = |name| gl.get_uniform_location(composite, name);
             Ok(Self {
                 blur_tex: gl.get_uniform_location(blur, "u_tex"),
                 blur_dir: gl.get_uniform_location(blur, "u_dir"),
                 blur,
-                composite_tex: gl.get_uniform_location(composite, "u_tex"),
-                composite_rect: gl.get_uniform_location(composite, "u_rect"),
-                composite_capture: gl.get_uniform_location(composite, "u_capture"),
-                composite_radius: gl.get_uniform_location(composite, "u_radius"),
-                composite_refraction: gl.get_uniform_location(composite, "u_refraction"),
-                composite_bend: gl.get_uniform_location(composite, "u_bend"),
+                uniforms: Uniforms {
+                    tex: uniform("u_tex"),
+                    halo: uniform("u_halo"),
+                    rect: uniform("u_rect"),
+                    capture: uniform("u_capture"),
+                    ppp: uniform("u_ppp"),
+                    tone: uniform("u_tone"),
+                    gain: uniform("u_gain"),
+                    highlight: uniform("u_highlight"),
+                },
                 composite,
                 vertex_array,
                 _quad: quad,
@@ -293,7 +386,6 @@ impl Resources {
         &mut self,
         painter: &egui_glow::Painter,
         info: &egui::PaintCallbackInfo,
-        radius: f32,
         quality: Quality,
     ) {
         let gl = painter.gl();
@@ -311,6 +403,7 @@ impl Resources {
             return;
         }
         let blurred = capture.map(|side| (side + quality.downscale - 1) / quality.downscale);
+        let spread = quality.spread(ppp);
         // SAFETY: as in `new`; egui restores its own state after the callback.
         unsafe {
             gl.disable(glow::SCISSOR_TEST);
@@ -323,6 +416,7 @@ impl Resources {
             gl.bind_texture(glow::TEXTURE_2D, Some(self.capture.texture));
             gl.copy_tex_sub_image_2d(glow::TEXTURE_2D, 0, 0, 0, x0, y0, capture[0], capture[1]);
 
+            // The halo.
             self.resize(gl, Which::Ping, blurred);
             self.resize(gl, Which::Pong, blurred);
             gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.framebuffer));
@@ -336,7 +430,7 @@ impl Resources {
                 |size: [i32; 2], texels: f32| [texels / size[0] as f32, texels / size[1] as f32];
             let mut source = (
                 self.capture.texture,
-                step(capture, quality.spread * quality.downscale as f32),
+                step(capture, spread * quality.downscale as f32),
             );
             for _ in 0..quality.iterations {
                 for (into, horizontal) in [(Which::Ping, true), (Which::Pong, false)] {
@@ -356,7 +450,7 @@ impl Resources {
                         gl.uniform_2_f32(self.blur_dir.as_ref(), 0.0, dy);
                     }
                     gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
-                    source = (into, step(blurred, quality.spread));
+                    source = (into, step(blurred, spread));
                 }
             }
 
@@ -377,27 +471,36 @@ impl Resources {
             );
             gl.enable(glow::BLEND);
             gl.use_program(Some(self.composite));
+            let uniforms = &self.uniforms;
+            gl.active_texture(glow::TEXTURE1);
             gl.bind_texture(glow::TEXTURE_2D, Some(self.pong.texture));
-            gl.uniform_1_i32(self.composite_tex.as_ref(), 0);
+            gl.uniform_1_i32(uniforms.halo.as_ref(), 1);
+            gl.active_texture(glow::TEXTURE0);
+            gl.bind_texture(glow::TEXTURE_2D, Some(self.capture.texture));
+            gl.uniform_1_i32(uniforms.tex.as_ref(), 0);
             gl.uniform_4_f32(
-                self.composite_rect.as_ref(),
+                uniforms.rect.as_ref(),
                 glass.left_px as f32,
                 glass.from_bottom_px as f32,
                 glass.width_px as f32,
                 glass.height_px as f32,
             );
             gl.uniform_4_f32(
-                self.composite_capture.as_ref(),
+                uniforms.capture.as_ref(),
                 x0 as f32,
                 y0 as f32,
                 capture[0] as f32,
                 capture[1] as f32,
             );
-            gl.uniform_1_f32(self.composite_radius.as_ref(), radius * ppp);
-            gl.uniform_1_f32(self.composite_refraction.as_ref(), quality.refraction * ppp);
-            gl.uniform_1_f32(self.composite_bend.as_ref(), radius * ppp * 0.9);
+            gl.uniform_1_f32(uniforms.ppp.as_ref(), ppp);
+            gl.uniform_1_f32_slice(uniforms.tone.as_ref(), &TONE);
+            gl.uniform_1_f32_slice(uniforms.gain.as_ref(), &GAIN);
+            gl.uniform_1_f32_slice(uniforms.highlight.as_ref(), &HIGHLIGHT);
             gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
             gl.bind_vertex_array(None);
+            gl.active_texture(glow::TEXTURE1);
+            gl.bind_texture(glow::TEXTURE_2D, None);
+            gl.active_texture(glow::TEXTURE0);
             gl.bind_texture(glow::TEXTURE_2D, None);
         }
     }
@@ -505,13 +608,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn eco_draws_no_glass_and_full_reaches_further_than_balanced() {
+    fn eco_draws_no_glass_and_both_others_make_the_same_halo() {
         assert_eq!(Quality::of(GlassEffect::Eco), None);
         let full = Quality::of(GlassEffect::Full).unwrap();
         let balanced = Quality::of(GlassEffect::Balanced).unwrap();
         assert!(full.downscale < balanced.downscale);
-        assert!(full.reach_px(2.0) > 0 && balanced.reach_px(2.0) > 0);
-        // The capture reaches past the blur and the bend, never less.
-        assert!(balanced.reach_px(2.0) as f32 >= balanced.refraction * 2.0);
+        // Spread, scale and passes add up to the same blur either way.
+        for quality in [full, balanced] {
+            let sigma = quality.spread(2.0)
+                * quality.downscale as f32
+                * 1.64
+                * (quality.iterations as f32).sqrt();
+            assert!((sigma - HALO_BLUR * 2.0).abs() < 1e-3);
+            assert!(quality.reach_px(2.0) as f32 >= 3.0 * HALO_BLUR * 2.0);
+        }
+    }
+
+    #[test]
+    fn the_tone_lifts_black_and_holds_white_down() {
+        assert_eq!(TONE.len(), 33);
+        assert_eq!((TONE[0], TONE[32]), (32.0, 185.0));
+        assert!(TONE.windows(2).all(|pair| pair[0] <= pair[1]));
+        assert!(GAIN.iter().all(|gain| (1.0..1.3).contains(gain)));
     }
 }

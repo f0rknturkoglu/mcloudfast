@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 00:13+0300\n"
+"POT-Creation-Date: 2026-11-01 00:36+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: French\n"
@@ -75,12 +75,13 @@ msgid "Playlist • {owner}"
 msgstr "Playlist • {owner}"
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
-#: src/ui/topbar.rs:255 src/ui/mcloud/sidebar.rs:103
+#: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:126
+#: src/ui/mcloud/topbar.rs:143
 msgid "Home"
 msgstr "Accueil"
 
 #: src/ui/sidebar.rs:979 src/app.rs:8380 src/ui/keys.rs:316
-#: src/ui/mcloud/sidebar.rs:94
+#: src/ui/mcloud/sidebar.rs:115
 msgid "Search"
 msgstr "Rechercher"
 
@@ -100,7 +101,7 @@ msgstr "Afficher sous forme de liste"
 msgid "Show as grid"
 msgstr "Afficher sous forme de grille"
 
-#: src/ui/sidebar.rs:1043
+#: src/ui/sidebar.rs:1043 src/ui/mcloud/sidebar.rs:167
 msgid "Create a playlist"
 msgstr "Créer une playlist"
 
@@ -108,27 +109,27 @@ msgstr "Créer une playlist"
 msgid "Search Your Library"
 msgstr "Rechercher dans la bibliothèque"
 
-#: src/ui/sidebar.rs:1075 src/ui/mcloud/sidebar.rs:124
+#: src/ui/sidebar.rs:1075 src/ui/mcloud/sidebar.rs:135
 msgid "Library"
 msgstr "Bibliothèque"
 
 #: src/ui/sidebar.rs:1095 src/app.rs:8354 src/model.rs:807 src/ui/search.rs:668
-#: src/ui/mcloud/sidebar.rs:160 src/ui/mcloud/sidebar.rs:175
+#: src/ui/mcloud/sidebar.rs:171
 msgid "Playlists"
 msgstr "Playlists"
 
 #: src/ui/sidebar.rs:1096 src/model.rs:806 src/model.rs:931
-#: src/ui/library.rs:17 src/ui/search.rs:595 src/ui/mcloud/sidebar.rs:127
+#: src/ui/library.rs:17 src/ui/search.rs:595 src/ui/mcloud/sidebar.rs:142
 msgid "Albums"
 msgstr "Albums"
 
 #: src/ui/sidebar.rs:1097 src/model.rs:805 src/ui/library.rs:22
-#: src/ui/search.rs:527 src/ui/mcloud/sidebar.rs:126
+#: src/ui/search.rs:527 src/ui/mcloud/sidebar.rs:139
 msgid "Artists"
 msgstr "Artistes"
 
 #: src/ui/sidebar.rs:1098 src/model.rs:808 src/ui/library.rs:27
-#: src/ui/search.rs:719 src/ui/mcloud/sidebar.rs:129
+#: src/ui/search.rs:719
 msgid "Podcasts"
 msgstr "Podcasts"
 
@@ -169,7 +170,7 @@ msgstr "Trier par écoute récente"
 #: src/ui/sidebar.rs:1988 src/ui/player_bar.rs:798 src/ui/widgets.rs:1213
 #: src/ui/artist.rs:401 src/ui/collection.rs:310 src/ui/new_releases.rs:117
 #: src/ui/prerelease.rs:309 src/ui/search.rs:408 src/ui/show.rs:390
-#: src/ui/mcloud/player.rs:210 src/ui/mcloud/pages.rs:294
+#: src/ui/mcloud/player.rs:226 src/ui/mcloud/pages.rs:261
 #: src/ui/mcloud/artist.rs:178
 msgid "Play"
 msgstr "Lire"
@@ -234,7 +235,7 @@ msgstr "Cliquez pour changer de visualiseur"
 msgid "Nothing playing"
 msgstr "Aucune lecture en cours"
 
-#: src/ui/player_bar.rs:446 src/app.rs:9849 src/ui/mcloud/player.rs:441
+#: src/ui/player_bar.rs:446 src/app.rs:9849
 msgid "Pick a song, album, or playlist"
 msgstr "Choisissez un titre, un album ou une playlist"
 
@@ -243,60 +244,60 @@ msgid "Add to playlist"
 msgstr "Ajouter à une playlist"
 
 #: src/ui/player_bar.rs:615 src/ui/widgets.rs:744 src/ui/widgets.rs:1018
-#: src/ui/widgets.rs:1998 src/ui/mcloud/player.rs:511
+#: src/ui/widgets.rs:1998 src/ui/mcloud/player.rs:636
 msgid "Save to Liked Songs"
 msgstr "Ajouter aux Titres likés"
 
 #: src/ui/player_bar.rs:665 src/ui/widgets.rs:741 src/ui/widgets.rs:1015
-#: src/ui/widgets.rs:1996 src/ui/mcloud/player.rs:504
+#: src/ui/widgets.rs:1996 src/ui/mcloud/player.rs:634
 msgid "Remove from Liked Songs"
 msgstr "Retirer des Titres likés"
 
 #: src/ui/player_bar.rs:742 src/ui/player_bar.rs:749 src/ui/collection.rs:364
-#: src/ui/new_releases.rs:146 src/ui/mcloud/player.rs:171
-#: src/ui/mcloud/player.rs:178 src/ui/mcloud/pages.rs:315
+#: src/ui/new_releases.rs:146 src/ui/mcloud/player.rs:196
+#: src/ui/mcloud/pages.rs:271
 msgid "Shuffle"
 msgstr "Lecture aléatoire"
 
-#: src/ui/player_bar.rs:763 src/ui/mcloud/player.rs:191
+#: src/ui/player_bar.rs:763 src/ui/mcloud/player.rs:208
 msgid "Previous"
 msgstr "Précédent"
 
 #: src/ui/player_bar.rs:796 src/ui/friends.rs:208 src/ui/collection.rs:308
-#: src/ui/mcloud/player.rs:208 src/ui/mcloud/pages.rs:292
+#: src/ui/mcloud/player.rs:224 src/ui/mcloud/pages.rs:259
 #: src/ui/mcloud/artist.rs:176
 msgid "Pause"
 msgstr "Pause"
 
-#: src/ui/player_bar.rs:814 src/ui/mcloud/player.rs:223
+#: src/ui/player_bar.rs:814 src/ui/mcloud/player.rs:239
 msgid "Next"
 msgstr "Suivant"
 
-#: src/ui/player_bar.rs:822 src/ui/mcloud/player.rs:231
+#: src/ui/player_bar.rs:822 src/ui/mcloud/player.rs:247
 msgid "Repeat"
 msgstr "Répéter"
 
-#: src/ui/player_bar.rs:826 src/ui/mcloud/player.rs:232
+#: src/ui/player_bar.rs:826 src/ui/mcloud/player.rs:251
 msgid "Repeat one"
 msgstr "Répéter un titre"
 
-#: src/ui/player_bar.rs:831 src/ui/mcloud/player.rs:233
+#: src/ui/player_bar.rs:831 src/ui/mcloud/player.rs:253
 msgid "Repeat off"
 msgstr "Désactiver la répétition"
 
-#: src/ui/player_bar.rs:892 src/ui/mcloud/player.rs:718
+#: src/ui/player_bar.rs:892 src/ui/mcloud/player.rs:795
 msgid "Playback position (%)"
 msgstr "Position de lecture (%)"
 
-#: src/ui/player_bar.rs:935 src/ui/mcloud/player.rs:375
+#: src/ui/player_bar.rs:935 src/ui/mcloud/player.rs:447
 msgid "Volume (%)"
 msgstr "Volume (%)"
 
-#: src/ui/player_bar.rs:968 src/ui/mcloud/player.rs:404
+#: src/ui/player_bar.rs:968 src/ui/mcloud/player.rs:366
 msgid "Unmute"
 msgstr "Rétablir le son"
 
-#: src/ui/player_bar.rs:970 src/ui/mcloud/player.rs:406
+#: src/ui/player_bar.rs:970 src/ui/mcloud/player.rs:368
 msgid "Mute"
 msgstr "Couper le son"
 
@@ -304,21 +305,21 @@ msgstr "Couper le son"
 msgid "This device's volume can't be changed from Spotifast"
 msgstr "Le volume de cet appareil ne peut pas être modifié depuis Spotifast"
 
-#: src/ui/player_bar.rs:1006 src/ui/devices.rs:401 src/ui/mcloud/player.rs:305
+#: src/ui/player_bar.rs:1006 src/ui/devices.rs:401 src/ui/mcloud/player.rs:332
 msgid "Connect to a device"
 msgstr "Se connecter à un appareil"
 
 #: src/ui/player_bar.rs:1025 src/ui/queue.rs:23 src/ui/queue.rs:79
-#: src/ui/queue.rs:228 src/ui/mcloud/player.rs:346
+#: src/ui/queue.rs:228 src/ui/mcloud/player.rs:348
 msgid "Queue"
 msgstr "File d’attente"
 
 #: src/ui/player_bar.rs:1051 src/ui/lyrics.rs:67 src/ui/lyrics.rs:600
-#: src/ui/mcloud/player.rs:326
+#: src/ui/mcloud/player.rs:319
 msgid "Lyrics"
 msgstr "Paroles"
 
-#: src/ui/player_bar.rs:1071 src/ui/friends.rs:53
+#: src/ui/player_bar.rs:1071 src/ui/friends.rs:53 src/ui/mcloud/sidebar.rs:527
 msgid "Listening activity"
 msgstr "Activité d'écoute"
 
@@ -327,7 +328,7 @@ msgid "Recent"
 msgstr "Récents"
 
 #: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:78
-#: src/ui/friends.rs:65 src/ui/mod.rs:684 src/window.rs:35
+#: src/ui/friends.rs:65 src/ui/mod.rs:687 src/window.rs:35
 msgid "Close"
 msgstr "Fermer"
 
@@ -382,7 +383,7 @@ msgstr "Les titres écoutés s’affichent ici."
 msgid "Load more"
 msgstr "Charger plus"
 
-#: src/ui/lyrics.rs:90 src/ui/keys.rs:285 src/ui/mcloud/player.rs:471
+#: src/ui/lyrics.rs:90 src/ui/keys.rs:285 src/ui/mcloud/player.rs:565
 msgid "Full screen lyrics"
 msgstr "Paroles en plein écran"
 
@@ -601,8 +602,8 @@ msgid "Play {title}, {subtitle}"
 msgstr "Lire {title}, {subtitle}"
 
 #: src/ui/widgets.rs:2043 src/ui/artist.rs:431 src/ui/collection.rs:413
-#: src/ui/show.rs:260 src/ui/show.rs:468 src/ui/mcloud/player.rs:487
-#: src/ui/mcloud/pages.rs:367 src/ui/mcloud/artist.rs:212
+#: src/ui/show.rs:260 src/ui/show.rs:468 src/ui/mcloud/player.rs:580
+#: src/ui/mcloud/pages.rs:330 src/ui/mcloud/artist.rs:212
 msgid "More"
 msgstr "Plus"
 
@@ -1185,7 +1186,7 @@ msgstr "Impossible de changer la lecture aléatoire"
 msgid "Couldn't change repeat"
 msgstr "Impossible de changer la répétition"
 
-#: src/app.rs:13863 src/ui/mod.rs:451
+#: src/app.rs:13863 src/ui/mod.rs:454
 msgid "Spotify won't let this computer play this song right now."
 msgstr "Spotify ne laisse pas cet ordinateur lire ce titre pour le moment."
 
@@ -1294,8 +1295,8 @@ msgstr "En attente du réseau…"
 msgid "Authorize"
 msgstr "Autoriser"
 
-#: src/ui/settings.rs:418 src/ui/keys.rs:369 src/ui/topbar.rs:481
-#: src/ui/topbar.rs:541
+#: src/ui/settings.rs:418 src/ui/keys.rs:369 src/ui/topbar.rs:444
+#: src/ui/topbar.rs:504
 msgid "Settings"
 msgstr "Paramètres"
 
@@ -1319,7 +1320,7 @@ msgstr "Ouvrir le dossier"
 msgid "Account"
 msgstr "Compte"
 
-#: src/ui/settings.rs:471 src/ui/topbar.rs:499
+#: src/ui/settings.rs:471 src/ui/topbar.rs:462
 msgid "Sign out"
 msgstr "Se déconnecter"
 
@@ -1898,7 +1899,7 @@ msgstr "Toujours au premier plan"
 msgid "Show Winamp in taskbar"
 msgstr "Afficher Winamp dans la barre des tâches"
 
-#: src/ui/settings.rs:1847
+#: src/ui/settings.rs:1847 src/ui/mcloud/player.rs:306
 msgid "Mini player"
 msgstr "Mini-lecteur"
 
@@ -2200,7 +2201,7 @@ msgid "Checking…"
 msgstr "Vérification…"
 
 #: src/ui/settings.rs:2412 src/ui/dialogs.rs:153 src/ui/keys.rs:379
-#: src/ui/topbar.rs:489
+#: src/ui/topbar.rs:452
 msgid "Keyboard shortcuts"
 msgstr "Raccourcis clavier"
 
@@ -2450,7 +2451,7 @@ msgctxt "filter"
 msgid "All"
 msgstr "Tout"
 
-#: src/model.rs:804 src/ui/search.rs:443 src/ui/mcloud/sidebar.rs:128
+#: src/model.rs:804 src/ui/search.rs:443 src/ui/mcloud/sidebar.rs:145
 msgid "Songs"
 msgstr "Titres"
 
@@ -2539,7 +2540,7 @@ msgstr ""
 msgid "Popular"
 msgstr "Populaires"
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:171 src/ui/mcloud/artist.rs:403
+#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:168 src/ui/mcloud/artist.rs:403
 msgid "Show less"
 msgstr "Afficher moins"
 
@@ -2581,11 +2582,11 @@ msgctxt "artist"
 msgid "Following"
 msgstr "Abonné"
 
-#: src/ui/collection.rs:126 src/ui/mcloud/pages.rs:56
+#: src/ui/collection.rs:126 src/ui/mcloud/pages.rs:52
 msgid "Enlarge cover"
 msgstr "Agrandir la pochette"
 
-#: src/ui/collection.rs:315 src/ui/mcloud/pages.rs:301
+#: src/ui/collection.rs:315 src/ui/mcloud/pages.rs:285
 msgid "No playable songs in this view"
 msgstr "Aucun titre lisible dans cette vue"
 
@@ -2593,12 +2594,12 @@ msgstr "Aucun titre lisible dans cette vue"
 msgid "Shuffle off"
 msgstr "Désactiver la lecture aléatoire"
 
-#: src/ui/collection.rs:400 src/ui/collection.rs:426 src/ui/mcloud/pages.rs:354
-#: src/ui/mcloud/pages.rs:379
+#: src/ui/collection.rs:400 src/ui/collection.rs:426 src/ui/mcloud/pages.rs:318
+#: src/ui/mcloud/pages.rs:342
 msgid "Save as playlist"
 msgstr "Enregistrer comme playlist"
 
-#: src/ui/collection.rs:453 src/ui/mcloud/pages.rs:273
+#: src/ui/collection.rs:453 src/ui/mcloud/pages.rs:240
 msgid "Filter"
 msgstr "Filtrer"
 
@@ -2754,7 +2755,7 @@ msgstr ""
 "moment. Configurez votre propre application Spotify gratuite pour que rien "
 "n’interrompe votre musique. Cela ne prend que quelques minutes."
 
-#: src/ui/dialogs.rs:50 src/ui/mod.rs:426
+#: src/ui/dialogs.rs:50 src/ui/mod.rs:429
 msgid "Set up personal app"
 msgstr "Configurer l’application personnelle"
 
@@ -2934,7 +2935,7 @@ msgstr "Conçu pour vous"
 msgid "Your top mixes"
 msgstr "Vos mix préférés"
 
-#: src/ui/home.rs:392 src/ui/new_releases.rs:25 src/ui/mcloud/sidebar.rs:106
+#: src/ui/home.rs:392 src/ui/new_releases.rs:25
 msgid "New releases"
 msgstr "Nouveautés"
 
@@ -3294,11 +3295,11 @@ msgstr "Collez le Client ID de l’application dans le champ et connectez-vous."
 msgid "Copied"
 msgstr "Copié"
 
-#: src/ui/mod.rs:419
+#: src/ui/mod.rs:422
 msgid "Spotify is being slow on the shared app."
 msgstr "Spotify est lent avec l’application partagée."
 
-#: src/ui/mod.rs:422
+#: src/ui/mod.rs:425
 msgid ""
 "Spotifast no longer offers the shared app, and Spotify can stop accepting it "
 "at any time. Set up your own free Spotify app and you won't have to wait."
@@ -3309,11 +3310,11 @@ msgstr ""
 
 #. Translators: a button that opens a page explaining why
 #. the banner it sits in appeared.
-#: src/ui/mod.rs:432 src/ui/mod.rs:463
+#: src/ui/mod.rs:435 src/ui/mod.rs:466
 msgid "Why?"
 msgstr "Pourquoi ?"
 
-#: src/ui/mod.rs:455
+#: src/ui/mod.rs:458
 msgid ""
 "Spotify refused the key that unlocks the audio. Spotifast can't fix that, "
 "but it sometimes clears up on its own. You can still play on your phone or "
@@ -3323,23 +3324,23 @@ msgstr ""
 "faire, mais cela se règle parfois tout seul. Vous pouvez toujours écouter "
 "sur votre téléphone ou un autre appareil Spotify."
 
-#: src/ui/mod.rs:459
+#: src/ui/mod.rs:462
 msgid "Play on another device"
 msgstr "Lire sur un autre appareil"
 
-#: src/ui/mod.rs:510
+#: src/ui/mod.rs:513
 msgid "Close banner"
 msgstr "Fermer le bandeau"
 
-#: src/ui/mod.rs:681
+#: src/ui/mod.rs:684
 msgid "Minimize"
 msgstr "Réduire"
 
-#: src/ui/mod.rs:682
+#: src/ui/mod.rs:685
 msgid "Maximize"
 msgstr "Agrandir"
 
-#: src/ui/mod.rs:683
+#: src/ui/mod.rs:686
 msgid "Restore"
 msgstr "Restaurer"
 
@@ -3513,90 +3514,90 @@ msgstr "{duration} restant"
 msgid "Played"
 msgstr "Écouté"
 
-#: src/ui/topbar.rs:244
+#: src/ui/topbar.rs:248 src/ui/mcloud/topbar.rs:64
 msgid "Show sidebar (Ctrl+B)"
 msgstr "Afficher la barre latérale (Ctrl+B)"
 
-#: src/ui/topbar.rs:245
+#: src/ui/topbar.rs:249 src/ui/mcloud/topbar.rs:65
 msgid "Show sidebar (Cmd+B)"
 msgstr "Afficher la barre latérale (Cmd+B)"
 
-#: src/ui/topbar.rs:264
+#: src/ui/topbar.rs:268 src/ui/mcloud/topbar.rs:95
 msgid "Back"
 msgstr "Retour"
 
-#: src/ui/topbar.rs:275
+#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:102
 msgid "Forward"
 msgstr "Avancer"
 
 #. Translators: {device} is the name of the device playing the music.
-#: src/ui/topbar.rs:296
+#: src/ui/topbar.rs:300
 #, rust-format
 msgid "Playing on {device}"
 msgstr "Lecture sur {device}"
 
-#: src/ui/topbar.rs:298
+#: src/ui/topbar.rs:302
 msgid "Playing on another device"
 msgstr "Lecture sur un autre appareil"
 
-#: src/ui/topbar.rs:307
+#: src/ui/topbar.rs:311
 msgid "Update ready"
 msgstr "Mise à jour prête"
 
-#: src/ui/topbar.rs:310 src/ui/update.rs:74
+#: src/ui/topbar.rs:314 src/ui/update.rs:74
 msgid "Downloading update…"
 msgstr "Téléchargement de la mise à jour…"
 
 #. Translators: {version} is a version number such as 1.2.0.
-#: src/ui/topbar.rs:314
+#: src/ui/topbar.rs:318
 #, rust-format
 msgid "Update to {version}"
 msgstr "Mettre à jour vers {version}"
 
-#: src/ui/topbar.rs:364
-msgid "What do you want to play?"
-msgstr "Que souhaitez-vous écouter ?"
-
-#: src/ui/topbar.rs:531
+#: src/ui/topbar.rs:494
 msgid ""
 "Spotifast is offline. Reconnecting automatically when connection returns."
 msgstr ""
 "Spotifast est hors ligne. La reconnexion sera automatique lorsque la "
 "connexion sera rétablie."
 
-#: src/ui/topbar.rs:559
+#: src/ui/topbar.rs:522
 msgid "MilkDrop visualiser (Ctrl+Shift+K)"
 msgstr "Visualiseur MilkDrop (Ctrl+Shift+K)"
 
-#: src/ui/topbar.rs:560
+#: src/ui/topbar.rs:523
 msgid "MilkDrop visualiser (Cmd+Shift+K)"
 msgstr "Visualiseur MilkDrop (Cmd+Shift+K)"
 
-#: src/ui/topbar.rs:574
+#: src/ui/topbar.rs:537
 msgid "Winamp mini player (Ctrl+M)"
 msgstr "Mini-lecteur Winamp (Ctrl+M)"
 
-#: src/ui/topbar.rs:575
+#: src/ui/topbar.rs:538
 msgid "Winamp mini player (Cmd+Shift+M)"
 msgstr "Mini-lecteur Winamp (Cmd+Shift+M)"
 
-#: src/ui/topbar.rs:587
+#: src/ui/topbar.rs:550
 msgid "Updating your library…"
 msgstr "Mise à jour de votre bibliothèque…"
 
-#: src/ui/topbar.rs:588
+#: src/ui/topbar.rs:551
 msgid "Checking for updates…"
 msgstr "Recherche de mises à jour…"
 
-#: src/ui/topbar.rs:589
+#: src/ui/topbar.rs:552
 msgid "Waiting for Spotify…"
 msgstr "En attente de Spotify…"
 
 #. Translators: {version} is a version number such as 1.2.0.
-#: src/ui/topbar.rs:629
+#: src/ui/topbar.rs:592
 #, rust-format
 msgid "Version {version} is available."
 msgstr "La version {version} est disponible."
+
+#: src/ui/topbar.rs:620
+msgid "What do you want to play?"
+msgstr "Que souhaitez-vous écouter ?"
 
 #: src/ui/update.rs:19
 msgid "Update Spotifast"
@@ -3981,7 +3982,7 @@ msgstr ""
 "graphique ou activez l’accélération GPU de la machine virtuelle. Ouvrir "
 "{url} pour en savoir plus ?"
 
-#: src/ui/mcloud/sidebar.rs:207
+#: src/ui/mcloud/sidebar.rs:220
 msgid "Show all"
 msgstr "Tout afficher"
 

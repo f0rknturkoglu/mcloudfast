@@ -10,3 +10,4 @@ pub mod glass;
 pub mod pages;
 pub mod player;
 pub mod sidebar;
+pub mod topbar;

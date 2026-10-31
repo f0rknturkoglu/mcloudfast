@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 00:13+0300\n"
+"POT-Creation-Date: 2026-11-01 00:36+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Japanese\n"
@@ -75,12 +75,13 @@ msgid "Playlist • {owner}"
 msgstr "プレイリスト • {owner}"
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
-#: src/ui/topbar.rs:255 src/ui/mcloud/sidebar.rs:103
+#: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:126
+#: src/ui/mcloud/topbar.rs:143
 msgid "Home"
 msgstr "ホーム"
 
 #: src/ui/sidebar.rs:979 src/app.rs:8380 src/ui/keys.rs:316
-#: src/ui/mcloud/sidebar.rs:94
+#: src/ui/mcloud/sidebar.rs:115
 msgid "Search"
 msgstr "検索"
 
@@ -100,7 +101,7 @@ msgstr "リスト表示"
 msgid "Show as grid"
 msgstr "グリッド表示"
 
-#: src/ui/sidebar.rs:1043
+#: src/ui/sidebar.rs:1043 src/ui/mcloud/sidebar.rs:167
 msgid "Create a playlist"
 msgstr "プレイリストを作成"
 
@@ -108,27 +109,27 @@ msgstr "プレイリストを作成"
 msgid "Search Your Library"
 msgstr "ライブラリを検索"
 
-#: src/ui/sidebar.rs:1075 src/ui/mcloud/sidebar.rs:124
+#: src/ui/sidebar.rs:1075 src/ui/mcloud/sidebar.rs:135
 msgid "Library"
 msgstr "ライブラリ"
 
 #: src/ui/sidebar.rs:1095 src/app.rs:8354 src/model.rs:807 src/ui/search.rs:668
-#: src/ui/mcloud/sidebar.rs:160 src/ui/mcloud/sidebar.rs:175
+#: src/ui/mcloud/sidebar.rs:171
 msgid "Playlists"
 msgstr "プレイリスト"
 
 #: src/ui/sidebar.rs:1096 src/model.rs:806 src/model.rs:931
-#: src/ui/library.rs:17 src/ui/search.rs:595 src/ui/mcloud/sidebar.rs:127
+#: src/ui/library.rs:17 src/ui/search.rs:595 src/ui/mcloud/sidebar.rs:142
 msgid "Albums"
 msgstr "アルバム"
 
 #: src/ui/sidebar.rs:1097 src/model.rs:805 src/ui/library.rs:22
-#: src/ui/search.rs:527 src/ui/mcloud/sidebar.rs:126
+#: src/ui/search.rs:527 src/ui/mcloud/sidebar.rs:139
 msgid "Artists"
 msgstr "アーティスト"
 
 #: src/ui/sidebar.rs:1098 src/model.rs:808 src/ui/library.rs:27
-#: src/ui/search.rs:719 src/ui/mcloud/sidebar.rs:129
+#: src/ui/search.rs:719
 msgid "Podcasts"
 msgstr "ポッドキャスト"
 
@@ -169,7 +170,7 @@ msgstr "最近再生した順に並べ替え"
 #: src/ui/sidebar.rs:1988 src/ui/player_bar.rs:798 src/ui/widgets.rs:1213
 #: src/ui/artist.rs:401 src/ui/collection.rs:310 src/ui/new_releases.rs:117
 #: src/ui/prerelease.rs:309 src/ui/search.rs:408 src/ui/show.rs:390
-#: src/ui/mcloud/player.rs:210 src/ui/mcloud/pages.rs:294
+#: src/ui/mcloud/player.rs:226 src/ui/mcloud/pages.rs:261
 #: src/ui/mcloud/artist.rs:178
 msgid "Play"
 msgstr "再生"
@@ -230,7 +231,7 @@ msgstr "クリックでビジュアライザーを切り替え"
 msgid "Nothing playing"
 msgstr "再生していません"
 
-#: src/ui/player_bar.rs:446 src/app.rs:9849 src/ui/mcloud/player.rs:441
+#: src/ui/player_bar.rs:446 src/app.rs:9849
 msgid "Pick a song, album, or playlist"
 msgstr "曲、アルバム、プレイリストを選んでください"
 
@@ -239,60 +240,60 @@ msgid "Add to playlist"
 msgstr "プレイリストに追加"
 
 #: src/ui/player_bar.rs:615 src/ui/widgets.rs:744 src/ui/widgets.rs:1018
-#: src/ui/widgets.rs:1998 src/ui/mcloud/player.rs:511
+#: src/ui/widgets.rs:1998 src/ui/mcloud/player.rs:636
 msgid "Save to Liked Songs"
 msgstr "お気に入りの曲に保存"
 
 #: src/ui/player_bar.rs:665 src/ui/widgets.rs:741 src/ui/widgets.rs:1015
-#: src/ui/widgets.rs:1996 src/ui/mcloud/player.rs:504
+#: src/ui/widgets.rs:1996 src/ui/mcloud/player.rs:634
 msgid "Remove from Liked Songs"
 msgstr "お気に入りの曲から削除"
 
 #: src/ui/player_bar.rs:742 src/ui/player_bar.rs:749 src/ui/collection.rs:364
-#: src/ui/new_releases.rs:146 src/ui/mcloud/player.rs:171
-#: src/ui/mcloud/player.rs:178 src/ui/mcloud/pages.rs:315
+#: src/ui/new_releases.rs:146 src/ui/mcloud/player.rs:196
+#: src/ui/mcloud/pages.rs:271
 msgid "Shuffle"
 msgstr "シャッフル"
 
-#: src/ui/player_bar.rs:763 src/ui/mcloud/player.rs:191
+#: src/ui/player_bar.rs:763 src/ui/mcloud/player.rs:208
 msgid "Previous"
 msgstr "前へ"
 
 #: src/ui/player_bar.rs:796 src/ui/friends.rs:208 src/ui/collection.rs:308
-#: src/ui/mcloud/player.rs:208 src/ui/mcloud/pages.rs:292
+#: src/ui/mcloud/player.rs:224 src/ui/mcloud/pages.rs:259
 #: src/ui/mcloud/artist.rs:176
 msgid "Pause"
 msgstr "一時停止"
 
-#: src/ui/player_bar.rs:814 src/ui/mcloud/player.rs:223
+#: src/ui/player_bar.rs:814 src/ui/mcloud/player.rs:239
 msgid "Next"
 msgstr "次へ"
 
-#: src/ui/player_bar.rs:822 src/ui/mcloud/player.rs:231
+#: src/ui/player_bar.rs:822 src/ui/mcloud/player.rs:247
 msgid "Repeat"
 msgstr "リピート"
 
-#: src/ui/player_bar.rs:826 src/ui/mcloud/player.rs:232
+#: src/ui/player_bar.rs:826 src/ui/mcloud/player.rs:251
 msgid "Repeat one"
 msgstr "1曲リピート"
 
-#: src/ui/player_bar.rs:831 src/ui/mcloud/player.rs:233
+#: src/ui/player_bar.rs:831 src/ui/mcloud/player.rs:253
 msgid "Repeat off"
 msgstr "リピートをオフ"
 
-#: src/ui/player_bar.rs:892 src/ui/mcloud/player.rs:718
+#: src/ui/player_bar.rs:892 src/ui/mcloud/player.rs:795
 msgid "Playback position (%)"
 msgstr "再生位置 (%)"
 
-#: src/ui/player_bar.rs:935 src/ui/mcloud/player.rs:375
+#: src/ui/player_bar.rs:935 src/ui/mcloud/player.rs:447
 msgid "Volume (%)"
 msgstr "音量 (%)"
 
-#: src/ui/player_bar.rs:968 src/ui/mcloud/player.rs:404
+#: src/ui/player_bar.rs:968 src/ui/mcloud/player.rs:366
 msgid "Unmute"
 msgstr "ミュートを解除"
 
-#: src/ui/player_bar.rs:970 src/ui/mcloud/player.rs:406
+#: src/ui/player_bar.rs:970 src/ui/mcloud/player.rs:368
 msgid "Mute"
 msgstr "ミュート"
 
@@ -300,21 +301,21 @@ msgstr "ミュート"
 msgid "This device's volume can't be changed from Spotifast"
 msgstr "このデバイスの音量は Spotifast から変更できません"
 
-#: src/ui/player_bar.rs:1006 src/ui/devices.rs:401 src/ui/mcloud/player.rs:305
+#: src/ui/player_bar.rs:1006 src/ui/devices.rs:401 src/ui/mcloud/player.rs:332
 msgid "Connect to a device"
 msgstr "デバイスに接続"
 
 #: src/ui/player_bar.rs:1025 src/ui/queue.rs:23 src/ui/queue.rs:79
-#: src/ui/queue.rs:228 src/ui/mcloud/player.rs:346
+#: src/ui/queue.rs:228 src/ui/mcloud/player.rs:348
 msgid "Queue"
 msgstr "再生待ちリスト"
 
 #: src/ui/player_bar.rs:1051 src/ui/lyrics.rs:67 src/ui/lyrics.rs:600
-#: src/ui/mcloud/player.rs:326
+#: src/ui/mcloud/player.rs:319
 msgid "Lyrics"
 msgstr "歌詞"
 
-#: src/ui/player_bar.rs:1071 src/ui/friends.rs:53
+#: src/ui/player_bar.rs:1071 src/ui/friends.rs:53 src/ui/mcloud/sidebar.rs:527
 msgid "Listening activity"
 msgstr "リスニングアクティビティ"
 
@@ -323,7 +324,7 @@ msgid "Recent"
 msgstr "履歴"
 
 #: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:78
-#: src/ui/friends.rs:65 src/ui/mod.rs:684 src/window.rs:35
+#: src/ui/friends.rs:65 src/ui/mod.rs:687 src/window.rs:35
 msgid "Close"
 msgstr "閉じる"
 
@@ -378,7 +379,7 @@ msgstr "再生した曲がここに表示されます。"
 msgid "Load more"
 msgstr "さらに読み込む"
 
-#: src/ui/lyrics.rs:90 src/ui/keys.rs:285 src/ui/mcloud/player.rs:471
+#: src/ui/lyrics.rs:90 src/ui/keys.rs:285 src/ui/mcloud/player.rs:565
 msgid "Full screen lyrics"
 msgstr "歌詞を全画面表示"
 
@@ -594,8 +595,8 @@ msgid "Play {title}, {subtitle}"
 msgstr "{title}を再生、{subtitle}"
 
 #: src/ui/widgets.rs:2043 src/ui/artist.rs:431 src/ui/collection.rs:413
-#: src/ui/show.rs:260 src/ui/show.rs:468 src/ui/mcloud/player.rs:487
-#: src/ui/mcloud/pages.rs:367 src/ui/mcloud/artist.rs:212
+#: src/ui/show.rs:260 src/ui/show.rs:468 src/ui/mcloud/player.rs:580
+#: src/ui/mcloud/pages.rs:330 src/ui/mcloud/artist.rs:212
 msgid "More"
 msgstr "その他"
 
@@ -1172,7 +1173,7 @@ msgstr "シャッフルを変更できませんでした"
 msgid "Couldn't change repeat"
 msgstr "リピートを変更できませんでした"
 
-#: src/app.rs:13863 src/ui/mod.rs:451
+#: src/app.rs:13863 src/ui/mod.rs:454
 msgid "Spotify won't let this computer play this song right now."
 msgstr "Spotifyが今このコンピューターでこの曲を再生させてくれません。"
 
@@ -1279,8 +1280,8 @@ msgstr "ネットワークを待機中…"
 msgid "Authorize"
 msgstr "承認"
 
-#: src/ui/settings.rs:418 src/ui/keys.rs:369 src/ui/topbar.rs:481
-#: src/ui/topbar.rs:541
+#: src/ui/settings.rs:418 src/ui/keys.rs:369 src/ui/topbar.rs:444
+#: src/ui/topbar.rs:504
 msgid "Settings"
 msgstr "設定"
 
@@ -1304,7 +1305,7 @@ msgstr "フォルダを開く"
 msgid "Account"
 msgstr "アカウント"
 
-#: src/ui/settings.rs:471 src/ui/topbar.rs:499
+#: src/ui/settings.rs:471 src/ui/topbar.rs:462
 msgid "Sign out"
 msgstr "ログアウト"
 
@@ -1871,7 +1872,7 @@ msgstr "常に手前に表示"
 msgid "Show Winamp in taskbar"
 msgstr "タスクバーにWinampを表示"
 
-#: src/ui/settings.rs:1847
+#: src/ui/settings.rs:1847 src/ui/mcloud/player.rs:306
 msgid "Mini player"
 msgstr "ミニプレイヤー"
 
@@ -2165,7 +2166,7 @@ msgid "Checking…"
 msgstr "確認中…"
 
 #: src/ui/settings.rs:2412 src/ui/dialogs.rs:153 src/ui/keys.rs:379
-#: src/ui/topbar.rs:489
+#: src/ui/topbar.rs:452
 msgid "Keyboard shortcuts"
 msgstr "キーボードショートカット"
 
@@ -2408,7 +2409,7 @@ msgctxt "filter"
 msgid "All"
 msgstr "すべて"
 
-#: src/model.rs:804 src/ui/search.rs:443 src/ui/mcloud/sidebar.rs:128
+#: src/model.rs:804 src/ui/search.rs:443 src/ui/mcloud/sidebar.rs:145
 msgid "Songs"
 msgstr "曲"
 
@@ -2495,7 +2496,7 @@ msgstr ""
 msgid "Popular"
 msgstr "人気"
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:171 src/ui/mcloud/artist.rs:403
+#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:168 src/ui/mcloud/artist.rs:403
 msgid "Show less"
 msgstr "表示を減らす"
 
@@ -2536,11 +2537,11 @@ msgctxt "artist"
 msgid "Following"
 msgstr "フォロー中"
 
-#: src/ui/collection.rs:126 src/ui/mcloud/pages.rs:56
+#: src/ui/collection.rs:126 src/ui/mcloud/pages.rs:52
 msgid "Enlarge cover"
 msgstr "カバーを拡大"
 
-#: src/ui/collection.rs:315 src/ui/mcloud/pages.rs:301
+#: src/ui/collection.rs:315 src/ui/mcloud/pages.rs:285
 msgid "No playable songs in this view"
 msgstr "このビューに再生できる曲はありません"
 
@@ -2548,12 +2549,12 @@ msgstr "このビューに再生できる曲はありません"
 msgid "Shuffle off"
 msgstr "シャッフルをオフ"
 
-#: src/ui/collection.rs:400 src/ui/collection.rs:426 src/ui/mcloud/pages.rs:354
-#: src/ui/mcloud/pages.rs:379
+#: src/ui/collection.rs:400 src/ui/collection.rs:426 src/ui/mcloud/pages.rs:318
+#: src/ui/mcloud/pages.rs:342
 msgid "Save as playlist"
 msgstr "プレイリストとして保存"
 
-#: src/ui/collection.rs:453 src/ui/mcloud/pages.rs:273
+#: src/ui/collection.rs:453 src/ui/mcloud/pages.rs:240
 msgid "Filter"
 msgstr "絞り込み"
 
@@ -2704,7 +2705,7 @@ msgstr ""
 "リの提供を終了しており、Spotifyもいつ受け付けなくなるかわかりません。音楽が止"
 "まらないよう、自分の無料Spotifyアプリを設定してください。数分で終わります。"
 
-#: src/ui/dialogs.rs:50 src/ui/mod.rs:426
+#: src/ui/dialogs.rs:50 src/ui/mod.rs:429
 msgid "Set up personal app"
 msgstr "個人用アプリを設定"
 
@@ -2878,7 +2879,7 @@ msgstr "あなた向け"
 msgid "Your top mixes"
 msgstr "あなたのトップミックス"
 
-#: src/ui/home.rs:392 src/ui/new_releases.rs:25 src/ui/mcloud/sidebar.rs:106
+#: src/ui/home.rs:392 src/ui/new_releases.rs:25
 msgid "New releases"
 msgstr "新着リリース"
 
@@ -3236,11 +3237,11 @@ msgstr "アプリのクライアントIDを入力欄に貼り付けて、ログ�
 msgid "Copied"
 msgstr "コピーしました"
 
-#: src/ui/mod.rs:419
+#: src/ui/mod.rs:422
 msgid "Spotify is being slow on the shared app."
 msgstr "共有アプリでSpotifyが遅くなっています。"
 
-#: src/ui/mod.rs:422
+#: src/ui/mod.rs:425
 msgid ""
 "Spotifast no longer offers the shared app, and Spotify can stop accepting it "
 "at any time. Set up your own free Spotify app and you won't have to wait."
@@ -3250,11 +3251,11 @@ msgstr ""
 
 #. Translators: a button that opens a page explaining why
 #. the banner it sits in appeared.
-#: src/ui/mod.rs:432 src/ui/mod.rs:463
+#: src/ui/mod.rs:435 src/ui/mod.rs:466
 msgid "Why?"
 msgstr "なぜ？"
 
-#: src/ui/mod.rs:455
+#: src/ui/mod.rs:458
 msgid ""
 "Spotify refused the key that unlocks the audio. Spotifast can't fix that, "
 "but it sometimes clears up on its own. You can still play on your phone or "
@@ -3264,23 +3265,23 @@ msgstr ""
 "が、しばらくすると自然に直ることがあります。スマートフォンや他のSpotifyデバイ"
 "スでは再生できます。"
 
-#: src/ui/mod.rs:459
+#: src/ui/mod.rs:462
 msgid "Play on another device"
 msgstr "別のデバイスで再生"
 
-#: src/ui/mod.rs:510
+#: src/ui/mod.rs:513
 msgid "Close banner"
 msgstr "バナーを閉じる"
 
-#: src/ui/mod.rs:681
+#: src/ui/mod.rs:684
 msgid "Minimize"
 msgstr "最小化"
 
-#: src/ui/mod.rs:682
+#: src/ui/mod.rs:685
 msgid "Maximize"
 msgstr "最大化"
 
-#: src/ui/mod.rs:683
+#: src/ui/mod.rs:686
 msgid "Restore"
 msgstr "元に戻す"
 
@@ -3451,88 +3452,88 @@ msgstr "残り{duration}"
 msgid "Played"
 msgstr "再生済み"
 
-#: src/ui/topbar.rs:244
+#: src/ui/topbar.rs:248 src/ui/mcloud/topbar.rs:64
 msgid "Show sidebar (Ctrl+B)"
 msgstr "サイドバーを表示 (Ctrl+B)"
 
-#: src/ui/topbar.rs:245
+#: src/ui/topbar.rs:249 src/ui/mcloud/topbar.rs:65
 msgid "Show sidebar (Cmd+B)"
 msgstr "サイドバーを表示 (Cmd+B)"
 
-#: src/ui/topbar.rs:264
+#: src/ui/topbar.rs:268 src/ui/mcloud/topbar.rs:95
 msgid "Back"
 msgstr "戻る"
 
-#: src/ui/topbar.rs:275
+#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:102
 msgid "Forward"
 msgstr "進む"
 
 #. Translators: {device} is the name of the device playing the music.
-#: src/ui/topbar.rs:296
+#: src/ui/topbar.rs:300
 #, rust-format
 msgid "Playing on {device}"
 msgstr "{device}で再生中"
 
-#: src/ui/topbar.rs:298
+#: src/ui/topbar.rs:302
 msgid "Playing on another device"
 msgstr "別のデバイスで再生中"
 
-#: src/ui/topbar.rs:307
+#: src/ui/topbar.rs:311
 msgid "Update ready"
 msgstr "アップデートの準備完了"
 
-#: src/ui/topbar.rs:310 src/ui/update.rs:74
+#: src/ui/topbar.rs:314 src/ui/update.rs:74
 msgid "Downloading update…"
 msgstr "アップデートをダウンロード中…"
 
 #. Translators: {version} is a version number such as 1.2.0.
-#: src/ui/topbar.rs:314
+#: src/ui/topbar.rs:318
 #, rust-format
 msgid "Update to {version}"
 msgstr "{version}にアップデート"
 
-#: src/ui/topbar.rs:364
-msgid "What do you want to play?"
-msgstr "何を再生しますか？"
-
-#: src/ui/topbar.rs:531
+#: src/ui/topbar.rs:494
 msgid ""
 "Spotifast is offline. Reconnecting automatically when connection returns."
 msgstr "Spotifastはオフラインです。接続が回復すると自動的に再接続します。"
 
-#: src/ui/topbar.rs:559
+#: src/ui/topbar.rs:522
 msgid "MilkDrop visualiser (Ctrl+Shift+K)"
 msgstr "MilkDropビジュアライザー (Ctrl+Shift+K)"
 
-#: src/ui/topbar.rs:560
+#: src/ui/topbar.rs:523
 msgid "MilkDrop visualiser (Cmd+Shift+K)"
 msgstr "MilkDropビジュアライザー (Cmd+Shift+K)"
 
-#: src/ui/topbar.rs:574
+#: src/ui/topbar.rs:537
 msgid "Winamp mini player (Ctrl+M)"
 msgstr "Winampミニプレイヤー (Ctrl+M)"
 
-#: src/ui/topbar.rs:575
+#: src/ui/topbar.rs:538
 msgid "Winamp mini player (Cmd+Shift+M)"
 msgstr "Winampミニプレイヤー (Cmd+Shift+M)"
 
-#: src/ui/topbar.rs:587
+#: src/ui/topbar.rs:550
 msgid "Updating your library…"
 msgstr "ライブラリを更新しています…"
 
-#: src/ui/topbar.rs:588
+#: src/ui/topbar.rs:551
 msgid "Checking for updates…"
 msgstr "アップデートを確認しています…"
 
-#: src/ui/topbar.rs:589
+#: src/ui/topbar.rs:552
 msgid "Waiting for Spotify…"
 msgstr "Spotifyを待っています…"
 
 #. Translators: {version} is a version number such as 1.2.0.
-#: src/ui/topbar.rs:629
+#: src/ui/topbar.rs:592
 #, rust-format
 msgid "Version {version} is available."
 msgstr "バージョン{version}が利用可能です。"
+
+#: src/ui/topbar.rs:620
+msgid "What do you want to play?"
+msgstr "何を再生しますか？"
 
 #: src/ui/update.rs:19
 msgid "Update Spotifast"
@@ -3911,7 +3912,7 @@ msgstr ""
 "するか、仮想マシンの GPU アクセラレーションを有効にしてください。詳しくは "
 "{url} を開きますか？"
 
-#: src/ui/mcloud/sidebar.rs:207
+#: src/ui/mcloud/sidebar.rs:220
 msgid "Show all"
 msgstr "すべて表示"
 
