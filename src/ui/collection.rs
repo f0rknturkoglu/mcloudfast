@@ -94,6 +94,10 @@ pub(super) fn hero_images<'a>(
 }
 
 pub(super) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
+    if app.settings.interface == crate::settings::Interface::Mcloud {
+        super::mcloud::pages::hero(app, ui, hero);
+        return;
+    }
     let palette = app.palette;
     let art = app.backend.art().clone();
     let softened = hero
@@ -258,6 +262,10 @@ pub fn actions_row(
     actions: Actions<'_>,
     filter: Option<&mut String>,
 ) {
+    if app.settings.interface == crate::settings::Interface::Mcloud {
+        super::mcloud::pages::actions_row(app, ui, actions, filter);
+        return;
+    }
     let palette = app.palette;
     let locale = app.locale;
     ui.horizontal(|ui| {

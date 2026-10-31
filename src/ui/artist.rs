@@ -24,6 +24,11 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
     let palette = app.palette;
     let locale = app.locale;
     match &page.artist {
+        Loadable::Loaded(artist)
+            if app.settings.interface == crate::settings::Interface::Mcloud =>
+        {
+            super::mcloud::artist::loaded(app, ui, id, &page, artist);
+        }
         Loadable::Loaded(artist) => {
             artist_hero(app, ui, artist, preview.as_deref());
             artist_actions(app, ui, artist);

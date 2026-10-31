@@ -2654,9 +2654,12 @@ pub fn card(
         response.scroll_to_me(None);
     }
     let mut play = false;
+    // mcloud, as Apple Music, darkens the cover under the pointer instead
+    // of lighting the card, and plays from a smaller button in its corner.
+    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
     if ui.is_rect_visible(rect) {
         let hovered = ui.rect_contains_pointer(rect);
-        if hovered {
+        if hovered && !mcloud {
             ui.painter().rect_filled(
                 rect,
                 CornerRadius::same(theme::RADIUS),
@@ -2677,6 +2680,13 @@ pub fn card(
             if circular { Icon::User } else { Icon::Music },
             Some(app.backend.art()),
         );
+        if mcloud && hovered {
+            ui.painter().rect_filled(
+                image_rect,
+                CornerRadius::same(radius.min(127.0) as u8),
+                Color32::from_black_alpha(70),
+            );
+        }
         let text_left = rect.left() + PAD;
         let title_galley = ellipsized(ui, title, title_font, palette.text, text_width, 1);
         let title_rect = Rect::from_min_size(
@@ -2710,10 +2720,18 @@ pub fn card(
             .galley(subtitle_pos, subtitle_galley, palette.secondary);
 
         if playable && hovered {
-            let button_rect = Rect::from_center_size(
-                pos2(image_rect.right() - 26.0, image_rect.bottom() - 26.0),
-                Vec2::splat(44.0),
-            );
+            let (center, size) = if mcloud {
+                (
+                    pos2(image_rect.left() + 24.0, image_rect.bottom() - 24.0),
+                    32.0,
+                )
+            } else {
+                (
+                    pos2(image_rect.right() - 26.0, image_rect.bottom() - 26.0),
+                    44.0,
+                )
+            };
+            let button_rect = Rect::from_center_size(center, Vec2::splat(size));
             let mut child = ui.new_child(
                 UiBuilder::new()
                     .max_rect(button_rect)
@@ -2726,7 +2744,7 @@ pub fn card(
                 } else {
                     Icon::PlayFilled
                 },
-                44.0,
+                size,
                 palette.accent,
                 palette.accent_hover,
                 palette.on_accent,
@@ -2772,7 +2790,7 @@ pub fn linked_shelf(
     clicked
 }
 
-fn shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui)) {
+pub(crate) fn shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui)) {
     ui.add_space(4.0);
     crate::autoscroll::show(
         ui,

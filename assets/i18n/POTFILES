@@ -37,3 +37,5 @@ src/util.rs
 src/window.rs
 src/ui/mcloud/sidebar.rs
 src/ui/mcloud/player.rs
+src/ui/mcloud/pages.rs
+src/ui/mcloud/artist.rs
