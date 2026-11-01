@@ -348,9 +348,14 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
             // mcloud's artist page fills the window with the artist's
             // colour, deepening from 40% of its height down, and hides the
             // toolbar under its own floating buttons.
-            let artist_tint = (app.settings.interface == crate::settings::Interface::Mcloud
-                && matches!(page, Page::Artist(_)))
-            .then(|| mcloud::artist::tint(tint.unwrap_or(palette.surface), palette.window));
+            let artist_tint = match &page {
+                Page::Artist(id)
+                    if app.settings.interface == crate::settings::Interface::Mcloud =>
+                {
+                    Some(mcloud::artist::page_colours(app, id))
+                }
+                _ => None,
+            };
             if let Some((top, deep)) = artist_tint {
                 let fold = rect.top() + rect.height() * 0.4;
                 ui.painter().rect_filled(rect.with_max_y(fold), 0.0, top);
@@ -388,10 +393,19 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
             } else {
                 theme::titlebar_inset(ui.ctx())
             };
-            let top_margin = if mcloud {
+            // mcloud's toolbar floats over the page, which starts under it;
+            // the artist page has none and runs to the window's top.
+            let top_margin = if mcloud && artist_tint.is_none() {
                 (mcloud::topbar::HEIGHT + inset) as i8
             } else {
                 4
+            };
+            // mcloud pads its pages by 2.6% of the window (user.css
+            // `--am-pad`); its artist page keeps its own insets.
+            let side = if mcloud && artist_tint.is_none() {
+                mcloud::page_padding(ui.ctx())
+            } else {
+                widgets::PAGE_PADDING
             };
             let scroll = crate::autoscroll::show(
                 ui,
@@ -402,8 +416,8 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                 |ui| {
                     Frame::new()
                         .inner_margin(Margin {
-                            left: widgets::PAGE_PADDING as i8,
-                            right: widgets::PAGE_PADDING as i8,
+                            left: side as i8,
+                            right: side as i8,
                             top: top_margin,
                             bottom: 48 + page_clearance,
                         })

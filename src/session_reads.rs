@@ -390,6 +390,21 @@ pub struct PageExtras {
     /// An artist's wide header picture, as Spotify's own artist page shows
     /// it across the top; the Web API has only the square portrait.
     pub header_image: Option<String>,
+    /// What an artist's About sheet shows.
+    pub about: Option<ArtistAbout>,
+}
+
+/// An artist's About sheet: a photo, listener and follower counts, the
+/// cities that listen most and the biography. Spotify's own overview
+/// carries them; the Web API has only the follower count.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ArtistAbout {
+    pub photo: Option<String>,
+    pub monthly_listeners: Option<u64>,
+    pub followers: Option<u64>,
+    pub top_cities: Vec<String>,
+    /// Plain text: Spotify sends it as HTML with links.
+    pub biography: String,
 }
 
 /// Spotify's play count for each song of an album, or of an artist's
@@ -406,6 +421,7 @@ pub async fn play_counts(
     let client_token = session.spclient().client_token().await?;
     let mut counts = HashMap::new();
     let mut header_image = None;
+    let mut about = None;
     match crate::util::uri_kind(uri) {
         Some("album") => {
             let mut offset = 0;
@@ -452,18 +468,26 @@ pub async fn play_counts(
                 .ok_or_else(|| anyhow::anyhow!("Spotify answered without the popular songs"))?;
             play_counts_from(top, &mut counts);
             header_image = header_image_from(&body);
+            about = about_from(&body);
         }
         _ => anyhow::bail!("Spotify counts plays only for album and artist songs"),
     }
     Ok(PageExtras {
         counts,
         header_image,
+        about,
     })
 }
 
 /// The widest source of an artist overview's header image.
 fn header_image_from(body: &serde_json::Value) -> Option<String> {
-    body.pointer("/data/artistUnion/visuals/headerImage/sources")?
+    widest_source(body.pointer("/data/artistUnion/visuals/headerImage")?)
+}
+
+/// The URL of the widest of an image's `sources`.
+fn widest_source(image: &serde_json::Value) -> Option<String> {
+    image
+        .get("sources")?
         .as_array()?
         .iter()
         .filter_map(|source| {
@@ -476,6 +500,80 @@ fn header_image_from(body: &serde_json::Value) -> Option<String> {
         })
         .max_by_key(|(width, _)| *width)
         .map(|(_, url)| url.to_string())
+}
+
+/// The About sheet's contents from an artist overview, or nothing when the
+/// overview has none of them. The photo is the gallery's first, else the
+/// portrait, as mcloud picks it.
+fn about_from(body: &serde_json::Value) -> Option<ArtistAbout> {
+    let artist = body.pointer("/data/artistUnion")?;
+    let count = |pointer: &str| {
+        artist
+            .pointer(pointer)
+            .and_then(|value| value.as_u64())
+            .filter(|count| *count > 0)
+    };
+    let photo = artist
+        .pointer("/visuals/gallery/items/0")
+        .and_then(widest_source)
+        .or_else(|| {
+            artist
+                .pointer("/visuals/avatarImage")
+                .and_then(widest_source)
+        });
+    let top_cities = artist
+        .pointer("/stats/topCities/items")
+        .and_then(|items| items.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|item| item.get("city")?.as_str())
+        .filter(|city| !city.is_empty())
+        .take(5)
+        .map(str::to_string)
+        .collect();
+    let biography = artist
+        .pointer("/profile/biography/text")
+        .and_then(|text| text.as_str())
+        .map(plain_text)
+        .unwrap_or_default();
+    let about = ArtistAbout {
+        photo,
+        monthly_listeners: count("/stats/monthlyListeners"),
+        followers: count("/stats/followers"),
+        top_cities,
+        biography,
+    };
+    (about != ArtistAbout::default()).then_some(about)
+}
+
+/// The text of a biography's HTML: tags dropped, the common entities
+/// decoded, line breaks kept.
+fn plain_text(html: &str) -> String {
+    let mut text = String::with_capacity(html.len());
+    let mut rest = html;
+    while let Some(start) = rest.find('<') {
+        text.push_str(&rest[..start]);
+        let Some(end) = rest[start..].find('>') else {
+            rest = &rest[start..];
+            break;
+        };
+        let tag = rest[start + 1..start + end].trim().to_ascii_lowercase();
+        if tag.starts_with("br") || tag == "p" || tag == "/p" {
+            text.push('\n');
+        }
+        rest = &rest[start + end + 1..];
+    }
+    text.push_str(rest);
+    let text = text
+        .replace("&nbsp;", " ")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&#x27;", "'")
+        .replace("&apos;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&");
+    text.trim().to_string()
 }
 
 /// Adds the counts of a Pathfinder list of `{track: {uri, playcount}}`
@@ -2000,6 +2098,44 @@ mod tests {
             Some("https://i.scdn.co/large")
         );
         assert_eq!(super::header_image_from(&serde_json::json!({})), None);
+    }
+
+    /// The About sheet reads the overview's counts, cities and biography,
+    /// the gallery's first photo over the portrait, and the biography as
+    /// plain text.
+    #[test]
+    fn the_about_sheet_reads_the_overview() {
+        let body = serde_json::json!({"data": {"artistUnion": {
+            "profile": {"biography": {"text": "Born in <a href=\"spotify:artist:x\">Rome</a>.<br/>Tom &amp; Jerry&#39;s friend."}},
+            "stats": {
+                "monthlyListeners": 1234567,
+                "followers": 89,
+                "topCities": {"items": [
+                    {"city": "Istanbul"}, {"city": ""}, {"city": "Ankara"}
+                ]}
+            },
+            "visuals": {
+                "gallery": {"items": [{"sources": [{"url": "https://i.scdn.co/gallery", "width": 690}]}]},
+                "avatarImage": {"sources": [{"url": "https://i.scdn.co/avatar", "width": 640}]}
+            }
+        }}});
+        let about = super::about_from(&body).unwrap();
+        assert_eq!(about.photo.as_deref(), Some("https://i.scdn.co/gallery"));
+        assert_eq!(about.monthly_listeners, Some(1_234_567));
+        assert_eq!(about.followers, Some(89));
+        assert_eq!(about.top_cities, ["Istanbul", "Ankara"]);
+        assert_eq!(about.biography, "Born in Rome.\nTom & Jerry's friend.");
+
+        let bare = serde_json::json!({"data": {"artistUnion": {
+            "visuals": {"avatarImage": {"sources": [{"url": "https://i.scdn.co/avatar", "width": 640}]}}
+        }}});
+        assert_eq!(
+            super::about_from(&bare)
+                .and_then(|about| about.photo)
+                .as_deref(),
+            Some("https://i.scdn.co/avatar")
+        );
+        assert_eq!(super::about_from(&serde_json::json!({})), None);
     }
 
     /// Pathfinder's counts arrive as strings of digits; rows without a

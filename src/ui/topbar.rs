@@ -622,7 +622,7 @@ pub(super) fn search_box(app: &mut App, ui: &mut egui::Ui, search_width: f32) {
         search_width,
     );
     if crate::ui::mcloud::active(ui.ctx()) {
-        let divider_x = pill_rect.right() - 36.0;
+        let divider_x = pill_rect.right() - 57.5;
         let cy = pill_rect.center().y;
         ui.painter().vline(
             divider_x,
@@ -630,7 +630,7 @@ pub(super) fn search_box(app: &mut App, ui: &mut egui::Ui, search_width: f32) {
             Stroke::new(1.0, Color32::from_white_alpha(38)),
         );
         let browse_rect =
-            Rect::from_center_size(pos2(pill_rect.right() - 18.0, cy), vec2(28.0, 28.0));
+            Rect::from_center_size(pos2(pill_rect.right() - 30.0, cy), vec2(36.0, 36.0));
         let browse_resp = ui.interact(browse_rect, id.with("browse-drawer"), Sense::click());
         let is_browse = matches!(app.page(), Page::Browse);
         let browse_icon = if is_browse {

@@ -1042,6 +1042,8 @@ pub enum Event {
         color: [u8; 3],
         /// The cover's colours, the accent first, for the visualizer.
         palette: Vec<[u8; 3]>,
+        /// The colours mcloud takes from the picture.
+        artwork: Option<crate::images::ArtworkColours>,
     },
     Error(String),
     /// GitHub answered an update check, or the request failed.
@@ -4913,14 +4915,17 @@ impl Worker {
         let waker = self.waker.clone();
         tokio::spawn(async move {
             if let Ok(bytes) = art.fetch(&url).await {
-                let palette = tokio::task::spawn_blocking(move || art_palette(&bytes))
-                    .await
-                    .unwrap_or_default();
+                let (palette, artwork) = tokio::task::spawn_blocking(move || {
+                    (art_palette(&bytes), crate::images::artwork_colours(&bytes))
+                })
+                .await
+                .unwrap_or_default();
                 if let Some(&color) = palette.first() {
                     let _ = events.send(Event::Accent {
                         url,
                         color,
                         palette,
+                        artwork,
                     });
                     waker.wake();
                 }

@@ -7,8 +7,10 @@
 
 pub mod artist;
 pub mod glass;
+pub mod library;
 pub mod pages;
 pub mod player;
+pub mod search;
 pub mod sidebar;
 pub mod topbar;
 
@@ -28,6 +30,16 @@ fn active_id() -> egui::Id {
     egui::Id::new("mcloud-active")
 }
 
+/// mcloud's page padding (user.css `--am-pad`): 2.6% of the window's width,
+/// 28 to 48pt.
+pub fn page_padding(ctx: &egui::Context) -> f32 {
+    padding_for(ctx.content_rect().width())
+}
+
+fn padding_for(window: f32) -> f32 {
+    (window * 0.026).clamp(28.0, 48.0)
+}
+
 /// A column heading as mcloud writes it: "TITLE" as "Title".
 pub fn sentence_case(text: &str) -> String {
     let lower = text.to_lowercase();
@@ -45,5 +57,12 @@ mod tests {
         assert_eq!(super::sentence_case("DATE ADDED"), "Date added");
         assert_eq!(super::sentence_case("TITLE"), "Title");
         assert_eq!(super::sentence_case(""), "");
+    }
+
+    #[test]
+    fn pages_pad_by_the_window_width() {
+        assert_eq!(super::padding_for(800.0), 28.0);
+        assert!((super::padding_for(1400.0) - 36.4).abs() < 0.01);
+        assert_eq!(super::padding_for(1916.0), 48.0);
     }
 }

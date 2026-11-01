@@ -596,6 +596,7 @@ fastframe_icons::icons! {
         McloudBrowseDrawerActive => "mcloud-browse-drawer-active",
         McloudChevron => "mcloud-chevron",
         McloudClock => "mcloud-clock",
+        McloudClose => "mcloud-close",
         McloudDevices => "mcloud-devices",
         McloudExpand => "mcloud-expand",
         McloudFolder => "mcloud-folder",
@@ -604,6 +605,7 @@ fastframe_icons::icons! {
         McloudGrid => "mcloud-grid",
         McloudHeroPlay => "mcloud-hero-play",
         McloudHome => "mcloud-home",
+        McloudInfo => "mcloud-info",
         McloudLeft => "mcloud-left",
         McloudLyrics => "mcloud-lyrics",
         McloudMore => "mcloud-more",
@@ -1104,8 +1106,9 @@ pub fn link(
 }
 
 pub fn section_title(ui: &mut egui::Ui, palette: &Palette, label: &str) -> Response {
+    // Under mcloud, Spotify's own shelf headings, which it leaves alone.
     let size = if crate::ui::mcloud::active(ui.ctx()) {
-        20.0
+        24.0
     } else {
         17.0
     };
@@ -1114,7 +1117,7 @@ pub fn section_title(ui: &mut egui::Ui, palette: &Palette, label: &str) -> Respo
 
 pub fn section_link(ui: &mut egui::Ui, palette: &Palette, label: &str) -> Response {
     let size = if crate::ui::mcloud::active(ui.ctx()) {
-        20.0
+        24.0
     } else {
         17.0
     };

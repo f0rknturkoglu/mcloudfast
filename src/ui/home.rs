@@ -39,15 +39,16 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         });
         return;
     }
-    ui.add_space(6.0);
-    // mcloud's Home, as Spotify's own, opens on the shortcuts.
+    // mcloud's Home, as Spotify's own, opens on the chips and shortcuts.
     if app.settings.interface == crate::settings::Interface::Spotifast {
+        ui.add_space(6.0);
         let greeting = crate::util::greeting(app.locale);
         theme::text(ui, greeting.as_ref(), theme::bold(30.0), palette.text);
         ui.add_space(12.0);
     } else {
-        super::mcloud::pages::home_category_chips(app, ui);
         ui.add_space(14.0);
+        super::mcloud::pages::home_category_chips(app, ui);
+        ui.add_space(16.0);
     }
 
     let filter = if crate::ui::mcloud::active(ui.ctx()) {
@@ -238,12 +239,22 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) -> bool {
     if tiles.is_empty() {
         return false;
     }
+    // Under mcloud, Spotify's own shortcuts: 64pt tall, 12pt apart, white
+    // at 10% with square corners on the cover.
+    let mcloud = crate::ui::mcloud::active(ui.ctx());
+    let (tile_height, gap, radius, text_inset, font) = if mcloud {
+        (64.0, 12.0, 4.0, 16.0, theme::bold(16.0))
+    } else {
+        (TILE_HEIGHT, 10.0, 6.0, 12.0, theme::bold(14.5))
+    };
     let available = ui.available_width();
     let columns = ((available / 300.0).floor() as usize).clamp(2, 4);
-    let gap = 10.0;
     let tile_width = (available - gap * (columns as f32 - 1.0)) / columns as f32;
     let rows = tiles.len().div_ceil(columns);
     for row in 0..rows {
+        if row > 0 && mcloud {
+            ui.add_space(gap - ui.spacing().item_spacing.y);
+        }
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = gap;
             for column in 0..columns {
@@ -260,32 +271,34 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) -> bool {
                     break;
                 };
                 let (rect, response) =
-                    ui.allocate_exact_size(vec2(tile_width, TILE_HEIGHT), Sense::click());
+                    ui.allocate_exact_size(vec2(tile_width, tile_height), Sense::click());
                 if ui.is_rect_visible(rect) {
                     let hovered = ui.rect_contains_pointer(rect);
-                    let fill = if hovered {
-                        palette.surface_hover
-                    } else {
-                        palette.surface
+                    let fill = match (mcloud, hovered) {
+                        (true, false) => egui::Color32::from_white_alpha(26),
+                        (true, true) => egui::Color32::from_white_alpha(51),
+                        (false, false) => palette.surface,
+                        (false, true) => palette.surface_hover,
                     };
-                    ui.painter().rect_filled(rect, CornerRadius::same(6), fill);
-                    let cover = Rect::from_min_size(rect.min, Vec2::splat(TILE_HEIGHT));
+                    ui.painter()
+                        .rect_filled(rect, CornerRadius::same(radius as u8), fill);
+                    let cover = Rect::from_min_size(rect.min, Vec2::splat(tile_height));
                     if *liked {
-                        super::sidebar::liked_cover(ui, cover, 6.0);
+                        super::sidebar::liked_cover(ui, cover, radius);
                     } else {
                         widgets::paint_cover(
                             ui,
                             &palette,
                             image.as_deref(),
                             cover,
-                            6.0,
+                            radius,
                             Icon::Music,
                             Some(app.backend.art()),
                         );
                     }
                     let play_room = if hovered && uri.is_some() { 52.0 } else { 12.0 };
                     let text_rect = Rect::from_min_max(
-                        pos2(cover.right() + 12.0, rect.top()),
+                        pos2(cover.right() + text_inset, rect.top()),
                         pos2(rect.right() - play_room, rect.bottom()),
                     );
                     crate::bidi::paint_line(
@@ -294,7 +307,7 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) -> bool {
                         text_rect.right(),
                         rect.center().y,
                         name,
-                        theme::bold(14.5),
+                        font.clone(),
                         palette.text,
                     );
                     if hovered && let Some(uri) = uri {

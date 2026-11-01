@@ -711,6 +711,100 @@ pub fn art_palette(bytes: &[u8]) -> Vec<[u8; 3]> {
         .collect()
 }
 
+/// The colours mcloud reads from a picture.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ArtworkColours {
+    /// The page colour (theme.js `artworkColor`).
+    pub page: [u8; 3],
+    /// The most common colour (theme.js `sheetColor`), for a sheet over
+    /// the picture.
+    pub common: [u8; 3],
+}
+
+/// mcloud's colours for a picture.
+pub fn artwork_colours(bytes: &[u8]) -> Option<ArtworkColours> {
+    let decoded = image::load_from_memory(bytes).ok()?;
+    let small = decoded
+        .resize_exact(32, 32, image::imageops::FilterType::Triangle)
+        .to_rgb8();
+    Some(ArtworkColours {
+        page: artwork_colour_of(small.pixels().map(|pixel| pixel.0)),
+        common: common_colour_of(small.pixels().map(|pixel| pixel.0)),
+    })
+}
+
+/// The average of the most common colour, in steps of 24 per channel.
+fn common_colour_of(pixels: impl Iterator<Item = [u8; 3]>) -> [u8; 3] {
+    let mut buckets: Vec<(usize, [u32; 4])> = Vec::new();
+    for [r, g, b] in pixels {
+        let key = (r / 24) as usize * 121 + (g / 24) as usize * 11 + (b / 24) as usize;
+        let bucket = match buckets.iter_mut().find(|(held, _)| *held == key) {
+            Some((_, bucket)) => bucket,
+            None => {
+                buckets.push((key, [0; 4]));
+                &mut buckets.last_mut().unwrap().1
+            }
+        };
+        bucket[0] += u32::from(r);
+        bucket[1] += u32::from(g);
+        bucket[2] += u32::from(b);
+        bucket[3] += 1;
+    }
+    // The first seen of equally common colours wins, as in mcloud.
+    let Some(top) = buckets
+        .iter()
+        .map(|(_, bucket)| *bucket)
+        .reduce(|top, bucket| if bucket[3] > top[3] { bucket } else { top })
+    else {
+        return [0; 3];
+    };
+    [0, 1, 2].map(|channel| (top[channel] as f32 / top[3] as f32).round() as u8)
+}
+
+/// mcloud's page colour: of twelve hue families, the most colourful wins
+/// when the picture has colour enough; a picture with little colour gives
+/// its plain average.
+fn artwork_colour_of(pixels: impl Iterator<Item = [u8; 3]>) -> [u8; 3] {
+    let mut bins = [[0.0f64; 4]; 12];
+    let mut total = [0.0f64; 3];
+    let mut count = 0.0;
+    for pixel in pixels {
+        let [r, g, b] = pixel.map(f64::from);
+        count += 1.0;
+        total[0] += r;
+        total[1] += g;
+        total[2] += b;
+        let max = r.max(g).max(b);
+        let chroma = max - r.min(g).min(b);
+        if chroma < 24.0 || max < 40.0 {
+            continue;
+        }
+        let hue = if max == r {
+            ((g - b) / chroma + 6.0) % 6.0
+        } else if max == g {
+            (b - r) / chroma + 2.0
+        } else {
+            (r - g) / chroma + 4.0
+        };
+        let bin = &mut bins[(hue * 2.0) as usize % 12];
+        bin[0] += r * chroma;
+        bin[1] += g * chroma;
+        bin[2] += b * chroma;
+        bin[3] += chroma;
+    }
+    // The first of equally colourful families wins, as in mcloud.
+    let best = bins.iter().fold(
+        bins[0],
+        |best, bin| if bin[3] > best[3] { *bin } else { best },
+    );
+    let rgb = if best[3] > count * 12.0 {
+        [best[0] / best[3], best[1] / best[3], best[2] / best[3]]
+    } else {
+        total.map(|channel| channel / count.max(1.0))
+    };
+    rgb.map(|channel| channel.round() as u8)
+}
+
 /// Whether `rgb` shows a hue rather than a grey: saturated enough, and light
 /// enough that its hue shows.
 pub fn has_hue([r, g, b]: [u8; 3]) -> bool {
@@ -1274,6 +1368,27 @@ impl ImageLoader for CoverScaler {
 
 #[cfg(test)]
 mod tests {
+    /// A picture with a strong hue takes that hue's family; a grey one,
+    /// even with a touch of colour, keeps its plain average.
+    #[test]
+    fn mcloud_colours_a_page_after_its_most_colourful_hue() {
+        let red =
+            std::iter::repeat_n([200, 30, 30], 600).chain(std::iter::repeat_n([20, 20, 20], 424));
+        assert_eq!(super::artwork_colour_of(red), [200, 30, 30]);
+        let grey = std::iter::repeat_n([120, 120, 120], 1000)
+            .chain(std::iter::repeat_n([200, 160, 40], 24));
+        assert_eq!(super::artwork_colour_of(grey), [122, 121, 118]);
+    }
+
+    /// A sheet takes the picture's most common colour.
+    #[test]
+    fn the_most_common_colour_wins() {
+        let pixels = std::iter::repeat_n([10, 200, 10], 3)
+            .chain(std::iter::repeat_n([100, 100, 100], 4))
+            .chain([[101, 101, 101]]);
+        assert_eq!(super::common_colour_of(pixels), [100, 100, 100]);
+    }
+
     use super::*;
     use std::time::Duration;
 

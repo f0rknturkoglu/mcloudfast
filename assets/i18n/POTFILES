@@ -41,3 +41,5 @@ src/ui/mcloud/pages.rs
 src/ui/mcloud/artist.rs
 src/ui/mcloud/topbar.rs
 src/ui/browse.rs
+src/ui/mcloud/library.rs
+src/ui/mcloud/search.rs

@@ -30,11 +30,87 @@ const SONG_COLUMN: f32 = 310.0;
 const SONG_ROWS: usize = 3;
 const LATEST_ART: f32 = 150.0;
 const WHITE_60: Color32 = Color32::from_rgba_premultiplied(153, 153, 153, 153);
+const NAME: f32 = 40.0;
+const NAME_COLOR: Color32 = Color32::from_rgb(0xe4, 0xe4, 0xe4);
+const PLAY: f32 = 72.0;
+const PLAY_ICON: f32 = 35.0;
+const SIDE_BUTTON: f32 = 48.0;
 
-/// The colours the page takes from the artist: the top of the window, and
-/// what it deepens into further down.
-pub(in crate::ui) fn tint(top: Color32, window: Color32) -> (Color32, Color32) {
-    (top, top.lerp_to_gamma(window, 0.65))
+/// The colours the artist page takes from its picture, as mcloud's
+/// `setTint` does: the picture's hue at 38% lightness across the top 40% of
+/// the window, deepening toward 14% lightness 100% further down, so the
+/// window's bottom is 60% of the way there. A grey picture keeps a grey
+/// page; until the colour is read, a neutral grey stands in.
+pub(in crate::ui) fn page_colours(app: &mut App, id: &str) -> (Color32, Color32) {
+    let artist = app
+        .artist_pages
+        .get(id)
+        .and_then(|page| page.artist.get())
+        .or_else(|| app.known_artist(id));
+    let url = artist.and_then(|artist| {
+        app.artist_headers
+            .get(&artist.uri)
+            .cloned()
+            .or_else(|| pick_image(&artist.images, 64).map(str::to_string))
+    });
+    match app.artwork_colours(url.as_deref()) {
+        Some(colours) => {
+            let (top, bottom) = tint(colours.page);
+            (top, top.lerp_to_gamma(bottom, 0.6))
+        }
+        None => (
+            Color32::from_rgb(0x3a, 0x3a, 0x3a),
+            Color32::from_rgb(0x3a, 0x3a, 0x3a).lerp_to_gamma(app.palette.window, 0.6),
+        ),
+    }
+}
+
+/// mcloud's top and deep colours for a picture's colour.
+fn tint(rgb: [u8; 3]) -> (Color32, Color32) {
+    let [r, g, b] = rgb.map(|channel| f32::from(channel) / 255.0);
+    let (max, min) = (r.max(g).max(b), r.min(g).min(b));
+    let lightness = (max + min) / 2.0;
+    let (hue, saturation) = if max == min {
+        (0.0, 0.0)
+    } else {
+        let d = max - min;
+        let saturation = if lightness > 0.5 {
+            d / (2.0 - max - min)
+        } else {
+            d / (max + min)
+        };
+        let hue = if max == r {
+            (g - b) / d + if g < b { 6.0 } else { 0.0 }
+        } else if max == g {
+            (b - r) / d + 2.0
+        } else {
+            (r - g) / d + 4.0
+        };
+        (hue * 60.0, saturation)
+    };
+    // Raising a grey's saturation would turn hue 0 into red.
+    let saturation = if saturation < 0.1 {
+        saturation
+    } else {
+        saturation.clamp(0.35, 0.85)
+    };
+    // CSS rounds both to whole numbers.
+    let hue = hue.round();
+    let saturation = (saturation * 100.0).round() / 100.0;
+    (
+        hsl(hue, saturation, 0.38),
+        hsl(hue, (saturation * 80.0).round() / 100.0, 0.14),
+    )
+}
+
+fn hsl(hue: f32, saturation: f32, lightness: f32) -> Color32 {
+    let a = saturation * lightness.min(1.0 - lightness);
+    let channel = |n: f32| {
+        let k = (n + hue / 30.0) % 12.0;
+        let value = lightness - a * (k - 3.0).min(9.0 - k).clamp(-1.0, 1.0);
+        (value * 255.0).round() as u8
+    };
+    Color32::from_rgb(channel(0.0), channel(8.0), channel(4.0))
 }
 
 pub(in crate::ui) fn loaded(
@@ -47,6 +123,7 @@ pub(in crate::ui) fn loaded(
     // The header picture arrives with the play counts.
     app.request_play_counts(&artist.uri);
     hero(app, ui, artist);
+    about_sheet(app, ui.ctx(), artist);
     ui.add_space(10.0);
 
     let latest = latest_release(page);
@@ -160,7 +237,7 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
     let width = full.width();
     let header = app.artist_headers.get(&artist.uri).cloned();
     let height = if header.is_some() {
-        (width * 0.41 + 64.0).max(380.0)
+        (width * 0.41 + 68.0).max(380.0)
     } else {
         (ui.ctx().content_rect().height() * 0.62).clamp(380.0, 620.0)
     };
@@ -199,34 +276,34 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
         );
     }
 
-    // The name, centred over the hero's bottom, and the buttons under it.
-    let name_size = (width * 0.03).clamp(30.0, 46.0);
+    // The name, centred over the hero's bottom, and the buttons under it,
+    // measured on Apple Music's header: the name a fixed 40pt, ⓘ 48, Play
+    // 72 and Follow 48 apart by 24 on one centre line, Play under the name.
     let name = widgets::ellipsized(
         ui,
         &artist.name,
-        theme::bold(name_size),
-        Color32::WHITE,
+        theme::bold(NAME),
+        NAME_COLOR,
         width - 2.0 * INSET,
         2,
     );
-    let actions_y = rect.bottom() - 26.0 - 32.0;
+    let actions_y = rect.bottom() - 26.0 - PLAY / 2.0;
+    let name_bottom = actions_y - PLAY / 2.0 - 15.5;
     let name_pos = pos2(
         rect.center().x - name.size().x / 2.0,
-        actions_y - 32.0 - 6.0 - 12.0 - name.size().y,
+        name_bottom - name.size().y,
     );
     ui.painter().galley(
         name_pos + vec2(0.0, 1.0),
         name.clone(),
         Color32::from_black_alpha(50),
     );
-    ui.painter().galley(name_pos, name, Color32::WHITE);
+    ui.painter().galley(name_pos, name, NAME_COLOR);
 
-    // Play is a white disc with the triangle in the artist's colour; the
-    // star follows beside it.
-    let top_tint = app
-        .tint_for(pick_image(&artist.images, 64))
-        .unwrap_or(palette.surface);
-    let play = Rect::from_center_size(pos2(rect.center().x, actions_y), Vec2::splat(64.0));
+    // Play is a white disc with the triangle in the artist's colour.
+    let artist_id = artist.id.clone();
+    let (top_tint, _) = page_colours(app, &artist_id);
+    let play = Rect::from_center_size(pos2(rect.center().x, actions_y), Vec2::splat(PLAY));
     let context_here = app.playing_context_uri().as_deref() == Some(artist.uri.as_str());
     let playing_here = context_here && app.believed_playing();
     let response = ui.interact(play, Id::new("mcloud-artist-play"), Sense::click());
@@ -237,7 +314,7 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
             spread: 0,
             color: Color32::from_black_alpha(51),
         }
-        .as_shape(play, CornerRadius::same(32)),
+        .as_shape(play, CornerRadius::same((PLAY / 2.0) as u8)),
     );
     let scale = if response.is_pointer_button_down_on() {
         0.94
@@ -245,7 +322,7 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
         1.0
     };
     ui.painter()
-        .circle_filled(play.center(), 32.0 * scale, Color32::WHITE);
+        .circle_filled(play.center(), PLAY / 2.0 * scale, Color32::WHITE);
     let (icon, label) = if playing_here {
         (Icon::McloudPause, gettext(locale, "Pause"))
     } else {
@@ -255,8 +332,8 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
     theme::paint_icon(
         ui,
         icon,
-        play.translate(vec2(31.0 / 18.0, 0.0)),
-        31.0 * scale,
+        play.translate(vec2(PLAY_ICON / 18.0, 0.0)),
+        PLAY_ICON * scale,
         top_tint,
     );
     response
@@ -272,23 +349,46 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
             });
         }
     }
+
+    // ⓘ opens the About sheet; it waits for Spotify's overview.
+    let about = app.artist_about.contains_key(&artist.uri);
+    let info = Rect::from_center_size(
+        pos2(play.left() - 24.0 - SIDE_BUTTON / 2.0, actions_y),
+        Vec2::splat(SIDE_BUTTON),
+    );
+    let label = gettext(locale, "About");
+    let response = side_button(
+        ui,
+        info,
+        "mcloud-artist-info",
+        Icon::McloudInfo,
+        20.0,
+        about,
+    );
+    response
+        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, about, label.as_ref()));
+    if about && response.on_hover_text(label.as_ref()).clicked() {
+        open_about(ui.ctx(), &artist.uri);
+    }
+
     let following = app.is_saved(&artist.uri).unwrap_or(false);
     let follow = Rect::from_center_size(
-        pos2(play.right() + 22.0 + 20.0, actions_y),
-        Vec2::splat(40.0),
+        pos2(play.right() + 24.0 + SIDE_BUTTON / 2.0, actions_y),
+        Vec2::splat(SIDE_BUTTON),
     );
     let label = if following {
         pgettext(locale, "artist", "Following")
     } else {
         pgettext(locale, "artist", "Follow")
     };
-    let response = ui.interact(follow, Id::new("mcloud-artist-follow"), Sense::click());
-    ui.painter().circle_filled(
-        follow.center(),
-        20.0,
-        Color32::from_white_alpha(if response.hovered() { 56 } else { 38 }),
+    let response = side_button(
+        ui,
+        follow,
+        "mcloud-artist-follow",
+        Icon::McloudStar,
+        20.5,
+        true,
     );
-    theme::paint_icon(ui, Icon::McloudStar, follow, 17.0, Color32::WHITE);
     response.widget_info(|| {
         egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, following, label.as_ref())
     });
@@ -297,6 +397,372 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
     }
 
     floating_buttons(app, ui, full, artist, top_tint);
+}
+
+/// ⓘ and Follow: a faint glass disc with a hairline inside its edge.
+fn side_button(
+    ui: &mut egui::Ui,
+    rect: Rect,
+    id: &str,
+    icon: Icon,
+    size: f32,
+    enabled: bool,
+) -> egui::Response {
+    let response = ui.interact(rect, Id::new(id), Sense::click());
+    let painter = ui.painter();
+    let fill = if enabled && response.hovered() {
+        36
+    } else {
+        20
+    };
+    painter.circle_filled(
+        rect.center(),
+        rect.width() / 2.0,
+        Color32::from_white_alpha(fill),
+    );
+    painter.circle_stroke(
+        rect.center(),
+        rect.width() / 2.0 - 0.5,
+        egui::Stroke::new(1.0, Color32::from_white_alpha(13)),
+    );
+    let color = if enabled {
+        Color32::WHITE
+    } else {
+        Color32::from_white_alpha(110)
+    };
+    theme::paint_icon(ui, icon, rect, size, color);
+    theme::focus_ring(ui, &response);
+    response
+}
+
+const ABOUT_ID: &str = "mcloud-artist-about";
+/// The About card's widest, as Apple Music's (W below).
+const ABOUT_WIDTH: f32 = 704.0;
+const ABOUT_RADIUS: f32 = 16.0;
+
+fn open_about(ctx: &egui::Context, uri: &str) {
+    ctx.data_mut(|data| data.insert_temp(Id::new(ABOUT_ID), uri.to_string()));
+}
+
+fn close_about(ctx: &egui::Context) {
+    ctx.data_mut(|data| data.remove::<String>(Id::new(ABOUT_ID)));
+}
+
+/// The ⓘ sheet, after Apple Music's About sheet as mcloud measures it: a
+/// card at most 704pt wide, 52pt below the window's top and 40pt above its
+/// bottom, over a dim. Its square photo fades from 0.495W into the card's
+/// colour, the photo's own, held dark enough for white text. Scrolling, the
+/// photo drifts up at 0.4x and fades out between 0.257W and 0.541W.
+fn about_sheet(app: &mut App, ctx: &egui::Context, artist: &Artist) {
+    let open = ctx.data(|data| data.get_temp::<String>(Id::new(ABOUT_ID)));
+    if open.as_deref() != Some(artist.uri.as_str()) {
+        return;
+    }
+    let Some(about) = app.artist_about.get(&artist.uri).cloned() else {
+        close_about(ctx);
+        return;
+    };
+    let locale = app.locale;
+    let screen = ctx.content_rect();
+    let width = (screen.width() - 32.0).min(ABOUT_WIDTH);
+    let card = Rect::from_min_max(
+        pos2(screen.center().x - width / 2.0, screen.top() + 52.0),
+        pos2(
+            screen.center().x + width / 2.0,
+            (screen.bottom() - 40.0).max(screen.top() + 252.0),
+        ),
+    );
+    let background = about
+        .photo
+        .as_deref()
+        .and_then(|url| app.artwork_colours(Some(url)))
+        .map(|colours| {
+            let [r, g, b] = colours.common;
+            sheet_colour(Color32::from_rgb(r, g, b))
+        })
+        .unwrap_or(Color32::from_rgb(0x3a, 0x3a, 0x3a));
+    // macOS draws the labels, chips and biography as vibrant text, added
+    // onto the card's colour.
+    let lighter = |amount: u8| {
+        Color32::from_rgb(
+            background.r().saturating_add(amount),
+            background.g().saturating_add(amount),
+            background.b().saturating_add(amount),
+        )
+    };
+    let mut close = ctx.input(|input| input.key_pressed(egui::Key::Escape));
+
+    egui::Area::new(Id::new("mcloud-artist-about-sheet"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(screen.min)
+        .show(ctx, |ui| {
+            ui.set_min_size(screen.size());
+            let dim = ui.interact(screen, Id::new("mcloud-artist-about-dim"), Sense::click());
+            if dim.clicked()
+                && dim
+                    .interact_pointer_pos()
+                    .is_some_and(|pos| !card.contains(pos))
+            {
+                close = true;
+            }
+            ui.painter()
+                .rect_filled(screen, 0.0, Color32::from_black_alpha(125));
+            ui.painter().add(
+                egui::epaint::Shadow {
+                    offset: [0, 22],
+                    blur: 70,
+                    spread: 0,
+                    color: Color32::from_black_alpha(140),
+                }
+                .as_shape(card, CornerRadius::same(ABOUT_RADIUS as u8)),
+            );
+            ui.painter()
+                .rect_filled(card, CornerRadius::same(ABOUT_RADIUS as u8), background);
+            // The card swallows clicks, so only the dim closes it.
+            ui.interact(card, Id::new("mcloud-artist-about-card"), Sense::click());
+
+            let photo_slot = ui.painter().add(egui::Shape::Noop);
+            let mut card_ui = ui.new_child(egui::UiBuilder::new().max_rect(card));
+            card_ui.set_clip_rect(card);
+            let scroll = egui::ScrollArea::vertical()
+                .id_salt(("mcloud-artist-about-scroll", &artist.uri))
+                .auto_shrink([false, false])
+                .show(&mut card_ui, |ui| {
+                    let top = if about.photo.is_some() {
+                        width * 0.6906
+                    } else {
+                        64.0
+                    };
+                    ui.add_space(top);
+                    egui::Frame::new()
+                        .inner_margin(egui::Margin {
+                            left: 20,
+                            right: 20,
+                            top: 0,
+                            bottom: 40,
+                        })
+                        .show(ui, |ui| {
+                            ui.set_width(width - 40.0);
+                            about_body(ui, locale, artist, &about, background, &lighter);
+                        });
+                });
+            if let Some(url) = about.photo.as_deref()
+                && let Some(texture) = picture(app, ui, url, Vec2::splat(width))
+            {
+                let mesh = about_photo(texture, card, scroll.state.offset.y);
+                ui.painter().set(photo_slot, egui::Shape::mesh(mesh));
+            }
+
+            let close_rect = Rect::from_min_size(card.min + vec2(15.5, 16.0), Vec2::splat(30.0));
+            let label = gettext(locale, "Close");
+            let response = ui.interact(
+                close_rect,
+                Id::new("mcloud-artist-about-close"),
+                Sense::click(),
+            );
+            let fill = if response.hovered() { 150 } else { 121 };
+            ui.painter().circle_filled(
+                close_rect.center(),
+                15.0,
+                Color32::from_rgba_unmultiplied(120, 120, 120, fill),
+            );
+            theme::paint_icon(ui, Icon::McloudClose, close_rect, 20.0, Color32::WHITE);
+            response.widget_info(|| {
+                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label.as_ref())
+            });
+            theme::focus_ring(ui, &response);
+            if response.on_hover_text(label.as_ref()).clicked() {
+                close = true;
+            }
+        });
+    if close {
+        close_about(ctx);
+    }
+}
+
+/// The sheet's text: the name, the counts and cities, and the biography.
+fn about_body(
+    ui: &mut egui::Ui,
+    locale: crate::i18n::Locale,
+    artist: &Artist,
+    about: &crate::session_reads::ArtistAbout,
+    background: Color32,
+    lighter: &dyn Fn(u8) -> Color32,
+) {
+    let width = ui.available_width();
+    ui.spacing_mut().item_spacing.y = 0.0;
+    let name = widgets::ellipsized(ui, &artist.name, theme::bold(26.0), NAME_COLOR, width, 3);
+    let (rect, _) = ui.allocate_exact_size(vec2(width, name.size().y), Sense::hover());
+    ui.painter().galley(rect.min, name, NAME_COLOR);
+
+    let label_color = lighter(0x48);
+    let fact = |ui: &mut egui::Ui, label: &str, value: &str| {
+        ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing.y = 1.0;
+            theme::text(ui, label, theme::semibold(11.0), label_color);
+            theme::text(ui, value, theme::semibold(14.0), NAME_COLOR);
+        });
+    };
+    let counts: Vec<(String, String)> = [
+        (
+            gettext(locale, "Monthly listeners"),
+            about.monthly_listeners,
+        ),
+        (gettext(locale, "Followers"), about.followers),
+    ]
+    .into_iter()
+    .filter_map(|(label, count)| Some((label.to_string(), crate::util::format_count(count?))))
+    .collect();
+    if !counts.is_empty() {
+        ui.add_space(15.0);
+        let column = (width - 20.0) / 2.0;
+        ui.horizontal_top(|ui| {
+            ui.spacing_mut().item_spacing.x = 20.0;
+            for (label, value) in &counts {
+                ui.allocate_ui_with_layout(
+                    vec2(column, 0.0),
+                    Layout::top_down(egui::Align::Min),
+                    |ui| fact(ui, label, value),
+                );
+            }
+        });
+    }
+    if !about.top_cities.is_empty() {
+        ui.add_space(if counts.is_empty() { 15.0 } else { 11.5 });
+        theme::text(
+            ui,
+            gettext(locale, "Top cities").as_ref(),
+            theme::semibold(11.0),
+            label_color,
+        );
+        ui.add_space(6.0);
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
+            for city in &about.top_cities {
+                let galley =
+                    ui.painter()
+                        .layout_no_wrap(city.clone(), theme::semibold(12.0), NAME_COLOR);
+                let size = vec2(galley.size().x + 24.0, 25.0);
+                let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
+                ui.painter().rect(
+                    rect,
+                    CornerRadius::same(13),
+                    lighter(0x14),
+                    egui::Stroke::new(1.0, lighter(0x1a)),
+                    egui::StrokeKind::Inside,
+                );
+                ui.painter()
+                    .galley(rect.center() - galley.size() / 2.0, galley, NAME_COLOR);
+            }
+        });
+    }
+    if !about.biography.is_empty() {
+        ui.add_space(36.0);
+        theme::text(
+            ui,
+            gettext(locale, "About").as_ref(),
+            theme::bold(16.0),
+            NAME_COLOR,
+        );
+        ui.add_space(12.0);
+        let mut job = egui::text::LayoutJob::single_section(
+            about.biography.clone(),
+            egui::TextFormat {
+                font_id: theme::regular(13.0),
+                color: lighter(0xb0),
+                line_height: Some(18.0),
+                ..Default::default()
+            },
+        );
+        job.wrap.max_width = width;
+        let galley = ui.painter().layout_job(job);
+        let (rect, _) = ui.allocate_exact_size(vec2(width, galley.size().y), Sense::hover());
+        ui.painter().galley(rect.min, galley, background);
+    }
+}
+
+/// The card's colour from the photo's: no brighter than 42%, so white
+/// text always reads on it.
+fn sheet_colour(colour: Color32) -> Color32 {
+    let max = colour.r().max(colour.g()).max(colour.b());
+    if max <= 107 {
+        return colour;
+    }
+    let scale = 107.0 / f32::from(max);
+    let channel = |value: u8| (f32::from(value) * scale).round() as u8;
+    Color32::from_rgb(
+        channel(colour.r()),
+        channel(colour.g()),
+        channel(colour.b()),
+    )
+}
+
+/// The sheet's photo as a mesh inside the card's rounded corners: square
+/// and W wide, reflected below itself, solid to 0.495W and fading out by
+/// 1.295W; it drifts up at 0.4x the scroll and fades out between 0.257W and
+/// 0.541W of it.
+fn about_photo(texture: egui::load::SizedTexture, card: Rect, scrolled: f32) -> egui::Mesh {
+    let width = card.width();
+    let mut mesh = egui::Mesh::with_texture(texture.id);
+    let opacity = 1.0 - ((scrolled - 0.257 * width) / (0.284 * width)).clamp(0.0, 1.0);
+    if opacity <= 0.0 {
+        return mesh;
+    }
+    let uv = crop(texture.size, Vec2::splat(width), 0.5);
+    let top = card.top() - 0.4 * scrolled.min(1000.0);
+    let end = top + 1.295 * width;
+    let first = card.top();
+    let last = card.bottom().min(end);
+    if last <= first {
+        return mesh;
+    }
+    // Where the fade, the reflection and the corners bend the strip.
+    let mut rows: Vec<f32> = vec![first, last, top + 0.495 * width, top + width];
+    for step in 0..=8 {
+        let t = step as f32 / 8.0 * ABOUT_RADIUS;
+        rows.push(card.top() + t);
+        rows.push(card.bottom() - t);
+    }
+    rows.retain(|y| (first..=last).contains(y));
+    rows.sort_by(f32::total_cmp);
+    rows.dedup_by(|a, b| (*a - *b).abs() < 0.01);
+    let inset = |y: f32| {
+        let from_edge = (y - card.top()).min(card.bottom() - y);
+        if from_edge >= ABOUT_RADIUS {
+            return 0.0;
+        }
+        let dy = ABOUT_RADIUS - from_edge.max(0.0);
+        ABOUT_RADIUS - (ABOUT_RADIUS * ABOUT_RADIUS - dy * dy).max(0.0).sqrt()
+    };
+    for (index, y) in rows.iter().enumerate() {
+        let offset = y - top;
+        // Below the photo its reflection: the row as far above its bottom.
+        let photo_y = if offset > width {
+            2.0 * width - offset
+        } else {
+            offset
+        };
+        let v = uv.top() + photo_y / width * uv.height();
+        let fade = 1.0 - ((offset - 0.495 * width) / (0.8 * width)).clamp(0.0, 1.0);
+        let colour = Color32::WHITE.gamma_multiply(fade * opacity);
+        let x = inset(*y);
+        for (side, u) in [
+            (card.left() + x, uv.left() + x / width * uv.width()),
+            (card.right() - x, uv.right() - x / width * uv.width()),
+        ] {
+            mesh.vertices.push(egui::epaint::Vertex {
+                pos: pos2(side, *y),
+                uv: pos2(u, v),
+                color: colour,
+            });
+        }
+        if index > 0 {
+            let i = index as u32 * 2;
+            mesh.add_triangle(i - 2, i - 1, i);
+            mesh.add_triangle(i - 1, i + 1, i);
+        }
+    }
+    mesh
 }
 
 /// The header picture: 53% of the width in height, fading out from 38% of
@@ -346,8 +812,9 @@ fn header_picture(app: &App, ui: &egui::Ui, url: &str, rect: Rect) {
     painter.add(egui::Shape::mesh(mesh));
 }
 
-/// Back on the left and "…" on the right, floating over the hero in a
-/// glass of the artist's colour, where mcloud hides the toolbar.
+/// Back on the left, and Share and "…" sharing one capsule on the right,
+/// floating over the hero in a glass of the artist's colour, where mcloud
+/// hides the toolbar.
 fn floating_buttons(app: &mut App, ui: &mut egui::Ui, full: Rect, artist: &Artist, tint: Color32) {
     let locale = app.locale;
     let fill = tint
@@ -355,40 +822,51 @@ fn floating_buttons(app: &mut App, ui: &mut egui::Ui, full: Rect, artist: &Artis
         .gamma_multiply(0.85);
     let top = full.top() + 12.0;
     let back = Rect::from_min_size(pos2(full.left() + 12.0, top), Vec2::splat(36.0));
-    let more = Rect::from_min_size(pos2(full.right() - 14.0 - 36.0, top), Vec2::splat(36.0));
-    for (rect, is_back, label) in [
-        (back, true, gettext(locale, "Back")),
-        (more, false, gettext(locale, "More")),
+    let actions = Rect::from_min_size(pos2(full.right() - 14.0 - 72.0, top), vec2(72.0, 36.0));
+    ui.painter().circle_filled(back.center(), 18.0, fill);
+    ui.painter()
+        .rect_filled(actions, CornerRadius::same(18), fill);
+    let share = Rect::from_min_size(actions.min, Vec2::splat(36.0));
+    let more = Rect::from_min_size(pos2(actions.center().x, actions.top()), Vec2::splat(36.0));
+    for (rect, icon, label) in [
+        (back, Icon::McloudLeft, gettext(locale, "Back")),
+        (share, Icon::McloudShare, gettext(locale, "Copy link")),
+        (more, Icon::McloudMore, gettext(locale, "More")),
     ] {
         let response = ui.interact(
             rect,
-            Id::new(("mcloud-artist-float", is_back)),
+            Id::new(("mcloud-artist-float", label.as_ref())),
             Sense::click(),
         );
-        ui.painter().circle_filled(rect.center(), 18.0, fill);
         if response.hovered() {
             ui.painter()
                 .circle_filled(rect.center(), 16.0, Color32::from_white_alpha(31));
         }
-        let icon = if is_back {
-            Icon::McloudLeft
-        } else {
-            Icon::McloudMore
-        };
         theme::paint_icon(ui, icon, rect, 18.0, Color32::WHITE);
         response.widget_info(|| {
             egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label.as_ref())
         });
+        theme::focus_ring(ui, &response);
         let response = response.on_hover_text(label.as_ref());
-        if is_back {
-            if response.clicked() && app.can_go_back() {
-                app.actions.push(Action::Back);
+        match icon {
+            Icon::McloudLeft => {
+                if response.clicked() && app.can_go_back() {
+                    app.actions.push(Action::Back);
+                }
             }
-        } else {
-            egui::Popup::menu(&response)
-                .frame(widgets::menu_frame(&app.palette))
-                .align(egui::RectAlign::BOTTOM_END)
-                .show(|ui| widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None));
+            Icon::McloudShare => {
+                if response.clicked() {
+                    app.actions.push(Action::CopyLink(artist.uri.clone()));
+                }
+            }
+            _ => {
+                egui::Popup::menu(&response)
+                    .frame(widgets::menu_frame(&app.palette))
+                    .align(egui::RectAlign::BOTTOM_END)
+                    .show(|ui| {
+                        widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None)
+                    });
+            }
         }
     }
 }
@@ -761,6 +1239,49 @@ fn song_row(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The sheet's colour keeps a dark photo's and darkens a bright one to
+    /// 42% at most, keeping its hue.
+    #[test]
+    fn the_about_sheet_stays_dark_enough_for_white_text() {
+        let dark = Color32::from_rgb(40, 60, 80);
+        assert_eq!(super::sheet_colour(dark), dark);
+        let bright = super::sheet_colour(Color32::from_rgb(214, 107, 0));
+        assert_eq!(bright, Color32::from_rgb(107, 54, 0));
+    }
+
+    /// The photo fills the card's width and is gone once scrolled 0.541W.
+    #[test]
+    fn the_about_photo_fades_out_as_the_sheet_scrolls() {
+        let texture = egui::load::SizedTexture::new(egui::TextureId::default(), vec2(640.0, 640.0));
+        let card = Rect::from_min_size(pos2(0.0, 52.0), vec2(704.0, 800.0));
+        let mesh = super::about_photo(texture, card, 0.0);
+        let left = mesh
+            .vertices
+            .iter()
+            .map(|v| v.pos.x)
+            .fold(f32::MAX, f32::min);
+        let right = mesh
+            .vertices
+            .iter()
+            .map(|v| v.pos.x)
+            .fold(f32::MIN, f32::max);
+        assert_eq!((left, right), (0.0, 704.0));
+        // The top corners are rounded.
+        assert!(mesh.vertices[0].pos.x > 0.0);
+        assert!(super::about_photo(texture, card, 0.541 * 704.0 + 1.0).is_empty());
+    }
+
+    /// mcloud's tint: the hue at 38% and 14% lightness, its saturation held
+    /// between 35% and 85%, and a grey kept grey.
+    #[test]
+    fn the_page_takes_mcloud_tint_of_the_picture() {
+        let (top, deep) = super::tint([200, 30, 30]);
+        assert_eq!(top, Color32::from_rgb(169, 25, 25));
+        assert_eq!(deep, Color32::from_rgb(57, 15, 15));
+        let (top, _) = super::tint([120, 121, 118]);
+        assert_eq!(top, Color32::from_rgb(97, 98, 96));
+    }
 
     #[test]
     fn the_banner_crops_around_its_focus() {

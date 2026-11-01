@@ -140,26 +140,42 @@ fn paint_sidebar_glow(
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let tint = super::super::page_tint(app).or_else(|| app.now_playing_tint());
     let under = tint.unwrap_or(app.palette.window);
+    // The artist page tints the whole window (mcloud's `am-tinted`): the
+    // sidebar is its colour at 34% in #161616, 85% over the page, and has
+    // no glow.
+    let page = app.page().clone();
+    let (fill, tint) = match &page {
+        Page::Artist(id) => {
+            let (top, _) = super::artist::page_colours(app, id);
+            let mixed = top.lerp_to_gamma(Color32::from_rgb(0x16, 0x16, 0x16), 0.66);
+            (mixed.lerp_to_gamma(top, 0.15), None)
+        }
+        _ => (material(under), tint),
+    };
     let beside = if app.show_queue_panel || app.show_lyrics_panel || app.show_friends_panel {
         theme::SIDE_PANEL_MIN_WIDTH
     } else {
         0.0
     };
-    // The same panel and width as Spotifast's sidebar, so switching looks
-    // keeps the width chosen and the room the page needs.
+    // Spotifast's sidebar panel, at mcloud's width: the one dragged to,
+    // else 15.5% of the window, 220 to 300pt (user.css `--am-side`).
+    let chosen = app
+        .settings
+        .mcloud_sidebar_width
+        .unwrap_or_else(|| default_width(ui.ctx().content_rect().width()));
     let fit = super::super::yielding_panel(
         ui.ctx(),
         "sidebar",
         super::super::SIDEBAR_MIN_WIDTH..=600.0,
-        app.settings.sidebar_width,
+        chosen,
         ui.available_width() - super::super::topbar::least_width(ui.ctx()) - beside,
     );
     let response = egui::Panel::left("sidebar")
         .resizable(true)
-        .default_size(app.settings.sidebar_width)
+        .default_size(chosen)
         .size_range(fit.range.clone())
         .show_separator_line(false)
-        .frame(Frame::new().fill(material(under)).inner_margin(Margin {
+        .frame(Frame::new().fill(fill).inner_margin(Margin {
             left: SIDE_PADDING as i8,
             right: SIDE_PADDING as i8,
             top: TOP as i8,
@@ -194,13 +210,17 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 account_row(app, ui);
             });
         });
+    // Only a drag sets a width of its own: the default follows the window.
     let width = response.response.rect.width();
-    if (width - app.settings.sidebar_width).abs() > 1.0
-        && super::super::panel_width_chosen(ui.ctx(), "sidebar", &fit)
-    {
-        app.settings.sidebar_width = width;
+    if (width - chosen).abs() > 1.0 && super::super::panel_dragged(ui.ctx(), "sidebar") {
+        app.settings.mcloud_sidebar_width = Some(width);
         app.actions.push(Action::SettingsChanged);
     }
+}
+
+/// mcloud's sidebar width for a window: `clamp(220px, 15.5vw, 300px)`.
+fn default_width(window: f32) -> f32 {
+    (window * 0.155).clamp(220.0, 300.0)
 }
 
 fn contents(app: &mut App, ui: &mut egui::Ui) {
@@ -687,6 +707,14 @@ mod tests {
             "uri": uri,
         }))
         .unwrap()
+    }
+
+    /// Like mcloud's, the sidebar is 15.5% of the window, 220 to 300pt.
+    #[test]
+    fn the_sidebar_follows_the_window_between_220_and_300() {
+        assert_eq!(default_width(1000.0), 220.0);
+        assert!((default_width(1600.0) - 248.0).abs() < 0.01);
+        assert_eq!(default_width(2560.0), 300.0);
     }
 
     #[test]

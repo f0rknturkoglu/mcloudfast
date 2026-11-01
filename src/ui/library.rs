@@ -44,6 +44,54 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
             gettext(locale, "Saved episodes appear here."),
         ),
     };
+    if crate::ui::mcloud::active(ui.ctx())
+        && let Some(entries) = mcloud_entries(app, &page)
+    {
+        super::mcloud::library::show(app, ui, &page, &title, &entries);
+        let (loading, error, can_load, icon) = match page {
+            Page::Artists => {
+                let list = &app.library.artists;
+                (
+                    list.loading,
+                    list.error.clone(),
+                    list.can_load_more(),
+                    Icon::Users,
+                )
+            }
+            Page::AllPlaylists => (
+                app.library.playlists_loading_since.is_some(),
+                None,
+                false,
+                Icon::ListMusic,
+            ),
+            _ => {
+                let list = &app.library.albums;
+                let loading = list.loading
+                    || (page == Page::RecentlyAdded
+                        && app.library.playlists_loading_since.is_some());
+                (
+                    list.loading || loading,
+                    list.error.clone(),
+                    list.can_load_more(),
+                    Icon::Disc,
+                )
+            }
+        };
+        let empty = entries.is_empty() && !loading;
+        footer(
+            app,
+            ui,
+            page,
+            loading,
+            error,
+            can_load,
+            empty,
+            &empty_title,
+            &empty_body,
+            icon,
+        );
+        return;
+    }
     theme::text(ui, title.as_ref(), theme::bold(28.0), palette.text);
     ui.add_space(14.0);
     match page {
@@ -436,4 +484,70 @@ struct RecentItem {
     image: Option<String>,
     page: Page,
     added_at: Option<String>,
+}
+
+/// The covers of mcloud's library views, in Spotify's library order:
+/// Recently Added mixes albums and playlists, newest first.
+fn mcloud_entries(app: &App, page: &Page) -> Option<Vec<super::mcloud::library::Entry>> {
+    use super::mcloud::library::Entry;
+    let art = app.art_px(160.0);
+    let album = |saved: &crate::api::models::SavedAlbum| {
+        let album = &saved.album;
+        Entry {
+            uri: album.uri.clone(),
+            name: album.name.clone(),
+            subtitle: join_names(album.artists.iter().map(|artist| artist.name.as_str())),
+            image: pick_image(&album.images, art).map(str::to_string),
+            page: Page::Album(album.id.clone()),
+            round: false,
+        }
+    };
+    let playlist = |playlist: &crate::api::models::Playlist| Entry {
+        uri: playlist.uri.clone(),
+        name: playlist.name.clone(),
+        subtitle: playlist.owner_name().to_string(),
+        image: pick_image(&playlist.images, art).map(str::to_string),
+        page: Page::Playlist(playlist.id.clone()),
+        round: false,
+    };
+    let playlists = app
+        .library
+        .playlists
+        .get()
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    Some(match page {
+        Page::Albums => app.library.albums.items.iter().map(album).collect(),
+        Page::Artists => {
+            let label = gettext(app.locale, "Artist").into_owned();
+            app.library
+                .artists
+                .items
+                .iter()
+                .map(|artist| Entry {
+                    uri: artist.uri.clone(),
+                    name: artist.name.clone(),
+                    subtitle: label.clone(),
+                    image: pick_image(&artist.images, art).map(str::to_string),
+                    page: Page::Artist(artist.id.clone()),
+                    round: true,
+                })
+                .collect()
+        }
+        Page::AllPlaylists => playlists.iter().map(playlist).collect(),
+        Page::RecentlyAdded => {
+            let mut dated: Vec<(Option<&str>, Entry)> = app
+                .library
+                .albums
+                .items
+                .iter()
+                .map(|saved| (saved.added_at.as_deref(), album(saved)))
+                .chain(playlists.iter().map(|item| (None, playlist(item))))
+                .collect();
+            // Newest first; playlists, which carry no date, after.
+            dated.sort_by(|a, b| b.0.cmp(&a.0));
+            dated.into_iter().map(|(_, entry)| entry).collect()
+        }
+        _ => return None,
+    })
 }

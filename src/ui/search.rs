@@ -13,11 +13,20 @@ use crate::theme::{self, Icon};
 use super::widgets::{self, TrackRow};
 
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
-    let palette = app.palette;
     if app.search.committed.is_empty() && app.search.typed_at.is_none() {
         recent(app, ui);
         return;
     }
+    // Under mcloud, Spotify's own search column, centred.
+    if super::mcloud::active(ui.ctx()) {
+        super::mcloud::search::column(ui, |ui| results_page(app, ui));
+    } else {
+        results_page(app, ui);
+    }
+}
+
+fn results_page(app: &mut App, ui: &mut egui::Ui) {
+    let palette = app.palette;
     ui.add_space(4.0);
     let labels: Vec<_> = SearchFilter::ALL
         .iter()
@@ -128,6 +137,15 @@ fn recent(app: &mut App, ui: &mut egui::Ui) {
 fn all(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
     let palette = app.palette;
     let locale = app.locale;
+    if super::mcloud::active(ui.ctx()) {
+        super::mcloud::search::top(app, ui, results);
+        ui.add_space(24.0);
+        shelf_artists(app, ui, results);
+        shelf_albums(app, ui, results);
+        shelf_playlists(app, ui, results);
+        shelf_shows(app, ui, results);
+        return;
+    }
     let query = app.search.committed.to_lowercase();
     let top_artist = results
         .artists

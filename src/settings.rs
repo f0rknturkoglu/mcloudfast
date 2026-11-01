@@ -315,6 +315,9 @@ pub struct Settings {
     pub interface: Interface,
     /// How mcloud's floating player draws its glass.
     pub mcloud_glass: GlassEffect,
+    /// mcloud's sidebar width once dragged; until then it follows the
+    /// window as mcloud's does. Spotifast's own keeps `sidebar_width`.
+    pub mcloud_sidebar_width: Option<f32>,
     /// The interface language; older files without it follow the system.
     pub language: LanguageChoice,
     /// Filename selected from the local themes directory.
@@ -526,6 +529,7 @@ impl Default for Settings {
             theme: ThemeChoice::System,
             interface: Interface::Spotifast,
             mcloud_glass: GlassEffect::Balanced,
+            mcloud_sidebar_width: None,
             language: LanguageChoice::System,
             custom_theme: None,
             custom_theme_cache: None,

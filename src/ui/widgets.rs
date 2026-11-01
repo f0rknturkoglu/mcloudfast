@@ -1988,8 +1988,12 @@ fn track_row_contents(
                     .max_rect(heart_rect)
                     .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
             );
+            // On Liked Songs every heart is filled; under mcloud, as in
+            // Spotify's own list, it shows only on the row under the pointer.
+            let liked_list = crate::ui::mcloud::active(ui.ctx())
+                && matches!(app.page(), crate::model::Page::LikedSongs);
             if !hovered
-                && saved != Some(true)
+                && (saved != Some(true) || liked_list)
                 && !child.memory(|memory| memory.has_focus(child.next_auto_id()))
             {
                 child.set_opacity(0.0);
@@ -3181,10 +3185,16 @@ pub fn chips<T: PartialEq + Copy>(
     current: T,
 ) -> Option<T> {
     let mut selected = None;
+    let mcloud = crate::ui::mcloud::active(ui.ctx());
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing.x = 8.0;
         for (value, label) in options {
-            if theme::soft_button(ui, palette, None, label, *value == current).clicked() {
+            let response = if mcloud {
+                crate::ui::mcloud::pages::chip(ui, label, *value == current)
+            } else {
+                theme::soft_button(ui, palette, None, label, *value == current)
+            };
+            if response.clicked() {
                 selected = Some(*value);
             }
         }
@@ -3301,18 +3311,29 @@ pub fn search_field(
             egui::StrokeKind::Inside,
         );
     }
-    let icon_rect =
-        Rect::from_center_size(pos2(rect.left() + 18.0, rect.center().y), Vec2::splat(16.0));
+    // mcloud's toolbar field (user.css): the magnifier in a 36pt box at the
+    // round end, its lens 2pt right of the box's centre, and the text 36pt
+    // in, just after the handle; Spotify's Browse takes the last 58pt.
+    let (icon_centre, icon_size, text_left) = if is_mcloud_topbar {
+        (
+            pos2(rect.left() + 18.0 + 3.1, rect.center().y + 1.08),
+            20.0,
+            36.0,
+        )
+    } else {
+        (pos2(rect.left() + 18.0, rect.center().y), 16.0, 34.0)
+    };
+    let icon_rect = Rect::from_center_size(icon_centre, Vec2::splat(icon_size));
     Icon::Search
-        .image(palette.secondary, 16.0)
+        .image(palette.secondary, icon_size)
         .paint_at(ui, icon_rect);
     let right_pad = if is_mcloud_topbar {
-        if text.is_empty() { 42.0 } else { 66.0 }
+        if text.is_empty() { 64.0 } else { 88.0 }
     } else {
         30.0
     };
     let field_rect = Rect::from_min_max(
-        pos2(rect.left() + 34.0, rect.top() + 1.0),
+        pos2(rect.left() + text_left, rect.top() + 1.0),
         pos2(rect.right() - right_pad, rect.bottom() - 1.0),
     );
     let mut child = ui.new_child(
@@ -3355,7 +3376,7 @@ pub fn search_field(
         // the child's top edge, dropping the glyph below the midline.
         let clear_size = 15.0;
         let clear_x = if is_mcloud_topbar {
-            rect.right() - 50.0
+            rect.right() - 72.0
         } else {
             rect.right() - 17.0
         };

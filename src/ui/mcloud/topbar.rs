@@ -17,7 +17,9 @@ const TOP: f32 = 12.0;
 const ROW: f32 = 50.0;
 const SIDE: f32 = 20.0;
 const BUTTON: f32 = 36.0;
-const SEARCH_MAX: f32 = 620.0;
+/// Home, 8pt and the field share at most 620pt (user.css
+/// `.am-toolbar-center > div`).
+const GROUP_MAX: f32 = 620.0;
 
 /// mcloud's toolbar fill: a dark glass, 58% of #1e1e1e.
 fn fill(hovered: bool) -> Color32 {
@@ -166,7 +168,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
 
     // Home and the search field, centred in what is left of the row.
     let rest = Rect::from_min_max(pos2(capsule.right() + 12.0, row.top()), row.max);
-    let search_width = (rest.width() - BUTTON - 8.0 - 10.0).clamp(120.0, SEARCH_MAX);
+    let search_width = (rest.width() - BUTTON - 8.0 - 10.0).clamp(120.0, GROUP_MAX - BUTTON - 8.0);
     let group = BUTTON + 8.0 + search_width;
     let start = (rest.center().x - group / 2.0).max(rest.left());
     let home = Rect::from_center_size(pos2(start + BUTTON / 2.0, y), Vec2::splat(BUTTON));

@@ -89,16 +89,35 @@ memnun), albüm ve playlist başlığı ile butonlar, tablo başlıkları ve sat
 sayfasının altı (tam tarih, süre/parça özeti, telif ve "More by [Sanatçı]" rafı),
 Liked Songs sayfası (tür çipleri filtreleme ve sağdaki "Recently added ☰" sıralama açılır menüsü),
 Ana sayfa (All/Music/Podcasts kategori filtre çipleri, filtrelere göre raf ve kısayol gösterimi,
-20.0 pt Apple Music bölüm ve raf başlıkları ile raf boşlukları),
+Spotify'ın 24pt bölüm başlıkları ile raf boşlukları),
 Recently Added ve All Playlists kütüphane görünümleri (`Page::RecentlyAdded`, `Page::AllPlaylists`),
 Sidebar'a "Son Eklenen" ve "Tüm Listeler" bağlantılarının eklenmesi,
 Topbar liquid glass kontrolleri (geri/ileri kapsülü, Home daire butonu ve arama kutusu),
 Sidebar glow (mcloud `user.css:206` `#am-sidebar-glow` ile sayfa kapağının/renginin kenardan sızması),
-Browse sayfası (`Page::Browse`) ve sidebar "Göz At" bağlantısı (Apple Music canlı degradeli kategori karoları).
+Browse sayfası (`Page::Browse`) ve sidebar "Göz At" bağlantısı.
 
 ## Kalanlar (sırayla önerilen)
 
-Tüm ana sayfalar ve tasarım öğeleri (albüm, sanatçı, liked songs, ana sayfa, kütüphane, arama/göz at, liquid glass, player bar, sidebar ve parlama efektleri) mcloud ile tam uyumlu hale getirilmiştir.
+Sayfaların hepsi güncel mcloud reposuna (bulutakbulutt/mcloud) göre eşitlendi:
+- Sanatçı başlığı: isim 40pt; ⓘ 48 / Play 72 / takip 48. Sağ üstte paylaş + "…".
+- ⓘ Hakkında kartı (`mcloud/artist.rs`). Veri, Pathfinder artist overview'dan
+  `ArtistAbout` olarak geliyor.
+- Sanatçı rengi: mcloud'un `artworkColor` + `setTint` algoritması
+  (`images::artwork_colours`).
+- Kütüphane ızgarası (`mcloud/library.rs`): Recently Added, Artists, Albums,
+  All Playlists.
+- Arama: Spotify'ın yeni düzeni (`mcloud/search.rs`). Browse: "Browse all" düzeni.
+- Sayfa boşluğu `--am-pad`; kenar çubuğu `--am-side`
+  (`settings.mcloud_sidebar_width`, yalnızca sürükleyince kaydediliyor).
+
+Web API izin vermediği için yapılamayanlar:
+- Browse kategori görselleri.
+- Aramadaki "Featuring X" rafı (Spotify'ın editoryal listeleri).
+- Liked Songs tür çipleri: sanatçı türleri geliştirici uygulamasına gelmiyor;
+  tür gelirse çipler kendiliğinden görünür.
+
+Not: Kullanıcının Spotify'ındaki mcloud eski bir sürüm (ⓘ yok). Karşılaştırmada
+fark görülürse önce güncel repoya bak.
 
 ## Bilinen durumlar
 
@@ -107,3 +126,8 @@ Tüm ana sayfalar ve tasarım öğeleri (albüm, sanatçı, liked songs, ana say
   sayfasında Latest Release ve albüm rafları boş görünüyor. Kod tarafında
   sorun yok.
 - Liquid glass referansı: github.com/emribilemir/liquid-glass-research
+- Uygulama, `cargo test` ile aynı anda açılırsa macOS anahtar zinciri geç
+  yanıt verebilir ve giriş ekranı çıkar ("system credential store did not
+  respond"). Testler bitince yeniden açmak yetiyor; oturum silinmiyor.
+- Ekran yakalamada Spotify ve Spotifast pencere genişlikleri eşit olmalı:
+  mcloud'un boşlukları ve kenar çubuğu pencere genişliğine göre değişiyor.

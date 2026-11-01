@@ -1491,7 +1491,27 @@ pub(crate) fn track_matches_genre(item: &PlayableItem, target: &str, app: &App) 
     false
 }
 
-pub(crate) fn liked_genres(app: &App) -> Vec<String> {
+/// The ten genres most of Liked Songs' artists play, read again only when
+/// the songs or the artists known change: the count walks every song.
+pub(crate) fn liked_genres(app: &App, ctx: &egui::Context) -> Arc<[String]> {
+    let key = (
+        app.library.liked.revision,
+        app.library.artists.items.len(),
+        app.artist_pages.len(),
+    );
+    let id = egui::Id::new("mcloud-liked-genres");
+    if let Some((held, genres)) =
+        ctx.data(|data| data.get_temp::<((u64, usize, usize), Arc<[String]>)>(id))
+        && held == key
+    {
+        return genres;
+    }
+    let genres: Arc<[String]> = count_liked_genres(app).into();
+    ctx.data_mut(|data| data.insert_temp(id, (key, Arc::clone(&genres))));
+    genres
+}
+
+fn count_liked_genres(app: &App) -> Vec<String> {
     use std::collections::{HashMap, HashSet};
     let mut counts: HashMap<String, usize> = HashMap::new();
     for saved in &app.library.liked.items {

@@ -573,6 +573,8 @@ pub struct App {
     pub accents: HashMap<String, Color32>,
     /// Each cover's colours, as read from the art, by the same URL.
     art_palettes: HashMap<String, Vec<[u8; 3]>>,
+    /// The colours mcloud reads from each picture, by the same URL.
+    artwork_colours: HashMap<String, crate::images::ArtworkColours>,
     accent_pending: HashSet<String>,
 
     pub dialog: Option<Dialog>,
@@ -730,6 +732,8 @@ pub struct App {
     /// Artists' wide header pictures by artist URI, read with their play
     /// counts.
     pub artist_headers: HashMap<String, String>,
+    /// Each artist's About sheet, by artist URI.
+    pub artist_about: HashMap<String, crate::session_reads::ArtistAbout>,
     /// Albums and artists whose play counts were asked for, by URI.
     pub play_count_reads: HashMap<String, PlayCountRead>,
     /// User ids resolved to avatar picture urls, asked for alongside the
@@ -1216,6 +1220,7 @@ impl App {
             saved_writes: HashMap::new(),
             accents: HashMap::new(),
             art_palettes: HashMap::new(),
+            artwork_colours: HashMap::new(),
             accent_pending: HashSet::new(),
             dialog: None,
             cover_request: 0,
@@ -1302,6 +1307,7 @@ impl App {
             user_names: HashMap::new(),
             play_counts: HashMap::new(),
             artist_headers: HashMap::new(),
+            artist_about: HashMap::new(),
             play_count_reads: HashMap::new(),
             user_names_revision: 0,
             user_images: HashMap::new(),
@@ -2384,6 +2390,21 @@ impl App {
         None
     }
 
+    /// The colours mcloud reads from a picture, asked for the first time
+    /// they are wanted, as [`Self::tint_for`] asks for the accent.
+    pub fn artwork_colours(&mut self, url: Option<&str>) -> Option<crate::images::ArtworkColours> {
+        let url = url?;
+        if let Some(colour) = self.artwork_colours.get(url) {
+            return Some(*colour);
+        }
+        if !self.accents.contains_key(url) && self.accent_pending.insert(url.to_string()) {
+            self.backend.send(Command::Accent {
+                url: url.to_string(),
+            });
+        }
+        None
+    }
+
     /// Finds a playlist already loaded in the library, search, or a Home shelf.
     pub fn known_playlist(&self, id: &str) -> Option<&Playlist> {
         self.library
@@ -2651,8 +2672,12 @@ impl App {
                     url,
                     color,
                     palette,
+                    artwork,
                 } => {
                     self.accent_pending.remove(&url);
+                    if let Some(artwork) = artwork {
+                        self.artwork_colours.insert(url.clone(), artwork);
+                    }
                     let tint = self.palette.tint_from_art(color);
                     self.art_palettes.insert(url.clone(), palette);
                     self.accents.insert(url, tint);
@@ -6881,6 +6906,12 @@ impl App {
         {
             self.artist_headers.insert(uri.clone(), url.clone());
         }
+        let result = result.map(|mut extras| {
+            if let Some(about) = extras.about.take() {
+                self.artist_about.insert(uri.clone(), about);
+            }
+            extras
+        });
         let read = match result {
             // An answer without a single count has nothing to show.
             Ok(extras) if !extras.counts.is_empty() => {
@@ -21738,6 +21769,7 @@ mod tests {
             url: url.into(),
             color: [200, 40, 40],
             palette: vec![[200, 40, 40], [40, 40, 200]],
+            artwork: None,
         }]);
         assert_eq!(
             app.tint_for(Some(url)),
@@ -25932,6 +25964,7 @@ mod tests {
             Ok(crate::session_reads::PageExtras {
                 counts: HashMap::from([("spotify:track:t".to_string(), 5)]),
                 header_image: None,
+                about: None,
             }),
         );
         assert!(app.has_play_counts(album));

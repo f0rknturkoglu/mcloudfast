@@ -197,7 +197,9 @@ pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
 
 /// Shuffle, Play, then the save, radio and "…" buttons, in the
 /// band [`hero`] left for them, or on a row of their own on pages without
-/// one. A filter field takes its own row, at the right.
+/// one. The filter and the sort sit at the band's right end, as Spotify's
+/// list toolbar does under mcloud: a magnifier that opens into a field,
+/// then the sort.
 pub(in crate::ui) fn actions_row(
     app: &mut App,
     ui: &mut egui::Ui,
@@ -212,6 +214,15 @@ pub(in crate::ui) fn actions_row(
     });
     let filtered = filter.as_ref().is_some_and(|f| !f.trim().is_empty());
     let enabled = ui.is_enabled();
+    let tools = |app: &mut App, ui: &mut egui::Ui, filter: Option<&mut String>| {
+        if let Some(filter) = filter {
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.spacing_mut().item_spacing.x = 14.0;
+                sort_menu_button(app, ui);
+                filter_tool(app, ui, actions.name, filter);
+            });
+        }
+    };
     match band {
         Some(band) => {
             let mut child = ui.new_child(
@@ -219,33 +230,66 @@ pub(in crate::ui) fn actions_row(
                     .max_rect(band)
                     .layout(Layout::left_to_right(Align::Center)),
             );
-            child.add_enabled_ui(enabled, |ui| controls(app, ui, &actions, filtered));
+            child.add_enabled_ui(enabled, |ui| {
+                controls(app, ui, &actions, filtered);
+                tools(app, ui, filter);
+            });
         }
         None => {
-            ui.horizontal(|ui| controls(app, ui, &actions, filtered));
+            ui.horizontal(|ui| {
+                controls(app, ui, &actions, filtered);
+                tools(app, ui, filter);
+            });
             ui.add_space(10.0);
         }
     }
-    if let Some(filter) = filter {
-        let palette = app.palette;
-        // A row of its own: in the page's column the field would centre in
-        // all the height left below it.
-        ui.horizontal(|ui| {
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                sort_menu_button(app, ui);
-                ui.add_space(8.0);
-                widgets::search_field(
-                    ui,
-                    &palette,
-                    app.locale,
-                    Id::new(("collection-filter", actions.name)),
-                    filter,
-                    &gettext(app.locale, "Filter"),
-                    220.0,
-                );
-            });
+}
+
+/// The list's filter: a magnifier until it is clicked, then a field, which
+/// folds back into the magnifier once it is empty and loses focus.
+fn filter_tool(app: &mut App, ui: &mut egui::Ui, name: &str, filter: &mut String) {
+    let palette = app.palette;
+    let id = Id::new(("collection-filter", name));
+    let open_id = id.with("open");
+    let open = ui.data(|data| data.get_temp::<bool>(open_id).unwrap_or(false));
+    if open || !filter.is_empty() {
+        let response = widgets::search_field(
+            ui,
+            &palette,
+            app.locale,
+            id,
+            filter,
+            &gettext(app.locale, "Filter"),
+            220.0,
+        );
+        if open && !response.has_focus() && !response.gained_focus() {
+            let just_opened = ui.data(|data| data.get_temp::<bool>(open_id.with("asked")));
+            if just_opened == Some(true) {
+                response.request_focus();
+                ui.data_mut(|data| data.remove::<bool>(open_id.with("asked")));
+            } else if filter.is_empty() {
+                ui.data_mut(|data| data.remove::<bool>(open_id));
+            }
+        }
+        return;
+    }
+    let label = gettext(app.locale, "Filter");
+    let (rect, response) = ui.allocate_exact_size(egui::Vec2::splat(32.0), Sense::click());
+    let colour = if response.hovered() {
+        palette.text
+    } else {
+        palette.secondary
+    };
+    theme::paint_icon(ui, Icon::Search, rect, 17.0, colour);
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label.as_ref())
+    });
+    theme::focus_ring(ui, &response);
+    if response.on_hover_text(label.as_ref()).clicked() {
+        ui.data_mut(|data| {
+            data.insert_temp(open_id, true);
+            data.insert_temp(open_id.with("asked"), true);
         });
-        ui.add_space(6.0);
     }
 }
 
@@ -270,35 +314,37 @@ pub(crate) fn sort_menu_button(app: &mut App, ui: &mut egui::Ui) {
         },
     };
 
-    let height = 34.0;
-    let icon_size = 15.0;
-    let font = theme::medium(13.0);
-    let galley = crate::bidi::layout_line(ui.painter(), label.as_ref(), font, palette.text);
-    let padding_x = 12.0;
+    // Spotify's sort under mcloud: the order's name and a list glyph, in
+    // the secondary text colour, brightening on hover.
+    let height = 32.0;
+    let icon_size = 17.0;
+    let font = theme::regular(13.0);
+    let galley = crate::bidi::layout_line(
+        ui.painter(),
+        label.as_ref(),
+        font.clone(),
+        palette.secondary,
+    );
     let spacing = 6.0;
-    let total_width = padding_x * 2.0 + galley.size().x + spacing + icon_size;
+    let total_width = galley.size().x + spacing + icon_size;
     let (rect, response) = ui.allocate_exact_size(vec2(total_width, height), Sense::click());
 
     if ui.is_rect_visible(rect) {
-        let fill = if response.hovered() {
-            palette.surface_hover
+        let (colour, galley) = if response.hovered() {
+            let galley = crate::bidi::layout_line(ui.painter(), label.as_ref(), font, palette.text);
+            (palette.text, galley)
         } else {
-            palette.surface
+            (palette.secondary, galley)
         };
-        ui.painter().rect_filled(rect, 8.0, fill);
-        let text_pos = pos2(
-            rect.left() + padding_x,
-            rect.center().y - galley.size().y / 2.0,
-        );
-        ui.painter().galley(text_pos, galley, palette.text);
+        let text_pos = pos2(rect.left(), rect.center().y - galley.size().y / 2.0);
+        ui.painter().galley(text_pos, galley, colour);
         let icon_rect = Rect::from_center_size(
-            pos2(rect.right() - padding_x - icon_size / 2.0, rect.center().y),
+            pos2(rect.right() - icon_size / 2.0, rect.center().y),
             egui::Vec2::splat(icon_size),
         );
-        Icon::LayoutList
-            .image(palette.secondary, icon_size)
-            .paint_at(ui, icon_rect);
+        theme::paint_icon(ui, Icon::LayoutList, icon_rect, icon_size, colour);
     }
+    theme::focus_ring(ui, &response);
 
     if ui.is_enabled() {
         egui::Popup::menu(&response)
@@ -430,19 +476,18 @@ pub(crate) fn liked_genre_chips(
     ui: &mut egui::Ui,
     selected_genre: &mut Option<String>,
 ) {
-    let genres = crate::ui::collection::liked_genres(app);
+    let genres = crate::ui::collection::liked_genres(app, ui.ctx());
     if genres.is_empty() {
         return;
     }
 
-    let palette = app.palette;
     let locale = app.locale;
 
     let all_label = pgettext(locale, "filter", "All");
     let mut options = Vec::with_capacity(genres.len() + 1);
     options.push((None, all_label.into_owned()));
 
-    for g in &genres {
+    for g in genres.iter() {
         let label = crate::ui::mcloud::sentence_case(g);
         options.push((Some(g.clone()), label));
     }
@@ -451,7 +496,7 @@ pub(crate) fn liked_genre_chips(
         ui.spacing_mut().item_spacing.x = 8.0;
         for (value, label) in &options {
             let is_active = value.as_deref() == selected_genre.as_deref();
-            if theme::soft_button(ui, &palette, None, label, is_active).clicked() {
+            if chip(ui, label, is_active).clicked() {
                 *selected_genre = value.clone();
             }
         }
@@ -459,8 +504,36 @@ pub(crate) fn liked_genre_chips(
     ui.add_space(8.0);
 }
 
+/// A filter chip as Spotify draws them under mcloud: 32pt tall, white at
+/// 7%, white with black text when chosen.
+pub(crate) fn chip(ui: &mut egui::Ui, label: &str, active: bool) -> egui::Response {
+    let colour = if active {
+        Color32::BLACK
+    } else {
+        Color32::WHITE
+    };
+    let galley = crate::bidi::layout_line(ui.painter(), label, theme::regular(14.0), colour);
+    let size = vec2(galley.size().x + 24.0, 32.0);
+    let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(egui::WidgetType::Button, ui.is_enabled(), active, label)
+    });
+    if ui.is_rect_visible(rect) {
+        let fill = match (active, response.hovered()) {
+            (true, false) => Color32::from_rgb(0xf0, 0xf0, 0xf2),
+            (true, true) => Color32::WHITE,
+            (false, false) => Color32::from_white_alpha(18),
+            (false, true) => Color32::from_white_alpha(31),
+        };
+        ui.painter().rect_filled(rect, CornerRadius::same(16), fill);
+        ui.painter()
+            .galley(rect.center() - galley.size() / 2.0, galley, colour);
+    }
+    theme::focus_ring(ui, &response);
+    response
+}
+
 pub(crate) fn home_category_chips(app: &mut App, ui: &mut egui::Ui) {
-    let palette = app.palette;
     let locale = app.locale;
     let current = app.home.category_filter;
 
@@ -474,7 +547,7 @@ pub(crate) fn home_category_chips(app: &mut App, ui: &mut egui::Ui) {
         ui.spacing_mut().item_spacing.x = 8.0;
         for (filter, label) in options {
             let is_active = filter == current;
-            if theme::soft_button(ui, &palette, None, label.as_ref(), is_active).clicked() {
+            if chip(ui, label.as_ref(), is_active).clicked() {
                 let next = if is_active && filter != HomeFilter::All {
                     HomeFilter::All
                 } else {
