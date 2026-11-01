@@ -368,20 +368,20 @@ fn list_row(app: &mut App, ui: &mut egui::Ui, row: Row<'_>) {
         palette.secondary,
     );
 
-    // The kind, in a small grey label.
+    // The kind, in Spotify's small grey label: 16pt tall, 4pt either side.
     let badge = crate::bidi::layout_line(
         ui.painter(),
         kind.as_ref(),
-        theme::semibold(11.0),
+        theme::bold(12.5),
         palette.secondary,
     );
     let badge_rect = Rect::from_min_size(
-        pos2(kind_x, rect.center().y - 10.0),
-        vec2(badge.size().x + 12.0, 20.0),
+        pos2(kind_x, rect.center().y - 8.0),
+        vec2(badge.size().x + 8.0, 16.0),
     );
     ui.painter().rect_filled(
         badge_rect,
-        CornerRadius::same(4),
+        CornerRadius::same(3),
         Color32::from_white_alpha(20),
     );
     ui.painter().galley(
