@@ -46,7 +46,40 @@ pub struct Line {
     /// When the line starts; `None` in lyrics that carry no timing.
     pub at_ms: Option<u32>,
     pub text: String,
+    /// When the line ends, where the source says.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_ms: Option<u32>,
+    /// The line's timed pieces, syllables or words, where the source times
+    /// them: their texts, joined, are `text`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub syllables: Vec<Syllable>,
 }
+
+/// A timed piece of a line: a syllable or a word, with the space after it
+/// when it ends one.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Syllable {
+    pub text: String,
+    pub at_ms: u32,
+    pub end_ms: u32,
+}
+
+/// How a line's pieces were timed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PieceTiming {
+    /// The source timed them.
+    Exact,
+    /// Only the line was timed: its time is shared out by length.
+    Estimated,
+}
+
+/// Every word is sung in at least this long when the time is shared out.
+const MIN_LINE_MS: u32 = 600;
+/// About how long a sung character takes; a line followed by a long
+/// pause is held no longer than its words need.
+const MS_PER_CHAR: u32 = 85;
+/// A pause before the next line this long is an interlude.
+pub const INTERLUDE_MS: u32 = 4_000;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Lyrics {
@@ -69,12 +102,98 @@ impl Lyrics {
             .partition_point(|line| line.at_ms.is_some_and(|at| at <= position_ms));
         started.checked_sub(1)
     }
+
+    /// When line `index` ends: the source's end, else when the next line
+    /// starts, held no longer than its words need before a long pause.
+    pub fn line_end(&self, index: usize) -> Option<u32> {
+        let line = self.lines.get(index)?;
+        let at = line.at_ms?;
+        if let Some(end) = line.end_ms.filter(|end| *end > at) {
+            return Some(end);
+        }
+        if let Some(last) = line.syllables.last() {
+            return Some(last.end_ms.max(at));
+        }
+        let chars = line.text.chars().count() as u32;
+        let needed = at + MIN_LINE_MS.max(chars * MS_PER_CHAR);
+        let next = self.lines[index + 1..].iter().find_map(|line| line.at_ms);
+        // Sung on up to the next line, unless a long pause comes first.
+        Some(match next {
+            Some(next) if next > at && next.saturating_sub(needed) < INTERLUDE_MS => next,
+            _ => needed,
+        })
+    }
+
+    /// Line `index`'s timed pieces: the source's, else its words with the
+    /// line's time shared out by their length.
+    pub fn pieces(&self, index: usize) -> Option<(Vec<Syllable>, PieceTiming)> {
+        let line = self.lines.get(index)?;
+        if !line.syllables.is_empty() {
+            return Some((line.syllables.clone(), PieceTiming::Exact));
+        }
+        let at = line.at_ms?;
+        let end = self.line_end(index)?;
+        Some((estimate_words(&line.text, at, end), PieceTiming::Estimated))
+    }
+
+    /// Where the song is between two lines long apart: the pause's start
+    /// and end, while `position_ms` is inside it.
+    pub fn interlude(&self, position_ms: u32) -> Option<(u32, u32)> {
+        if !self.synced {
+            return None;
+        }
+        let next = self
+            .lines
+            .iter()
+            .position(|line| line.at_ms.is_some_and(|at| at > position_ms))?;
+        let start = match next.checked_sub(1) {
+            Some(previous) => self.line_end(previous)?,
+            None => 0,
+        };
+        let end = self.lines[next].at_ms?;
+        (position_ms >= start && end.saturating_sub(start) >= INTERLUDE_MS).then_some((start, end))
+    }
+}
+
+/// `text`'s words, each with the space after it, timed from `at` to `end`
+/// in proportion to their length.
+fn estimate_words(text: &str, at: u32, end: u32) -> Vec<Syllable> {
+    let mut words: Vec<String> = Vec::new();
+    for piece in text.split_inclusive(' ') {
+        match words.last_mut() {
+            // Runs of spaces stay with the word before them.
+            Some(last) if piece.trim().is_empty() => last.push_str(piece),
+            _ => words.push(piece.to_string()),
+        }
+    }
+    // Each word carries a little weight of its own, so short words are not
+    // swept past.
+    let weight = |word: &str| word.trim().chars().count() as u32 + 2;
+    let total: u32 = words.iter().map(|word| weight(word)).sum::<u32>().max(1);
+    let span = end.saturating_sub(at);
+    let mut start = at;
+    let mut done = 0;
+    words
+        .into_iter()
+        .map(|word| {
+            done += weight(&word);
+            let stop = at + (u64::from(span) * u64::from(done) / u64::from(total)) as u32;
+            let piece = Syllable {
+                text: word,
+                at_ms: start,
+                end_ms: stop,
+            };
+            start = stop;
+            piece
+        })
+        .collect()
 }
 
 /// Parses Spotify's `color-lyrics` response.
 pub fn from_spotify(json: &serde_json::Value) -> Option<Lyrics> {
     let lyrics = json.get("lyrics")?;
-    let synced = lyrics.get("syncType").and_then(|value| value.as_str()) == Some("LINE_SYNCED");
+    let sync = lyrics.get("syncType").and_then(|value| value.as_str());
+    let synced = matches!(sync, Some("LINE_SYNCED" | "SYLLABLE_SYNCED"));
     let lines: Vec<Line> = lyrics
         .get("lines")?
         .as_array()?
@@ -84,18 +203,19 @@ pub fn from_spotify(json: &serde_json::Value) -> Option<Lyrics> {
             if text.is_empty() || text == "\u{266a}" {
                 return None;
             }
-            let at_ms = line
-                .get("startTimeMs")
-                .and_then(|value| {
-                    value
-                        .as_str()
-                        .and_then(|text| text.parse().ok())
-                        .or_else(|| value.as_u64().and_then(|n| u32::try_from(n).ok()))
-                })
-                .filter(|_| synced);
+            let at_ms = spotify_ms(line.get("startTimeMs")).filter(|_| synced);
+            let end_ms = spotify_ms(line.get("endTimeMs"))
+                .filter(|end| synced && at_ms.is_some_and(|at| *end > at));
+            let syllables = if synced {
+                spotify_syllables(line, text, end_ms)
+            } else {
+                Vec::new()
+            };
             Some(Line {
                 at_ms,
                 text: text.to_string(),
+                end_ms,
+                syllables,
             })
         })
         .collect();
@@ -108,6 +228,79 @@ pub fn from_spotify(json: &serde_json::Value) -> Option<Lyrics> {
         synced,
         instrumental: false,
     })
+}
+
+/// Spotify writes its times as strings of digits, sometimes as numbers.
+fn spotify_ms(value: Option<&serde_json::Value>) -> Option<u32> {
+    let value = value?;
+    value
+        .as_str()
+        .and_then(|text| text.parse().ok())
+        .or_else(|| value.as_u64().and_then(|n| u32::try_from(n).ok()))
+}
+
+/// A Spotify line's syllables, where it times them: each starts at its
+/// `startTimeMs` and covers the next `numChars` characters of the line (or
+/// its own text), ending where the next one starts. A list that does not
+/// cover the line exactly is left out, and the line is timed as a whole.
+fn spotify_syllables(line: &serde_json::Value, text: &str, end_ms: Option<u32>) -> Vec<Syllable> {
+    let Some(list) = line.get("syllables").and_then(|value| value.as_array()) else {
+        return Vec::new();
+    };
+    let chars: Vec<char> = text.chars().collect();
+    let mut taken = 0;
+    let mut pieces: Vec<Syllable> = Vec::new();
+    for syllable in list {
+        let Some(at_ms) = spotify_ms(syllable.get("startTimeMs")) else {
+            return Vec::new();
+        };
+        let piece: String = match syllable
+            .get("numChars")
+            .or_else(|| syllable.get("charsCount"))
+            .and_then(|count| count.as_u64())
+        {
+            Some(count) if taken + count as usize <= chars.len() => {
+                chars[taken..taken + count as usize].iter().collect()
+            }
+            Some(_) => return Vec::new(),
+            None => match syllable
+                .get("words")
+                .or_else(|| syllable.get("text"))
+                .and_then(|value| value.as_str())
+            {
+                Some(own) => own.to_string(),
+                None => return Vec::new(),
+            },
+        };
+        taken += piece.chars().count();
+        let end = spotify_ms(syllable.get("endTimeMs")).filter(|end| *end > at_ms);
+        if let Some(last) = pieces.last_mut()
+            && last.end_ms <= last.at_ms
+        {
+            last.end_ms = at_ms.max(last.at_ms);
+        }
+        pieces.push(Syllable {
+            text: piece,
+            at_ms,
+            end_ms: end.unwrap_or(0),
+        });
+    }
+    // The rest of the line (spaces, a closing mark) stays with the last.
+    if taken < chars.len()
+        && let Some(last) = pieces.last_mut()
+    {
+        last.text.extend(&chars[taken..]);
+        taken = chars.len();
+    }
+    if pieces.is_empty() || taken != chars.len() {
+        return Vec::new();
+    }
+    if let Some(last) = pieces.last_mut()
+        && last.end_ms <= last.at_ms
+    {
+        last.end_ms = end_ms.unwrap_or(last.at_ms + MIN_LINE_MS).max(last.at_ms);
+    }
+    pieces
 }
 
 /// The cached answer at `path`, while it is fresh.
@@ -353,6 +546,7 @@ impl Record {
                 .map(|line| Line {
                     at_ms: None,
                     text: line.trim_end().to_string(),
+                    ..Line::default()
                 })
                 .collect(),
             synced: false,
@@ -650,6 +844,7 @@ pub fn from_text(text: &str) -> Option<Lyrics> {
             .map(|line| Line {
                 at_ms: None,
                 text: line.trim_end().to_string(),
+                ..Line::default()
             })
             .collect(),
         synced: false,
@@ -675,15 +870,109 @@ pub fn parse_lrc(text: &str) -> Vec<Line> {
             continue;
         }
         let body = rest.trim();
+        let (text, syllables) = word_stamps(body);
         for at_ms in times {
+            // A repeated line's word times belong to its first singing.
+            let shift = syllables
+                .first()
+                .map(|first| at_ms as i64 - first.at_ms as i64);
             lines.push(Line {
                 at_ms: Some(at_ms),
-                text: body.to_string(),
+                text: text.clone(),
+                end_ms: None,
+                syllables: syllables
+                    .iter()
+                    .map(|piece| Syllable {
+                        text: piece.text.clone(),
+                        at_ms: (piece.at_ms as i64 + shift.unwrap_or(0)).max(0) as u32,
+                        end_ms: (piece.end_ms as i64 + shift.unwrap_or(0)).max(0) as u32,
+                    })
+                    .collect(),
             });
         }
     }
     lines.sort_by_key(|line| line.at_ms);
     lines
+}
+
+/// An enhanced LRC body, `<00:12.30>Some <00:12.80>words<00:13.40>`: its
+/// plain text and its words, each timed from its stamp to the next. A body
+/// without stamps gives its text and no words.
+fn word_stamps(body: &str) -> (String, Vec<Syllable>) {
+    if !body.contains('<') {
+        return (body.to_string(), Vec::new());
+    }
+    let mut text = String::new();
+    let mut pieces: Vec<Syllable> = Vec::new();
+    let mut rest = body;
+    let mut open: Option<u32> = None;
+    let mut current = String::new();
+    loop {
+        let stamp = rest
+            .strip_prefix('<')
+            .and_then(|inner| inner.find('>').map(|close| (inner, close)))
+            .and_then(|(inner, close)| {
+                leading_stamp(&format!("[{}]", &inner[..close])).map(|(ms, _)| (ms, close + 2))
+            });
+        match stamp {
+            Some((ms, length)) => {
+                if let Some(at) = open
+                    && !current.is_empty()
+                {
+                    pieces.push(Syllable {
+                        text: std::mem::take(&mut current),
+                        at_ms: at,
+                        end_ms: ms.max(at),
+                    });
+                }
+                current.clear();
+                open = Some(ms);
+                rest = &rest[length..];
+            }
+            None => {
+                let Some(next) = rest.chars().next() else {
+                    break;
+                };
+                text.push(next);
+                current.push(next);
+                rest = &rest[next.len_utf8()..];
+            }
+        }
+    }
+    // Words after the last stamp have no end: they take the whole text's
+    // last stamp as theirs, held as long as the word before.
+    if let Some(at) = open
+        && !current.is_empty()
+    {
+        let held = pieces
+            .last()
+            .map_or(MIN_LINE_MS, |last| last.end_ms - last.at_ms);
+        pieces.push(Syllable {
+            text: current,
+            at_ms: at,
+            end_ms: at + held.max(1),
+        });
+    }
+    let trimmed = text.trim().to_string();
+    if pieces.is_empty()
+        || pieces
+            .iter()
+            .map(|piece| piece.text.as_str())
+            .collect::<String>()
+            .trim()
+            != trimmed
+    {
+        return (trimmed, Vec::new());
+    }
+    // Text before the first stamp joins the first word.
+    let lead = text.len() - text.trim_start().len();
+    if lead > 0 {
+        pieces[0].text = pieces[0].text.trim_start().to_string();
+    }
+    if let Some(last) = pieces.last_mut() {
+        last.text = last.text.trim_end().to_string();
+    }
+    (trimmed, pieces)
 }
 
 /// A timestamp at the head of `text`: its milliseconds and its length.
@@ -1027,6 +1316,96 @@ mod tests {
         .unwrap();
         assert_eq!(picked.duration, Some(202.0));
         assert!(pick(vec![record("Song", "Artist", 400.0, true)], &query).is_none());
+    }
+
+    #[test]
+    fn word_timed_lrc_keeps_its_words() {
+        let lines = parse_lrc("[00:12.30]<00:12.30>Hello <00:12.80>world<00:13.40>");
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].text, "Hello world");
+        let words: Vec<_> = lines[0]
+            .syllables
+            .iter()
+            .map(|piece| (piece.text.as_str(), piece.at_ms, piece.end_ms))
+            .collect();
+        assert_eq!(
+            words,
+            [("Hello ", 12_300, 12_800), ("world", 12_800, 13_400)]
+        );
+        // Plain LRC has no words of its own.
+        assert!(parse_lrc("[00:01.00]Plain line")[0].syllables.is_empty());
+    }
+
+    #[test]
+    fn spotify_syllables_cover_their_line() {
+        let json = serde_json::json!({"lyrics": {"syncType": "SYLLABLE_SYNCED", "lines": [
+            {"startTimeMs": "1000", "endTimeMs": "2000", "words": "Hi there",
+             "syllables": [{"startTimeMs": "1000", "numChars": 3}, {"startTimeMs": "1400", "numChars": 5}]},
+            {"startTimeMs": "3000", "words": "Next", "syllables": [{"startTimeMs": "3000", "numChars": 9}]}
+        ]}});
+        let lyrics = from_spotify(&json).unwrap();
+        assert!(lyrics.synced);
+        let first: Vec<_> = lyrics.lines[0]
+            .syllables
+            .iter()
+            .map(|piece| (piece.text.as_str(), piece.at_ms, piece.end_ms))
+            .collect();
+        assert_eq!(first, [("Hi ", 1000, 1400), ("there", 1400, 2000)]);
+        // Counts that overrun the line leave it timed as a whole.
+        assert!(lyrics.lines[1].syllables.is_empty());
+    }
+
+    #[test]
+    fn a_line_timed_only_as_a_whole_shares_its_time_by_length() {
+        let lyrics = Lyrics {
+            lines: vec![
+                Line {
+                    at_ms: Some(1_000),
+                    text: "one three".into(),
+                    ..Line::default()
+                },
+                Line {
+                    at_ms: Some(3_000),
+                    text: "next".into(),
+                    ..Line::default()
+                },
+            ],
+            synced: true,
+            instrumental: false,
+        };
+        let (pieces, timing) = lyrics.pieces(0).unwrap();
+        assert_eq!(timing, PieceTiming::Estimated);
+        let words: Vec<_> = pieces
+            .iter()
+            .map(|piece| (piece.text.as_str(), piece.at_ms, piece.end_ms))
+            .collect();
+        // "one " weighs 3 + 2, "three" 5 + 2, over the 2 s to the next line.
+        assert_eq!(words, [("one ", 1_000, 1_833), ("three", 1_833, 3_000)]);
+    }
+
+    #[test]
+    fn a_long_pause_ends_the_line_and_is_an_interlude() {
+        let lyrics = Lyrics {
+            lines: vec![
+                Line {
+                    at_ms: Some(1_000),
+                    text: "short".into(),
+                    ..Line::default()
+                },
+                Line {
+                    at_ms: Some(20_000),
+                    text: "later".into(),
+                    ..Line::default()
+                },
+            ],
+            synced: true,
+            instrumental: false,
+        };
+        // Held as long as its words need, not until the next line.
+        assert_eq!(lyrics.line_end(0), Some(1_000 + 600));
+        assert_eq!(lyrics.interlude(10_000), Some((1_600, 20_000)));
+        assert_eq!(lyrics.interlude(1_200), None);
+        assert_eq!(lyrics.interlude(500), None);
     }
 
     #[test]

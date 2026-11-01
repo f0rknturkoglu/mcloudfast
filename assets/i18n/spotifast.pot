@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 14:32+0300\n"
+"POT-Creation-Date: 2026-11-01 15:17+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -31,13 +31,13 @@ msgstr ""
 msgid "Play {name}"
 msgstr ""
 
-#: src/ui/sidebar.rs:302 src/app.rs:3633 src/app.rs:23625
+#: src/ui/sidebar.rs:302 src/app.rs:3633 src/app.rs:23626
 #: src/ui/collection.rs:2281 src/ui/collection.rs:2510
 #: src/ui/mcloud/search.rs:311
 msgid "Playlist"
 msgstr ""
 
-#: src/ui/sidebar.rs:312 src/ui/friends.rs:304 src/app.rs:3607 src/app.rs:23630
+#: src/ui/sidebar.rs:312 src/ui/friends.rs:304 src/app.rs:3607 src/app.rs:23631
 #: src/ui/collection.rs:2503 src/ui/home.rs:123 src/ui/keys.rs:337
 #: src/ui/winamp/playlist.rs:653
 msgid "Liked Songs"
@@ -872,7 +872,7 @@ msgid "Queue cleared"
 msgstr ""
 
 #. Translators: Keep {date} unchanged. It is a date in YYYY-MM-DD form.
-#: src/app.rs:6597 src/app.rs:23615
+#: src/app.rs:6597 src/app.rs:23616
 #, rust-format
 msgid "Queue {date}"
 msgstr ""
@@ -1218,7 +1218,7 @@ msgstr ""
 
 #. Translators: Keep {track} unchanged. It is the name of the song,
 #. playlist, album, or artist the radio is based on, not translated.
-#: src/app.rs:23635 src/app/radio.rs:38
+#: src/app.rs:23636 src/app/radio.rs:38
 #, rust-format
 msgid "{track} Radio"
 msgstr ""

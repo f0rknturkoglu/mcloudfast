@@ -747,6 +747,33 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
     // so highlighting cannot rewrap the words during a transition.
     // A line takes 300 ms to light up or fade.
     let quiet = palette.text.gamma_multiply(0.68);
+    // Under mcloud, the sung line lights up word by word.
+    let words = super::mcloud::active(ui.ctx()) && lyrics.synced;
+    let quiet = if words {
+        palette.text.gamma_multiply(super::mcloud::lyrics::QUIET)
+    } else {
+        quiet
+    };
+    // A long pause shows three dots before the line that ends it; they fade
+    // out where they were once it is over.
+    let interlude = words.then(|| lyrics.interlude(now.position_ms)).flatten();
+    let dots_id = egui::Id::new(("lyrics-interlude", &now.uri));
+    if interlude.is_some() {
+        let next = lyrics
+            .lines
+            .iter()
+            .position(|line| line.at_ms.is_some_and(|at| at > now.position_ms));
+        ui.ctx().data_mut(|data| data.insert_temp(dots_id, next));
+    }
+    let dots_at = ui
+        .ctx()
+        .data(|data| data.get_temp::<Option<usize>>(dots_id))
+        .flatten();
+    let dots_shown = ui.ctx().animate_bool_with_time(
+        dots_id,
+        interlude.is_some(),
+        crate::motion::seconds(ui.ctx(), 0.35),
+    );
     ui.spacing_mut().scroll.fade.strength = 0.0;
     egui::ScrollArea::vertical()
         .id_salt(("fullscreen-lyrics-scroll", &now.uri))
@@ -774,13 +801,34 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
             };
             ui.add_space(padding);
             for (index, line) in lyrics.lines.iter().enumerate() {
+                if words && dots_at == Some(index) && dots_shown > 0.0 {
+                    let (rect, _) = ui.allocate_exact_size(
+                        vec2(ui.available_width(), size * 1.2 * dots_shown),
+                        Sense::hover(),
+                    );
+                    let passed = interlude.map_or(1.0, |(start, end)| {
+                        (now.position_ms.saturating_sub(start)) as f32
+                            / end.saturating_sub(start).max(1) as f32
+                    });
+                    super::mcloud::lyrics::interlude_dots(
+                        ui.painter(),
+                        rect,
+                        size,
+                        passed,
+                        ui.input(|input| input.time),
+                        dots_shown,
+                    );
+                    ui.add_space(27.0 * dots_shown);
+                }
                 let is_active = active == Some(index);
                 let lit = ui.ctx().animate_bool_with_time(
                     egui::Id::new("lyric-line").with(("fullscreen", &now.uri, index)),
                     is_active,
                     crate::motion::seconds(ui.ctx(), 0.3),
                 );
-                let color = if lyrics.synced {
+                let color = if words {
+                    quiet
+                } else if lyrics.synced {
                     blend(quiet, palette.text, lit)
                 } else {
                     palette.text
@@ -800,23 +848,59 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
                 let galley = crate::bidi::layout(
                     ui.painter(),
                     text,
-                    font,
+                    font.clone(),
                     color,
                     ui.available_width(),
                     usize::MAX,
                     None,
                 );
+                // The same words in full colour, lit over the quiet ones.
+                let bright = (words && lit > 0.0).then(|| {
+                    crate::bidi::layout(
+                        ui.painter(),
+                        text,
+                        font,
+                        palette.text,
+                        ui.available_width(),
+                        usize::MAX,
+                        None,
+                    )
+                });
                 let center = ui.cursor().top() + galley.size().y * 0.5;
                 let edge = ((center - viewport.top()).min(viewport.bottom() - center)
                     / (size * 2.0))
                     .clamp(0.0, 1.0);
+                let fade = edge * edge * (3.0 - 2.0 * edge);
                 let response = ui
                     .scope(|ui| {
-                        ui.multiply_opacity(edge * edge * (3.0 - 2.0 * edge));
+                        ui.multiply_opacity(fade);
                         ui.add(egui::Label::new(galley).sense(sense))
                     })
                     .inner;
                 let rect = response.rect;
+                if let Some(bright) = bright {
+                    let opacity = lit * fade * ui.opacity();
+                    let swept = !crate::bidi::is_rtl(text)
+                        && lyrics.pieces(index).is_some_and(|(pieces, timing)| {
+                            super::mcloud::lyrics::sweep(
+                                ui.painter(),
+                                rect.min,
+                                &bright,
+                                &super::mcloud::lyrics::Sung {
+                                    pieces: &pieces,
+                                    timing,
+                                    position_ms: now.position_ms,
+                                    size,
+                                    opacity,
+                                },
+                            )
+                        });
+                    if !swept {
+                        let mut painter = ui.painter().clone();
+                        painter.set_opacity(opacity);
+                        painter.galley(rect.min, bright, palette.text);
+                    }
+                }
                 if lyrics.synced
                     && response.clicked()
                     && let Some(at_ms) = line.at_ms
@@ -852,7 +936,10 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
     if manual_scroll && app.lyrics_following {
         app.actions.push(Action::PauseLyricsFollow);
     }
-    if now.playing
+    // Words fill while they are sung: every frame while the song plays.
+    if words && now.playing {
+        ui.ctx().request_repaint();
+    } else if now.playing
         && lyrics.synced
         && let Some(next) = lyrics
             .lines

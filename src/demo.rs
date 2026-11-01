@@ -877,6 +877,7 @@ fn sample_lyrics() -> crate::lyrics::Lyrics {
             .map(|(at_ms, text)| crate::lyrics::Line {
                 at_ms: Some(*at_ms),
                 text: (*text).to_string(),
+                ..Default::default()
             })
             .collect(),
         synced: true,

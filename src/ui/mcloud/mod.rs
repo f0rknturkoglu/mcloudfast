@@ -8,6 +8,7 @@
 pub mod artist;
 pub mod glass;
 pub mod library;
+pub mod lyrics;
 pub mod pages;
 pub mod player;
 pub mod search;

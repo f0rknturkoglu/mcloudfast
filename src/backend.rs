@@ -6259,6 +6259,16 @@ async fn spotify_lyrics(
     };
     match engine.lyrics_json(uri).await {
         Ok(json) => {
+            // Which timing Spotify gives, for finding tracks it times by
+            // syllable; the words themselves are not logged.
+            if let Some(sync) = json
+                .as_ref()
+                .and_then(|json| json.pointer("/lyrics/syncType"))
+                .and_then(|sync| sync.as_str())
+                .filter(|sync| !matches!(*sync, "LINE_SYNCED" | "UNSYNCED"))
+            {
+                log::info!("spotify lyrics for {id} are {sync}");
+            }
             let found = json.as_ref().and_then(crate::lyrics::from_spotify);
             crate::lyrics::store(&path, &found);
             found
