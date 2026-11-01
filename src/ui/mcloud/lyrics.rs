@@ -10,7 +10,7 @@
 //!
 //! The words' times come from [`crate::lyrics::Lyrics::pieces`]: the
 //! source's own where it gives them, else the line's time shared out by
-//! word length.
+//! word length, with what the line has over held on its last word.
 
 use std::sync::Arc;
 

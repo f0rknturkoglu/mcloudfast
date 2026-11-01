@@ -69,7 +69,8 @@ pub struct Syllable {
 pub enum PieceTiming {
     /// The source timed them.
     Exact,
-    /// Only the line was timed: its time is shared out by length.
+    /// Only the line was timed: its words fill at a sung pace, and what the
+    /// line has over is held on its last word.
     Estimated,
 }
 
@@ -167,8 +168,9 @@ impl Lyrics {
     }
 }
 
-/// `text`'s words, each with the space after it, timed from `at` to `end`
-/// in proportion to their length.
+/// `text`'s words, each with the space after it, timed from `at` to `end`.
+/// The words fill at a sung character's pace by their length; when the line
+/// has time to spare, that time is the note it ends on, held.
 fn estimate_words(text: &str, at: u32, end: u32) -> Vec<Syllable> {
     let mut words: Vec<String> = Vec::new();
     for piece in text.split_inclusive(' ') {
@@ -178,18 +180,39 @@ fn estimate_words(text: &str, at: u32, end: u32) -> Vec<Syllable> {
             _ => words.push(piece.to_string()),
         }
     }
+    if words.is_empty() {
+        return Vec::new();
+    }
     // Each word carries a little weight of its own, so short words are not
-    // swept past.
-    let weight = |word: &str| word.trim().chars().count() as u32 + 2;
-    let total: u32 = words.iter().map(|word| weight(word)).sum::<u32>().max(1);
+    // swept past, and a vowel drawn out over several letters gains more.
+    let weight = |word: &str| word.trim().chars().count() as u32 + 2 + drawn_out(word);
+    let weights: Vec<u32> = words.iter().map(|word| weight(word)).collect();
+    let total: u32 = weights.iter().sum::<u32>().max(1);
+    let sung = text.chars().filter(|c| !c.is_whitespace()).count().max(1) as u32;
+    let natural = sung * MS_PER_CHAR;
     let span = end.saturating_sub(at);
+    // A line sung quicker than its words need is squeezed evenly; one with
+    // time to spare fills at a character's pace and holds what is left.
+    let pace = if span < natural {
+        span as f64 / f64::from(total)
+    } else {
+        f64::from(natural) / f64::from(total)
+    };
     let mut start = at;
     let mut done = 0;
     words
         .into_iter()
-        .map(|word| {
-            done += weight(&word);
-            let stop = at + (u64::from(span) * u64::from(done) / u64::from(total)) as u32;
+        .zip(&weights)
+        .enumerate()
+        .map(|(index, (word, weight))| {
+            done += weight;
+            let stop = if index + 1 == weights.len() {
+                end
+            } else {
+                at.saturating_add((f64::from(done) * pace).round() as u32)
+                    .min(end)
+            }
+            .max(start);
             let piece = Syllable {
                 text: word,
                 at_ms: start,
@@ -199,6 +222,70 @@ fn estimate_words(text: &str, at: u32, end: u32) -> Vec<Syllable> {
             piece
         })
         .collect()
+}
+
+/// How much more time a word's vowels are drawn out over: each letter past
+/// the first in a run of the same vowel, up to a point.
+fn drawn_out(word: &str) -> u32 {
+    let mut extra = 0;
+    let mut previous: Option<char> = None;
+    let mut run = 0;
+    for c in word.chars() {
+        let c = c.to_ascii_lowercase();
+        if is_vowel(c) && Some(c) == previous {
+            run += 1;
+            if run > 1 && extra < 3 {
+                extra += 1;
+                run = 1;
+            }
+        } else {
+            run = 0;
+        }
+        previous = Some(c);
+    }
+    extra
+}
+
+/// Whether `c` is a vowel letters are drawn out with.
+fn is_vowel(c: char) -> bool {
+    matches!(
+        c,
+        'a' | 'e'
+            | 'i'
+            | 'o'
+            | 'u'
+            | 'y'
+            | 'à'
+            | 'á'
+            | 'â'
+            | 'ã'
+            | 'ä'
+            | 'å'
+            | 'æ'
+            | 'è'
+            | 'é'
+            | 'ê'
+            | 'ë'
+            | 'ì'
+            | 'í'
+            | 'î'
+            | 'ï'
+            | 'ò'
+            | 'ó'
+            | 'ô'
+            | 'õ'
+            | 'ö'
+            | 'ø'
+            | 'œ'
+            | 'ù'
+            | 'ú'
+            | 'û'
+            | 'ü'
+            | 'ý'
+            | 'ÿ'
+            | 'ı'
+            | 'İ'
+    )
 }
 
 /// Parses Spotify's `color-lyrics` response.
@@ -1455,10 +1542,80 @@ mod tests {
             .iter()
             .map(|piece| (piece.text.as_str(), piece.at_ms, piece.end_ms))
             .collect();
-        // "one " weighs 3 + 2, "three" 5 + 2, over the 1.7 s the line is
-        // filled in: the last 300 ms before the next line are left over so
-        // the line is seen lit whole.
-        assert_eq!(words, [("one ", 1_000, 1_708), ("three", 1_708, 2_700)]);
+        // "one " weighs 3 + 2, "three" 5 + 2, over the 680 ms its eight
+        // characters need: the last 300 ms before the next line are left over
+        // so the line is seen lit whole, and "three" holds the rest.
+        assert_eq!(words, [("one ", 1_000, 1_283), ("three", 1_283, 2_700)]);
+    }
+
+    #[test]
+    fn words_fill_at_a_sung_pace_and_the_spare_time_is_held() {
+        // A vowel drawn out over several letters weighs more than one.
+        assert!(drawn_out("loooove") > drawn_out("love"));
+        assert_eq!(drawn_out("love"), 0);
+
+        // A line with time to spare fills at a character's pace (12 characters
+        // at 85 ms) and holds the rest on its last word.
+        let lyrics = Lyrics {
+            lines: vec![
+                Line {
+                    at_ms: Some(0),
+                    text: "Von, Von, uh".into(),
+                    ..Line::default()
+                },
+                Line {
+                    at_ms: Some(4_370),
+                    text: "next".into(),
+                    ..Line::default()
+                },
+            ],
+            synced: true,
+            instrumental: false,
+            writers: Vec::new(),
+        };
+        let (pieces, timing) = lyrics.pieces(0).unwrap();
+        assert_eq!(timing, PieceTiming::Estimated);
+        let times: Vec<_> = pieces
+            .iter()
+            .map(|piece| (piece.text.trim(), piece.at_ms, piece.end_ms))
+            .collect();
+        // The fill ends 300 ms before the next line: 4 070 ms, of which the
+        // words need 850, leaves the last word a 3 432 ms note.
+        assert_eq!(
+            times,
+            [("Von,", 0, 319), ("Von,", 319, 638), ("uh", 638, 4_070)]
+        );
+    }
+
+    #[test]
+    fn a_quick_line_squeezes_its_words_evenly() {
+        let lyrics = Lyrics {
+            lines: vec![
+                Line {
+                    at_ms: Some(0),
+                    text: "one two three four".into(),
+                    ..Line::default()
+                },
+                Line {
+                    at_ms: Some(1_000),
+                    text: "next".into(),
+                    ..Line::default()
+                },
+            ],
+            synced: true,
+            instrumental: false,
+            writers: Vec::new(),
+        };
+        let (pieces, _) = lyrics.pieces(0).unwrap();
+        let span = pieces.last().unwrap().end_ms - pieces[0].at_ms;
+        // Four syllables need more than the line's time, so every word is
+        // shortened by the same amount and the last ends where the fill does.
+        assert_eq!(span, 750);
+        assert!(
+            pieces
+                .windows(2)
+                .all(|pair| pair[0].end_ms == pair[1].at_ms)
+        );
     }
 
     #[test]
