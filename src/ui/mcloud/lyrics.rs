@@ -1,9 +1,12 @@
-//! Word-by-word lyrics for mcloud's full-window lyrics, in the manner of
-//! Apple Music (and of Spicy Lyrics, which mcloud users run beside it):
+//! Word-by-word lyrics for mcloud, in the full-window view and the side
+//! panel, in the manner of Apple Music (and of Spicy Lyrics, which mcloud
+//! users run beside it):
 //! every line is quiet text, and the line being sung lights up word by
-//! word, each word filling from its start to its end with a soft edge.
-//! Long-held words glow; a long pause between lines shows three dots that
-//! fill as it passes.
+//! word, each word filling from its start to its end with a soft edge,
+//! with Spicy Lyrics' glow: the word being sung blooms, a word sung out
+//! keeps a little of it, and a line with no word times glows as a whole,
+//! swelling to its middle. A long pause between lines shows three dots
+//! that fill as it passes.
 //!
 //! The words' times come from [`crate::lyrics::Lyrics::pieces`]: the
 //! source's own where it gives them, else the line's time shared out by
@@ -18,12 +21,29 @@ use crate::lyrics::{PieceTiming, Syllable};
 /// Quiet text's opacity: lines not being sung, and the words of the sung
 /// line still to come.
 pub(in crate::ui) const QUIET: f32 = 0.38;
-/// The soft edge of a filling word, in font sizes.
-const EDGE: f32 = 0.45;
-/// Strips the soft edge is drawn in.
-const EDGE_STEPS: usize = 6;
-/// A word held at least this long glows while it is sung.
-const GLOW_MS: u32 = 900;
+/// An idle line's size, as Spicy Lyrics draws the lines not being sung.
+pub(in crate::ui) const IDLE_SCALE: f32 = 0.95;
+/// The soft edge of the light, in font sizes: Spicy Lyrics' `FadeEm`.
+const EDGE: f32 = 0.55;
+/// Strips the soft edge is drawn in, enough that the steps do not show.
+const EDGE_STEPS: usize = 16;
+/// A glyph this close to a piece's edge still counts as reached, so f32
+/// rounding in the glyph widths cannot stop the light at a word's end.
+const SLACK: f32 = 0.01;
+/// Glow copies drawn round a sung word or line: rings of them at growing
+/// distance, standing in for a text-shadow's blur.
+const GLOW_RINGS: usize = 4;
+const GLOW_STEPS: usize = 12;
+/// Opacity of each glow copy; their overlaps build the bloom.
+const GLOW_COPY: f32 = 0.06;
+/// A sung word keeps this share of its glow once it is over.
+const SUNG_GLOW: f32 = 0.28;
+/// A line's last word bloomed harder, as Spicy Lyrics' does.
+const LAST_WORD_GLOW: f32 = 1.5;
+/// How far a glow reaches at rest and at its strongest, in font sizes:
+/// Spicy Lyrics' text-shadow is 4 px to 12 px at its type size.
+const LINE_GLOW_EM: (f32, f32) = (0.06, 0.32);
+const WORD_GLOW_EM: (f32, f32) = (0.05, 0.20);
 
 /// How far each piece has been sung at `position_ms`, 0 to 1.
 pub(in crate::ui) fn progress(pieces: &[Syllable], position_ms: u32) -> Vec<f32> {
@@ -95,8 +115,13 @@ fn lit_extents(rows: &[Vec<f32>], piece_chars: &[usize], progress: &[f32]) -> Op
         for width in row {
             let piece = owner[glyph];
             if !done {
-                let reach = progress[piece] * piece_width[piece] - before[piece];
-                if reach >= *width {
+                let sung = progress[piece].clamp(0.0, 1.0) * piece_width[piece];
+                let reach = sung - before[piece];
+                // Summing f32 widths leaves the last glyph of a sung-out piece
+                // a millionth of a pixel short of its width. Without the
+                // slack the light stops there for good, at the first word it
+                // finishes, and the words after it never light.
+                if reach >= *width - SLACK {
                     lit += width;
                 } else {
                     lit += reach.max(0.0);
@@ -116,16 +141,18 @@ pub(in crate::ui) struct Sung<'a> {
     pub pieces: &'a [Syllable],
     pub timing: PieceTiming,
     pub position_ms: u32,
-    /// The font size, which the soft edge follows.
+    /// The font size, which the soft edge and the glow follow.
     pub size: f32,
     /// Fades the light in and out as the line becomes the sung one.
     pub opacity: f32,
 }
 
-/// Lights the sung part of a line drawn quiet at `pos`: `bright` is the
-/// same text laid out in the full colour. Returns false when the pieces
-/// don't match the laid-out text, and the caller lights the line whole.
-pub(in crate::ui) fn sweep(
+/// Paints the sung part of a line laid out quiet at `pos`: Spicy Lyrics'
+/// glow under the words the light has reached, then `bright`, the same text
+/// in the full colour, lit word by word over them. Returns false when the
+/// pieces don't match the laid-out text, and the caller lights the line
+/// whole.
+pub(in crate::ui) fn paint(
     painter: &egui::Painter,
     pos: Pos2,
     bright: &Arc<Galley>,
@@ -164,6 +191,17 @@ pub(in crate::ui) fn sweep(
     if opacity <= 0.0 {
         return true;
     }
+    let lit = Lit {
+        pieces,
+        piece_chars: &piece_chars,
+        progress: &progress,
+        extents: &extents,
+        timing,
+        position_ms,
+        size,
+        opacity,
+    };
+    glow(painter, pos, bright, &lit);
     let edge = size * EDGE;
     let clip = painter.clip_rect();
     for (row, lit) in bright.rows.iter().zip(&extents) {
@@ -205,63 +243,149 @@ pub(in crate::ui) fn sweep(
             }
         }
     }
-    glow(
-        painter,
-        pos,
-        bright,
-        pieces,
-        &piece_chars,
-        &progress,
-        timing,
-        opacity,
-    );
     true
 }
 
-/// A soft halo round a long-held word while it is sung, strongest halfway
-/// through: copies of the lit text a little way off in each direction.
-#[allow(clippy::too_many_arguments)]
-fn glow(
+/// A line's words as they stand at the song's position: what is sung, how
+/// far, and how strongly the line is lit.
+struct Lit<'a> {
+    pieces: &'a [Syllable],
+    piece_chars: &'a [usize],
+    progress: &'a [f32],
+    extents: &'a [f32],
+    timing: PieceTiming,
+    position_ms: u32,
+    size: f32,
+    opacity: f32,
+}
+
+/// Spicy Lyrics' glow. A line timed only as a whole swells to its middle as
+/// it is sung, its bloom following the words the light has reached; a line
+/// with timed words glows on the word being sung, and faintly on the one
+/// before it, so the light leaves a wake.
+fn glow(painter: &egui::Painter, pos: Pos2, bright: &Arc<Galley>, lit: &Lit<'_>) {
+    match lit.timing {
+        PieceTiming::Estimated => {
+            let (Some(first), Some(last)) = (lit.pieces.first(), lit.pieces.last()) else {
+                return;
+            };
+            let span = last.end_ms.saturating_sub(first.at_ms).max(1);
+            let through = lit.position_ms.saturating_sub(first.at_ms) as f32 / span as f32;
+            let strength = line_glow(through) * lit.opacity;
+            let blur = glow_radius(lit.size, LINE_GLOW_EM, strength);
+            for (row, extent) in bright.rows.iter().zip(lit.extents) {
+                if *extent <= 0.0 {
+                    continue;
+                }
+                let rect = row.rect().translate(pos.to_vec2());
+                let left = rect.left() + row.row.glyphs.first().map_or(0.0, |glyph| glyph.pos.x);
+                let area =
+                    Rect::from_min_max(rect.min, pos2(left + extent, rect.bottom())).expand(blur);
+                halo(painter, pos, bright, area, blur, strength);
+            }
+        }
+        PieceTiming::Exact => {
+            if let Some(current) = lit
+                .progress
+                .iter()
+                .position(|done| *done > 0.0 && *done < 1.0)
+            {
+                let last = current + 1 == lit.pieces.len();
+                let strength = word_glow(lit.progress[current])
+                    * lit.opacity
+                    * if last { LAST_WORD_GLOW } else { 1.0 };
+                word_halo(painter, pos, bright, lit, current, strength);
+            }
+            if let Some(sung) = lit.progress.iter().rposition(|done| *done >= 1.0) {
+                word_halo(painter, pos, bright, lit, sung, SUNG_GLOW * lit.opacity);
+            }
+        }
+    }
+}
+
+/// The bloom round one word: a text-shadow's blur is drawn in the word's
+/// own box, so nothing of the words around it is repeated into it.
+fn word_halo(
     painter: &egui::Painter,
     pos: Pos2,
     bright: &Arc<Galley>,
-    pieces: &[Syllable],
-    piece_chars: &[usize],
-    progress: &[f32],
-    timing: PieceTiming,
-    opacity: f32,
+    lit: &Lit<'_>,
+    word: usize,
+    strength: f32,
 ) {
-    // Shared-out times are guesses: a glow on the wrong word would show it.
-    if timing == PieceTiming::Estimated {
-        return;
-    }
-    let Some(current) = progress.iter().position(|done| *done > 0.0 && *done < 1.0) else {
+    let first: usize = lit.piece_chars[..word].iter().sum();
+    let Some(area) = glyph_area(bright, first, lit.piece_chars[word]) else {
         return;
     };
-    let piece = &pieces[current];
-    if piece.end_ms.saturating_sub(piece.at_ms) < GLOW_MS {
+    let blur = glow_radius(lit.size, WORD_GLOW_EM, strength);
+    let area = area.translate(pos.to_vec2()).expand(blur);
+    halo(painter, pos, bright, area, blur, strength);
+}
+
+/// How far a glow of `strength` reaches, in font sizes: Spicy Lyrics'
+/// text-shadow runs from 4 to 12 px as the glow rises.
+fn glow_radius(size: f32, (rest, peak): (f32, f32), strength: f32) -> f32 {
+    size * (rest + (peak - rest) * strength.max(0.0))
+}
+
+/// A soft bloom round `galley`, clipped to `area`: copies of the words at
+/// growing distance, each ring fainter. The closest a painter gets to the
+/// blur of a text-shadow.
+fn halo(
+    painter: &egui::Painter,
+    pos: Pos2,
+    galley: &Arc<Galley>,
+    area: Rect,
+    blur: f32,
+    strength: f32,
+) {
+    let strength = strength.clamp(0.0, 1.0);
+    if strength <= 0.0 || blur <= 0.0 {
         return;
     }
-    let strength = (progress[current] * std::f32::consts::PI).sin() * opacity;
-    let first: usize = piece_chars[..current].iter().sum();
-    let Some(area) = glyph_area(bright, first, piece_chars[current]) else {
-        return;
-    };
-    let area = area.translate(pos.to_vec2()).expand(6.0);
-    let mut halo = painter.with_clip_rect(area.intersect(painter.clip_rect()));
-    halo.set_opacity(0.11 * strength);
-    for (dx, dy) in [
-        (-1.6, 0.0),
-        (1.6, 0.0),
-        (0.0, -1.6),
-        (0.0, 1.6),
-        (-1.1, -1.1),
-        (1.1, -1.1),
-        (-1.1, 1.1),
-        (1.1, 1.1),
-    ] {
-        halo.galley(pos + vec2(dx, dy), bright.clone(), Color32::WHITE);
+    let mut bloom = painter.with_clip_rect(area.intersect(painter.clip_rect()));
+    for ring in 1..=GLOW_RINGS {
+        let radius = blur * ring as f32 / GLOW_RINGS as f32;
+        let fade = 1.0 - (ring - 1) as f32 / GLOW_RINGS as f32;
+        bloom.set_opacity(strength * fade * GLOW_COPY);
+        for step in 0..GLOW_STEPS {
+            let angle = std::f32::consts::TAU * step as f32 / GLOW_STEPS as f32;
+            bloom.galley(
+                pos + vec2(angle.cos() * radius, angle.sin() * radius),
+                galley.clone(),
+                Color32::WHITE,
+            );
+        }
     }
+}
+
+/// Spicy Lyrics' glow over a word's own progress: lit at once, held through
+/// the word, and gone by its end.
+fn word_glow(through: f32) -> f32 {
+    curve(through, &[(0.0, 0.0), (0.15, 1.0), (0.6, 1.0), (1.0, 0.0)])
+}
+
+/// The same over a line's: up to the middle of the line and back by its end.
+fn line_glow(through: f32) -> f32 {
+    curve(through, &[(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)])
+}
+
+/// The eased line between a curve's points.
+fn curve(through: f32, points: &[(f32, f32)]) -> f32 {
+    let through = through.clamp(0.0, 1.0);
+    for pair in points.windows(2) {
+        let ((from, start), (to, end)) = (pair[0], pair[1]);
+        if through <= to {
+            let along = if to > from {
+                (through - from) / (to - from)
+            } else {
+                0.0
+            };
+            let eased = along * along * (3.0 - 2.0 * along);
+            return start + (end - start) * eased;
+        }
+    }
+    points.last().map_or(0.0, |point| point.1)
 }
 
 /// The box round `count` glyphs from glyph `first`, relative to the galley.
@@ -283,6 +407,15 @@ fn glyph_area(galley: &Galley, first: usize, count: usize) -> Option<Rect> {
     area
 }
 
+/// A dot's size and lift as its share of the pause passes: it swells to a
+/// little over its size, rises, and settles back, as Spicy Lyrics' dots do.
+fn dot_state(fill: f32) -> (f32, f32) {
+    (
+        curve(fill, &[(0.0, 0.75), (0.7, 1.05), (1.0, 1.0)]),
+        curve(fill, &[(0.0, 0.0), (0.9, -0.12), (1.0, 0.0)]),
+    )
+}
+
 /// Three dots over a long pause, each filling in a third of it, the group
 /// breathing gently; `progress` is how much of the pause has passed.
 pub(in crate::ui) fn interlude_dots(
@@ -295,14 +428,30 @@ pub(in crate::ui) fn interlude_dots(
 ) {
     let radius = size * 0.16;
     let gap = radius * 3.2;
+    // The group breathes while the pause passes.
     let breathe = 1.0 + 0.06 * (time * 2.4).sin() as f32;
     let left = rect.left() + radius;
     for dot in 0..3 {
         let fill = (progress * 3.0 - dot as f32).clamp(0.0, 1.0);
+        // Each dot swells as it fills and lifts, then settles: Spicy
+        // Lyrics' DotAnimations.
+        let (swell, lift) = dot_state(fill);
+        let lift = size * lift;
+        let at = pos2(left + gap * dot as f32, rect.center().y + lift);
+        let dot_radius = radius * breathe * swell;
+        // Its glow follows the fill, so the pause lights up as it passes.
+        for ring in 1..=3 {
+            let spread = dot_radius * (1.0 + 0.55 * ring as f32);
+            painter.circle_filled(
+                at,
+                spread,
+                Color32::WHITE.gamma_multiply(0.09 * fill * opacity / ring as f32),
+            );
+        }
         let alpha = QUIET + (1.0 - QUIET) * fill;
         painter.circle_filled(
-            pos2(left + gap * dot as f32, rect.center().y),
-            radius * breathe,
+            at,
+            dot_radius,
             Color32::WHITE.gamma_multiply(alpha * opacity),
         );
     }
@@ -344,6 +493,62 @@ mod tests {
         );
         // Pieces that don't match the glyphs are refused.
         assert_eq!(lit_extents(&rows, &[3], &[1.0]), None);
+    }
+
+    /// A word sung out must let the light into the next one: f32 sums of the
+    /// glyph widths leave its last glyph a hair short of its width.
+    #[test]
+    fn a_finished_word_does_not_stop_the_light() {
+        // These three advances sum to 44.47625 in f32, which leaves the third
+        // 12.4487505 glyph short of its width by a millionth.
+        let rows = vec![
+            vec![19.880625, 12.146875, 12.4487505],
+            vec![10.0, 10.0, 10.0],
+        ];
+        let extent = lit_extents(&rows, &[3, 3], &[1.0, 0.5]).expect("the glyphs are covered");
+        // The first word is lit whole, and the light goes on into the next
+        // one, half sung.
+        assert!(
+            (extent[0] - 44.476_25).abs() < 0.01,
+            "the first word is lit whole: {extent:?}"
+        );
+        assert_eq!(extent[1], 15.0, "the next word is lit: {extent:?}");
+    }
+
+    /// Spicy Lyrics' glow: lit at once, held through the word, and gone by
+    /// its end; a line's swells to its middle and back.
+    #[test]
+    fn the_glow_rises_holds_and_falls() {
+        assert_eq!(word_glow(0.0), 0.0);
+        assert_eq!(word_glow(0.15), 1.0);
+        assert_eq!(word_glow(0.4), 1.0);
+        assert_eq!(word_glow(1.0), 0.0);
+        assert!(word_glow(0.05) > 0.0 && word_glow(0.05) < 1.0);
+        assert!(word_glow(0.85) > 0.0 && word_glow(0.85) < 1.0);
+
+        assert_eq!(line_glow(0.0), 0.0);
+        assert_eq!(line_glow(0.5), 1.0);
+        assert_eq!(line_glow(1.0), 0.0);
+        assert!(line_glow(0.25) > 0.0 && line_glow(0.25) < 1.0);
+        // Past either end, a line neither glows nor goes negative.
+        assert_eq!(line_glow(-0.2), 0.0);
+        assert_eq!(line_glow(1.4), 0.0);
+    }
+
+    /// A dot waiting is small and still; as its third passes it swells,
+    /// rises, and settles, as Spicy Lyrics' dots do.
+    #[test]
+    fn an_interlude_dot_swells_and_rises() {
+        let (waiting, still) = dot_state(0.0);
+        assert_eq!((waiting, still), (0.75, 0.0));
+        let (filling, up) = dot_state(0.7);
+        assert!(
+            filling > 1.04 && filling < 1.06,
+            "the dot swells: {filling}"
+        );
+        assert!(up < 0.0, "the dot rises: {up}");
+        let (done, settled) = dot_state(1.0);
+        assert_eq!((done, settled), (1.0, 0.0));
     }
 
     /// A space dropped where the line wraps belongs to no glyph.

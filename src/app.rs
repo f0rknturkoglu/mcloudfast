@@ -14538,6 +14538,7 @@ mod tests {
                     .collect(),
                 synced: true,
                 instrumental: false,
+                writers: Vec::new(),
             }));
             if let Some(remote) = &mut app.remote {
                 remote.state.is_playing = false;

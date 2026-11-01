@@ -80,6 +80,10 @@ const MIN_LINE_MS: u32 = 600;
 const MS_PER_CHAR: u32 = 85;
 /// A pause before the next line this long is an interlude.
 pub const INTERLUDE_MS: u32 = 4_000;
+/// A line's estimated fill ends this much before the next line, so the
+/// whole line is seen lit while it is still the sung one, rather than
+/// completed by the change to the next.
+const LINE_TAIL_MS: u32 = 300;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Lyrics {
@@ -88,6 +92,9 @@ pub struct Lyrics {
     pub synced: bool,
     /// The database knows there are no words.
     pub instrumental: bool,
+    /// Who wrote the song, where Spotify says; shown under the words.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub writers: Vec<String>,
 }
 
 impl Lyrics {
@@ -133,7 +140,12 @@ impl Lyrics {
         }
         let at = line.at_ms?;
         let end = self.line_end(index)?;
-        Some((estimate_words(&line.text, at, end), PieceTiming::Estimated))
+        // A short line keeps a share of its time rather than all of the tail.
+        let tail = (end.saturating_sub(at) / 4).min(LINE_TAIL_MS);
+        Some((
+            estimate_words(&line.text, at, end - tail),
+            PieceTiming::Estimated,
+        ))
     }
 
     /// Where the song is between two lines long apart: the pause's start
@@ -223,11 +235,70 @@ pub fn from_spotify(json: &serde_json::Value) -> Option<Lyrics> {
         return None;
     }
     let synced = synced && lines.iter().all(|line| line.at_ms.is_some());
+    let writers = lyrics
+        .get("songWriters")
+        .and_then(|value| value.as_array())
+        .map(|list| {
+            list.iter()
+                .filter_map(|name| name.as_str())
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
     Some(Lyrics {
         lines,
         synced,
         instrumental: false,
+        writers,
     })
+}
+
+/// Who wrote the song, from Spotify's credits view: the names under every
+/// role that says who wrote it, in Spotify's order and without repeats.
+pub fn writers_from_credits(json: &serde_json::Value) -> Vec<String> {
+    let Some(roles) = json.get("roleCredits").and_then(|value| value.as_array()) else {
+        return Vec::new();
+    };
+    let mut writers: Vec<String> = Vec::new();
+    let mut titled = false;
+    for role in roles {
+        let title = role
+            .get("roleTitle")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default()
+            .to_lowercase();
+        if title.is_empty() {
+            continue;
+        }
+        titled = true;
+        if title.contains("writ") || title.contains("compos") || title.contains("lyric") {
+            add_writers(role, &mut writers);
+        }
+    }
+    // Some answers name no role at all. Spotify's clients read them by
+    // position, the writers second after the performers.
+    if !titled && let Some(role) = roles.get(1) {
+        add_writers(role, &mut writers);
+    }
+    writers
+}
+
+/// Adds the names under `role` to `writers`, each once.
+fn add_writers(role: &serde_json::Value, writers: &mut Vec<String>) {
+    let Some(names) = role.get("artists").and_then(|value| value.as_array()) else {
+        return;
+    };
+    for name in names.iter().filter_map(|name| name.get("name")) {
+        let Some(name) = name.as_str().map(str::trim) else {
+            continue;
+        };
+        if name.is_empty() || writers.iter().any(|seen| seen.eq_ignore_ascii_case(name)) {
+            continue;
+        }
+        writers.push(name.to_string());
+    }
 }
 
 /// Spotify writes its times as strings of digits, sometimes as numbers.
@@ -536,6 +607,7 @@ impl Record {
                     lines,
                     synced: true,
                     instrumental: false,
+                    writers: Vec::new(),
                 });
             }
         }
@@ -551,6 +623,7 @@ impl Record {
                 .collect(),
             synced: false,
             instrumental: false,
+            writers: Vec::new(),
         })
     }
 }
@@ -835,6 +908,7 @@ pub fn from_text(text: &str) -> Option<Lyrics> {
             lines: timed,
             synced: true,
             instrumental: false,
+            writers: Vec::new(),
         });
     }
     Some(Lyrics {
@@ -849,6 +923,7 @@ pub fn from_text(text: &str) -> Option<Lyrics> {
             .collect(),
         synced: false,
         instrumental: false,
+        writers: Vec::new(),
     })
 }
 
@@ -1372,6 +1447,7 @@ mod tests {
             ],
             synced: true,
             instrumental: false,
+            writers: Vec::new(),
         };
         let (pieces, timing) = lyrics.pieces(0).unwrap();
         assert_eq!(timing, PieceTiming::Estimated);
@@ -1379,8 +1455,10 @@ mod tests {
             .iter()
             .map(|piece| (piece.text.as_str(), piece.at_ms, piece.end_ms))
             .collect();
-        // "one " weighs 3 + 2, "three" 5 + 2, over the 2 s to the next line.
-        assert_eq!(words, [("one ", 1_000, 1_833), ("three", 1_833, 3_000)]);
+        // "one " weighs 3 + 2, "three" 5 + 2, over the 1.7 s the line is
+        // filled in: the last 300 ms before the next line are left over so
+        // the line is seen lit whole.
+        assert_eq!(words, [("one ", 1_000, 1_708), ("three", 1_708, 2_700)]);
     }
 
     #[test]
@@ -1400,6 +1478,7 @@ mod tests {
             ],
             synced: true,
             instrumental: false,
+            writers: Vec::new(),
         };
         // Held as long as its words need, not until the next line.
         assert_eq!(lyrics.line_end(0), Some(1_000 + 600));
@@ -1426,6 +1505,7 @@ mod tests {
             lines: parse_lrc("[00:05]a\n[00:10]b\n[00:15]c"),
             synced: true,
             instrumental: false,
+            writers: Vec::new(),
         };
         assert_eq!(lyrics.active_line(0), None);
         assert_eq!(lyrics.active_line(5_000), Some(0));
@@ -1435,8 +1515,67 @@ mod tests {
             lines: vec![Line::default()],
             synced: false,
             instrumental: false,
+            writers: Vec::new(),
         };
         assert_eq!(plain.active_line(5_000), None);
+    }
+
+    #[test]
+    fn the_credits_view_names_the_writers() {
+        let credits = serde_json::json!({
+            "trackUri": "spotify:track:x",
+            "roleCredits": [
+                {
+                    "roleTitle": "Performed by",
+                    "artists": [{ "name": "The Wanderers" }],
+                },
+                {
+                    "roleTitle": "Written by",
+                    "artists": [{ "name": "Alex Rivera" }, { "name": "Sam Okafor" }],
+                },
+                {
+                    "roleTitle": "Lyrics by",
+                    "artists": [{ "name": "alex rivera" }, { "name": "  " }],
+                },
+                { "roleTitle": "Produced by", "artists": [{ "name": "Kai Lund" }] },
+            ],
+        });
+        // Only the writers, once each, in Spotify's order.
+        assert_eq!(
+            writers_from_credits(&credits),
+            ["Alex Rivera".to_string(), "Sam Okafor".to_string()]
+        );
+        assert!(writers_from_credits(&serde_json::json!({})).is_empty());
+        // Without role titles, the roles stand in Spotify's order: performers
+        // first, writers second.
+        let untitled = serde_json::json!({
+            "roleCredits": [
+                { "artists": [{ "name": "The Wanderers" }] },
+                { "artists": [{ "name": "Alex Rivera" }] },
+                { "artists": [{ "name": "Kai Lund" }] },
+            ],
+        });
+        assert_eq!(writers_from_credits(&untitled), ["Alex Rivera".to_string()]);
+    }
+
+    #[test]
+    fn spotify_lyrics_carry_their_writers_when_it_names_them() {
+        let json = serde_json::json!({
+            "lyrics": {
+                "syncType": "LINE_SYNCED",
+                "songWriters": ["Alex Rivera", " "],
+                "lines": [{ "startTimeMs": "1000", "words": "a line" }],
+            }
+        });
+        let lyrics = from_spotify(&json).unwrap();
+        assert_eq!(lyrics.writers, ["Alex Rivera".to_string()]);
+        let quiet = serde_json::json!({
+            "lyrics": {
+                "syncType": "LINE_SYNCED",
+                "lines": [{ "startTimeMs": "1000", "words": "a line" }],
+            }
+        });
+        assert!(from_spotify(&quiet).unwrap().writers.is_empty());
     }
 
     #[test]

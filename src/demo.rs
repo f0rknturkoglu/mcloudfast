@@ -882,6 +882,7 @@ fn sample_lyrics() -> crate::lyrics::Lyrics {
             .collect(),
         synced: true,
         instrumental: false,
+        writers: vec!["Alex Rivera".into(), "Sam Okafor".into()],
     }
 }
 
@@ -8137,6 +8138,129 @@ mod tests {
         assert_eq!(
             sizes[0], sizes[1],
             "highlighting must not rewrap or resize a line"
+        );
+    }
+
+    /// The rows a laid-out line breaks into, as text.
+    fn rows_of(galley: &egui::Galley) -> Vec<String> {
+        galley
+            .rows
+            .iter()
+            .map(|row| row.row.glyphs.iter().map(|glyph| glyph.chr).collect())
+            .collect()
+    }
+
+    /// Under mcloud the lines not being sung sit smaller and the sung one
+    /// grows into place, without the words breaking anywhere else.
+    #[test]
+    fn mcloud_lines_grow_into_place_without_rewrapping() {
+        let root =
+            std::env::temp_dir().join(format!("spotifast-lyrics-scale-{}", std::process::id()));
+        let ctx = egui::Context::default();
+        let waker = crate::backend::Waker::default();
+        waker.attach(&ctx);
+        let mut app = App::new(
+            &waker,
+            AppDirs {
+                config: root.join("config"),
+                state: root.join("state"),
+                cache: root.join("cache"),
+            },
+            Settings::default(),
+            AppOptions {
+                media_controls: false,
+                restore_sign_in: false,
+                tray: false,
+                autostart: false,
+            },
+        );
+        app.attach(&ctx);
+        populate(&mut app);
+        apply_flags(&mut app, None, Some("mcloud,lyrics-fullscreen-view"));
+        app.show_lyrics_panel = false;
+        app.lyrics = Loadable::Loaded(Some(sample_lyrics()));
+        app.lyrics_following = false;
+        let text = "But the night is wide and the road is long";
+        let mut found = Vec::new();
+        for (step, position) in [78_000u32, 80_500].into_iter().enumerate() {
+            let remote = app.remote.as_mut().unwrap();
+            remote.state.is_playing = false;
+            remote.state.progress_ms = Some(position);
+            let mut shape = None;
+            for frame in 0..6 {
+                let input = egui::RawInput {
+                    time: Some(step as f64 + f64::from(frame) / 30.0),
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1440.0, 900.0),
+                    )),
+                    ..Default::default()
+                };
+                let mut output = ctx.run_ui(input, |ui| app.frame_ui(ui));
+                output.textures_delta.clear();
+                if frame == 5 {
+                    shape = output.shapes.iter().find_map(|clipped| {
+                        if let egui::Shape::Text(text_shape) = &clipped.shape
+                            && text_shape.galley.job.text == text
+                            && text_shape.fallback_color != egui::Color32::WHITE
+                        {
+                            Some((text_shape.galley.clone(), text_shape.pos))
+                        } else {
+                            None
+                        }
+                    });
+                }
+            }
+            found.push(shape.expect("the lyric line is drawn"));
+        }
+        app.backend.shutdown();
+        let (idle, active) = (&found[0], &found[1]);
+        assert_eq!(
+            rows_of(&idle.0),
+            rows_of(&active.0),
+            "the line breaks where it did"
+        );
+        // Spicy Lyrics' idle lines sit at 0.95 of the sung one's size.
+        let ratio = active.0.size().y / idle.0.size().y;
+        assert!(
+            (1.03..1.08).contains(&ratio),
+            "the sung line grows out of the idle size: {ratio}"
+        );
+        assert_eq!(idle.1.x, active.1.x, "it grows in place");
+    }
+
+    /// The lyrics name who wrote the song under the words.
+    #[test]
+    fn the_lyrics_name_their_writers() {
+        let (ctx, mut app) = accessible_app("lyrics-writers");
+        apply_flags(&mut app, None, Some("mcloud,lyrics"));
+        let mut texts = Vec::new();
+        for frame in 0..6 {
+            let input = egui::RawInput {
+                time: Some(f64::from(frame) / 30.0),
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1440.0, 900.0),
+                )),
+                ..Default::default()
+            };
+            let mut output = ctx.run_ui(input, |ui| app.frame_ui(ui));
+            output.textures_delta.clear();
+            texts = output
+                .shapes
+                .iter()
+                .filter_map(|clipped| match &clipped.shape {
+                    egui::Shape::Text(text) => Some(text.galley.job.text.clone()),
+                    _ => None,
+                })
+                .collect();
+        }
+        app.backend.shutdown();
+        assert!(
+            texts
+                .iter()
+                .any(|text| text == "Written by Alex Rivera, Sam Okafor"),
+            "the writers are named under the words: {texts:?}"
         );
     }
 

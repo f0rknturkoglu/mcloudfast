@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 15:17+0300\n"
+"POT-Creation-Date: 2026-11-01 16:42+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Polish\n"
@@ -29,13 +29,13 @@ msgstr "Wstrzymaj {name}"
 msgid "Play {name}"
 msgstr "Odtwórz {name}"
 
-#: src/ui/sidebar.rs:302 src/app.rs:3633 src/app.rs:23626
+#: src/ui/sidebar.rs:302 src/app.rs:3633 src/app.rs:23627
 #: src/ui/collection.rs:2281 src/ui/collection.rs:2510
 #: src/ui/mcloud/search.rs:311
 msgid "Playlist"
 msgstr "Playlista"
 
-#: src/ui/sidebar.rs:312 src/ui/friends.rs:304 src/app.rs:3607 src/app.rs:23631
+#: src/ui/sidebar.rs:312 src/ui/friends.rs:304 src/app.rs:3607 src/app.rs:23632
 #: src/ui/collection.rs:2503 src/ui/home.rs:123 src/ui/keys.rs:337
 #: src/ui/winamp/playlist.rs:653
 msgid "Liked Songs"
@@ -242,7 +242,7 @@ msgstr "{name}, folder, rozwinięty"
 msgid "Click to change the visualizer"
 msgstr "Kliknij, aby zmienić wizualizację"
 
-#: src/ui/player_bar.rs:440 src/ui/lyrics.rs:131 src/ui/lyrics.rs:677
+#: src/ui/player_bar.rs:440 src/ui/lyrics.rs:237 src/ui/lyrics.rs:835
 msgid "Nothing playing"
 msgstr "Nic nie jest odtwarzane"
 
@@ -325,7 +325,7 @@ msgstr "Połącz z urządzeniem"
 msgid "Queue"
 msgstr "Kolejka"
 
-#: src/ui/player_bar.rs:1051 src/ui/lyrics.rs:67 src/ui/lyrics.rs:600
+#: src/ui/player_bar.rs:1051 src/ui/lyrics.rs:173 src/ui/lyrics.rs:758
 #: src/ui/mcloud/player.rs:319
 msgid "Lyrics"
 msgstr "Tekst"
@@ -338,7 +338,7 @@ msgstr "Aktywność słuchania"
 msgid "Recent"
 msgstr "Ostatnie"
 
-#: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:78
+#: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:184
 #: src/ui/friends.rs:65 src/ui/mod.rs:748 src/window.rs:35
 #: src/ui/mcloud/artist.rs:557
 msgid "Close"
@@ -395,20 +395,26 @@ msgstr "Tutaj pojawią się odtworzone utwory."
 msgid "Load more"
 msgstr "Wczytaj więcej"
 
-#: src/ui/lyrics.rs:90 src/ui/keys.rs:285 src/ui/mcloud/player.rs:565
+#. Translators: Keep {names} unchanged. It is the list of the song's writers.
+#: src/ui/lyrics.rs:86
+#, rust-format
+msgid "Written by {names}"
+msgstr "Napisano przez: {names}"
+
+#: src/ui/lyrics.rs:196 src/ui/keys.rs:285 src/ui/mcloud/player.rs:565
 msgid "Full screen lyrics"
 msgstr "Tekst na pełnym ekranie"
 
-#: src/ui/lyrics.rs:102 src/ui/lyrics.rs:623
+#: src/ui/lyrics.rs:208 src/ui/lyrics.rs:781
 msgctxt "lyrics"
 msgid "Follow"
 msgstr "Śledź"
 
-#: src/ui/lyrics.rs:132 src/ui/lyrics.rs:678
+#: src/ui/lyrics.rs:238 src/ui/lyrics.rs:836
 msgid "Play a song to see its lyrics."
 msgstr "Odtwórz utwór, aby zobaczyć jego tekst."
 
-#: src/ui/lyrics.rs:143 src/ui/lyrics.rs:160 src/ui/artist.rs:284
+#: src/ui/lyrics.rs:249 src/ui/lyrics.rs:266 src/ui/artist.rs:284
 #: src/ui/artist.rs:312 src/ui/collection.rs:719 src/ui/collection.rs:1848
 #: src/ui/collection.rs:1986 src/ui/collection.rs:2012
 #: src/ui/collection.rs:2076 src/ui/collection.rs:2198
@@ -418,7 +424,7 @@ msgstr "Odtwórz utwór, aby zobaczyć jego tekst."
 msgid "You're offline"
 msgstr "Jesteś offline"
 
-#: src/ui/lyrics.rs:146 src/ui/lyrics.rs:163 src/ui/artist.rs:287
+#: src/ui/lyrics.rs:252 src/ui/lyrics.rs:269 src/ui/artist.rs:287
 #: src/ui/artist.rs:315 src/ui/collection.rs:722 src/ui/collection.rs:1851
 #: src/ui/collection.rs:1989 src/ui/collection.rs:2015
 #: src/ui/collection.rs:2079 src/ui/collection.rs:2201
@@ -430,38 +436,38 @@ msgstr ""
 "Spotifast automatycznie połączy się ponownie po przywróceniu połączenia."
 
 #. Translators: Keep {error} unchanged. It is the original failure detail.
-#: src/ui/lyrics.rs:171 src/ui/lyrics.rs:455 src/ui/lyrics.rs:691
+#: src/ui/lyrics.rs:277 src/ui/lyrics.rs:613 src/ui/lyrics.rs:849
 #, rust-format
 msgid "Couldn't fetch the lyrics: {error}"
 msgstr "Nie udało się pobrać tekstu: {error}"
 
-#: src/ui/lyrics.rs:177 src/ui/lyrics.rs:482 src/ui/lyrics.rs:697
+#: src/ui/lyrics.rs:283 src/ui/lyrics.rs:640 src/ui/lyrics.rs:855
 #: src/ui/settings.rs:383 src/ui/settings.rs:676
 msgid "Try again"
 msgstr "Spróbuj ponownie"
 
-#: src/ui/lyrics.rs:188 src/ui/lyrics.rs:448 src/ui/lyrics.rs:708
+#: src/ui/lyrics.rs:294 src/ui/lyrics.rs:606 src/ui/lyrics.rs:866
 msgid "No lyrics"
 msgstr "Brak tekstu"
 
-#: src/ui/lyrics.rs:189 src/ui/lyrics.rs:449 src/ui/lyrics.rs:709
+#: src/ui/lyrics.rs:295 src/ui/lyrics.rs:607 src/ui/lyrics.rs:867
 msgid "No lyrics found for this track."
 msgstr "Nie znaleziono tekstu tego utworu."
 
-#: src/ui/lyrics.rs:198 src/ui/lyrics.rs:444 src/ui/lyrics.rs:718
+#: src/ui/lyrics.rs:304 src/ui/lyrics.rs:602 src/ui/lyrics.rs:876
 msgid "Instrumental"
 msgstr "Instrumentalny"
 
-#: src/ui/lyrics.rs:199 src/ui/lyrics.rs:445 src/ui/lyrics.rs:719
+#: src/ui/lyrics.rs:305 src/ui/lyrics.rs:603 src/ui/lyrics.rs:877
 msgid "No timed lyrics for this track."
 msgstr "Brak zsynchronizowanego tekstu tego utworu."
 
-#: src/ui/lyrics.rs:462 src/ui/widgets.rs:2891 src/ui/widgets.rs:2931
+#: src/ui/lyrics.rs:620 src/ui/widgets.rs:2891 src/ui/widgets.rs:2931
 #: src/ui/widgets.rs:2959 src/app.rs:13791 src/ui/collection.rs:920
 msgid "Loading…"
 msgstr "Wczytywanie…"
 
-#: src/ui/lyrics.rs:611
+#: src/ui/lyrics.rs:769
 msgid "Leave full screen (Esc)"
 msgstr "Wyjdź z pełnego ekranu (Esc)"
 
@@ -887,7 +893,7 @@ msgid "Queue cleared"
 msgstr "Kolejka wyczyszczona"
 
 #. Translators: Keep {date} unchanged. It is a date in YYYY-MM-DD form.
-#: src/app.rs:6597 src/app.rs:23616
+#: src/app.rs:6597 src/app.rs:23617
 #, rust-format
 msgid "Queue {date}"
 msgstr "Kolejka {date}"
@@ -1248,7 +1254,7 @@ msgstr "Nie udało się przesłać okładki: {error}. Spróbuj ponownie."
 
 #. Translators: Keep {track} unchanged. It is the name of the song,
 #. playlist, album, or artist the radio is based on, not translated.
-#: src/app.rs:23636 src/app/radio.rs:38
+#: src/app.rs:23637 src/app/radio.rs:38
 #, rust-format
 msgid "{track} Radio"
 msgstr "Radio utworu {track}"

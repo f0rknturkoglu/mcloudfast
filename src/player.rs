@@ -650,6 +650,33 @@ impl Engine {
         }
     }
 
+    /// Who Spotify credits with writing a track, as the JSON its clients
+    /// read; `Ok(None)` when it has no credits for it, an error when asking
+    /// failed.
+    pub async fn track_credits_json(&self, track_uri: &str) -> Result<Option<serde_json::Value>> {
+        let Some(id) = track_uri
+            .rsplit(':')
+            .next()
+            .and_then(|id| SpotifyId::from_base62(id).ok())
+        else {
+            return Ok(None);
+        };
+        let endpoint = format!(
+            "/track-credits-view/v0/experimental/{}/credits",
+            id.to_base62()
+        );
+        match self
+            .session
+            .spclient()
+            .request_as_json(&reqwest::Method::GET, &endpoint, None, None)
+            .await
+        {
+            Ok(bytes) => Ok(serde_json::from_slice(&bytes).ok()),
+            Err(error) if error.kind == ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(anyhow!("spotify credits: {error}")),
+        }
+    }
+
     /// Account playlist tree in Spotify order, including folder markers,
     /// and which of its playlists the account may add songs to.
     pub async fn rootlist(&self) -> Result<Rootlist> {

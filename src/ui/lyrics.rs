@@ -33,6 +33,112 @@ fn blend(from: egui::Color32, to: egui::Color32, t: f32) -> egui::Color32 {
     egui::Color32::from(egui::Rgba::from(from) * (1.0 - t) + egui::Rgba::from(to) * t)
 }
 
+/// Paints a line's sung words over the quiet text drawn at `rect`: Spicy
+/// Lyrics' glow under the words the light has reached, then the fill. Lights
+/// the line whole where its pieces do not match the laid-out text.
+#[allow(clippy::too_many_arguments)]
+fn painted_words(
+    ui: &egui::Ui,
+    lyrics: &crate::lyrics::Lyrics,
+    index: usize,
+    text: &str,
+    bright: &std::sync::Arc<egui::Galley>,
+    rect: Rect,
+    size: f32,
+    position_ms: u32,
+    opacity: f32,
+) {
+    let painted = !crate::bidi::is_rtl(text)
+        && lyrics.pieces(index).is_some_and(|(pieces, timing)| {
+            super::mcloud::lyrics::paint(
+                ui.painter(),
+                rect.min,
+                bright,
+                &super::mcloud::lyrics::Sung {
+                    pieces: &pieces,
+                    timing,
+                    position_ms,
+                    size,
+                    opacity,
+                },
+            )
+        });
+    if !painted {
+        let mut painter = ui.painter().clone();
+        painter.set_opacity(opacity);
+        painter.galley(rect.min, bright.clone(), Color32::WHITE);
+    }
+}
+
+/// Who wrote the song, as one quiet line under the words.
+fn writers_line(
+    app: &App,
+    ui: &mut egui::Ui,
+    lyrics: &crate::lyrics::Lyrics,
+    size: f32,
+    color: Color32,
+) {
+    if lyrics.writers.is_empty() {
+        return;
+    }
+    let names = lyrics.writers.join(", ");
+    // Translators: Keep {names} unchanged. It is the list of the song's writers.
+    let text = gettext(app.locale, "Written by {names}").replace("{names}", &names);
+    ui.add_space(size);
+    let galley = crate::bidi::layout(
+        ui.painter(),
+        &text,
+        theme::regular(size),
+        color,
+        ui.available_width(),
+        usize::MAX,
+        None,
+    );
+    ui.add(egui::Label::new(galley));
+}
+
+/// A line's size as Spicy Lyrics sizes them: the lines not being sung a
+/// little smaller, and the sung one growing into place as it lights.
+fn lit_line_scale(scale: bool, lit: f32) -> f32 {
+    if scale {
+        super::mcloud::lyrics::IDLE_SCALE
+            + (1.0 - super::mcloud::lyrics::IDLE_SCALE) * lit.clamp(0.0, 1.0)
+    } else {
+        1.0
+    }
+}
+
+/// Keeps the frame clock at the words' pace: every frame while a song with
+/// words to fill plays or a line is lighting up, and otherwise at the next
+/// line the song reaches.
+fn repaint_for_lyrics(
+    ui: &egui::Ui,
+    lyrics: &crate::lyrics::Lyrics,
+    now: &crate::app::NowPlaying,
+    words: bool,
+    animating: bool,
+) {
+    if !now.playing {
+        return;
+    }
+    if animating || (words && lyrics.synced) {
+        ui.ctx().request_repaint();
+        return;
+    }
+    if lyrics.synced
+        && let Some(next) = lyrics
+            .lines
+            .iter()
+            .filter_map(|line| line.at_ms)
+            .find(|at| *at > now.position_ms)
+    {
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_millis(u64::from(
+                next - now.position_ms,
+            )));
+    }
+}
+
 pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
     let fit = super::yielding_panel(
@@ -208,7 +314,16 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
     // The line being sung is bold and in the accent colour; every other
     // line is quiet, regular text, the same before and after it has been
     // sung. A line takes 220 ms to light up or fade, as in omarchy-lyrics.
-    let quiet = palette.text.gamma_multiply(0.45);
+    // Under mcloud the words light one by one instead, in the manner of
+    // the full-window lyrics.
+    let words = super::mcloud::active(ui.ctx()) && lyrics.synced;
+    let quiet = palette.text.gamma_multiply(if words {
+        super::mcloud::lyrics::QUIET
+    } else {
+        0.45
+    });
+    let animation = crate::motion::scroll(ui.ctx(), 0.45);
+    let mut animating = false;
     let scroll = crate::autoscroll::show(
         ui,
         egui::ScrollArea::vertical()
@@ -233,11 +348,24 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
                     is_active,
                     crate::motion::seconds(ui.ctx(), LIGHT_UP_SECONDS),
                 );
-                let color = blend(quiet, palette.accent, lit);
-                let font = if lit > 0.5 {
-                    theme::bold(LINE_SIZE)
+                animating |= lit > 0.0 && lit < 1.0;
+                let color = if words {
+                    quiet
                 } else {
-                    theme::regular(LINE_SIZE)
+                    blend(quiet, palette.accent, lit)
+                };
+                // Under mcloud the lines not being sung sit a little smaller
+                // and the sung one grows into place; the wrap width scales
+                // with them, so the words break where they always did.
+                let scale = lit_line_scale(words, lit);
+                let line_size = LINE_SIZE * scale;
+                let wrap = ui.available_width() / scale;
+                // Every line keeps the words' weight under mcloud, so
+                // lighting a line up cannot rewrap it.
+                let font = if words || lit > 0.5 {
+                    theme::bold(line_size)
+                } else {
+                    theme::regular(line_size)
                 };
                 // A timed line with no words is the band playing on.
                 let text = if line.text.is_empty() && lyrics.synced {
@@ -250,17 +378,43 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
                 } else {
                     Sense::hover()
                 };
-                let response = if crate::bidi::is_rtl(text) {
+                let response = if words || crate::bidi::is_rtl(text) {
                     let galley = crate::bidi::layout(
                         ui.painter(),
                         text,
-                        font,
+                        font.clone(),
                         color,
-                        ui.available_width(),
+                        wrap,
                         usize::MAX,
                         None,
                     );
-                    ui.add(egui::Label::new(galley).sense(sense))
+                    let response = ui.add(egui::Label::new(galley.clone()).sense(sense));
+                    if words && lit > 0.0 {
+                        // The same words in full colour, lit over the quiet
+                        // ones; their own weight and size, so they cannot
+                        // rewrap as the line lights up.
+                        let bright = crate::bidi::layout(
+                            ui.painter(),
+                            text,
+                            font,
+                            palette.text,
+                            wrap,
+                            usize::MAX,
+                            None,
+                        );
+                        painted_words(
+                            ui,
+                            &lyrics,
+                            index,
+                            text,
+                            &bright,
+                            response.rect,
+                            line_size,
+                            now.position_ms,
+                            lit * ui.opacity(),
+                        );
+                    }
+                    response
                 } else {
                     ui.add(
                         egui::Label::new(egui::RichText::new(text).font(font).color(color))
@@ -277,10 +431,13 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
                     app.lyrics_following = true;
                 }
                 if is_active && follow {
-                    show_sung_line(ui, rect, None);
+                    // mcloud's words move like the full-window ones; the
+                    // panel's own look has always jumped to the line.
+                    show_sung_line(ui, rect, words.then_some(animation));
                 }
                 ui.add_space(LINE_GAP);
             }
+            writers_line(app, ui, &lyrics, LINE_SIZE * 0.8, quiet);
             // Words without timing can only be followed by the clock: sit
             // at the part of the text the song is probably at.
             if app.lyrics_following && !lyrics.synced && now.duration_ms > 0 {
@@ -301,6 +458,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
         },
     );
     crate::autoscroll::lyrics(ui, scroll.id);
+    repaint_for_lyrics(ui, &lyrics, &now, words, animating);
     // Scrolling by hand means the reader wants to look elsewhere; the
     // Follow button in the header picks the song back up.
     if ui.rect_contains_pointer(scroll.inner_rect)
@@ -833,7 +991,13 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
                 } else {
                     palette.text
                 };
-                let font = theme::bold(size);
+                // The lines not being sung sit a little smaller under
+                // mcloud, and the sung one grows into place; the wrap width
+                // scales with them, so the words break where they always did.
+                let scale = lit_line_scale(words, lit);
+                let line_size = size * scale;
+                let wrap = ui.available_width() / scale;
+                let font = theme::bold(line_size);
                 // A timed line with no words is the band playing on.
                 let text = if line.text.is_empty() && lyrics.synced {
                     "\u{266a}"
@@ -850,7 +1014,7 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
                     text,
                     font.clone(),
                     color,
-                    ui.available_width(),
+                    wrap,
                     usize::MAX,
                     None,
                 );
@@ -861,7 +1025,7 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
                         text,
                         font,
                         palette.text,
-                        ui.available_width(),
+                        wrap,
                         usize::MAX,
                         None,
                     )
@@ -880,26 +1044,17 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
                 let rect = response.rect;
                 if let Some(bright) = bright {
                     let opacity = lit * fade * ui.opacity();
-                    let swept = !crate::bidi::is_rtl(text)
-                        && lyrics.pieces(index).is_some_and(|(pieces, timing)| {
-                            super::mcloud::lyrics::sweep(
-                                ui.painter(),
-                                rect.min,
-                                &bright,
-                                &super::mcloud::lyrics::Sung {
-                                    pieces: &pieces,
-                                    timing,
-                                    position_ms: now.position_ms,
-                                    size,
-                                    opacity,
-                                },
-                            )
-                        });
-                    if !swept {
-                        let mut painter = ui.painter().clone();
-                        painter.set_opacity(opacity);
-                        painter.galley(rect.min, bright, palette.text);
-                    }
+                    painted_words(
+                        ui,
+                        &lyrics,
+                        index,
+                        text,
+                        &bright,
+                        rect,
+                        line_size,
+                        now.position_ms,
+                        opacity,
+                    );
                 }
                 if lyrics.synced
                     && response.clicked()
@@ -913,6 +1068,13 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
                 }
                 ui.add_space(27.0);
             }
+            writers_line(
+                app,
+                ui,
+                &lyrics,
+                size * 0.55,
+                palette.text.gamma_multiply(0.34),
+            );
             // Words without timing can only be followed by the clock: sit
             // at the part of the text the song is probably at.
             if following && !lyrics.synced && now.duration_ms > 0 {
@@ -936,22 +1098,7 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
     if manual_scroll && app.lyrics_following {
         app.actions.push(Action::PauseLyricsFollow);
     }
-    // Words fill while they are sung: every frame while the song plays.
-    if words && now.playing {
-        ui.ctx().request_repaint();
-    } else if now.playing
-        && lyrics.synced
-        && let Some(next) = lyrics
-            .lines
-            .iter()
-            .filter_map(|line| line.at_ms)
-            .find(|at| *at > now.position_ms)
-    {
-        ui.ctx()
-            .request_repaint_after(std::time::Duration::from_millis(u64::from(
-                next - now.position_ms,
-            )));
-    }
+    repaint_for_lyrics(ui, &lyrics, &now, words, false);
 }
 
 #[cfg(test)]

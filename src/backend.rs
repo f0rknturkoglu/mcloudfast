@@ -6251,8 +6251,20 @@ async fn spotify_lyrics(
 ) -> Option<crate::lyrics::Lyrics> {
     let id = uri.strip_prefix("spotify:track:")?;
     let path = cache_dir.join(format!("spotify-{id}.json"));
-    if let Some(cached) = crate::lyrics::cached(&path) {
-        return cached;
+    if let Some(found) = crate::lyrics::cached(&path) {
+        // A cached answer carries the writers it was stored with. An entry
+        // from before they were read asks once, and keeps what it gets.
+        let Some(engine) = engine else {
+            return found;
+        };
+        let mut lyrics = found?;
+        if lyrics.writers.is_empty() {
+            lyrics.writers = credited_writers(&engine, uri).await;
+            if !lyrics.writers.is_empty() {
+                crate::lyrics::store(&path, &Some(lyrics.clone()));
+            }
+        }
+        return Some(lyrics);
     }
     let Some(engine) = engine else {
         return crate::lyrics::previously_found(&path);
@@ -6269,13 +6281,31 @@ async fn spotify_lyrics(
             {
                 log::info!("spotify lyrics for {id} are {sync}");
             }
-            let found = json.as_ref().and_then(crate::lyrics::from_spotify);
+            let mut found = json.as_ref().and_then(crate::lyrics::from_spotify);
+            if let Some(lyrics) = &mut found
+                && lyrics.writers.is_empty()
+            {
+                lyrics.writers = credited_writers(&engine, uri).await;
+            }
             crate::lyrics::store(&path, &found);
             found
         }
         Err(error) => {
             log::debug!("spotify lyrics unavailable: {error:#}");
             crate::lyrics::previously_found(&path)
+        }
+    }
+}
+
+/// Who wrote the track at `uri`, as Spotify credits it; empty where it
+/// names no writer, or when the credits cannot be read.
+async fn credited_writers(engine: &Arc<Engine>, uri: &str) -> Vec<String> {
+    match engine.track_credits_json(uri).await {
+        Ok(Some(json)) => crate::lyrics::writers_from_credits(&json),
+        Ok(None) => Vec::new(),
+        Err(error) => {
+            log::debug!("spotify credits unavailable: {error:#}");
+            Vec::new()
         }
     }
 }
