@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 03:05+0300\n"
+"POT-Creation-Date: 2026-11-01 03:33+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Simplified Chinese\n"
@@ -77,7 +77,7 @@ msgstr "歌单 • {owner}"
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
 #: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:225
-#: src/ui/mcloud/topbar.rs:155
+#: src/ui/mcloud/topbar.rs:178
 msgid "Home"
 msgstr "首页"
 
@@ -327,7 +327,7 @@ msgid "Recent"
 msgstr "最近播放"
 
 #: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:78
-#: src/ui/friends.rs:65 src/ui/mod.rs:714 src/window.rs:35
+#: src/ui/friends.rs:65 src/ui/mod.rs:734 src/window.rs:35
 msgid "Close"
 msgstr "关闭"
 
@@ -1160,7 +1160,7 @@ msgstr "无法切换随机播放"
 msgid "Couldn't change repeat"
 msgstr "无法切换循环模式"
 
-#: src/app.rs:13953 src/ui/mod.rs:481
+#: src/app.rs:13953 src/ui/mod.rs:501
 msgid "Spotify won't let this computer play this song right now."
 msgstr "Spotify 现在不让这台电脑播放这首歌。"
 
@@ -2623,7 +2623,7 @@ msgstr ""
 "也随时可能停止接受它。请设置你自己的免费 Spotify 应用，让音乐不会中断。只需几"
 "分钟。"
 
-#: src/ui/dialogs.rs:50 src/ui/mod.rs:456
+#: src/ui/dialogs.rs:50 src/ui/mod.rs:476
 msgid "Set up personal app"
 msgstr "设置个人应用"
 
@@ -3171,11 +3171,11 @@ msgstr "将应用的客户端 ID 粘贴到输入框中并登录。"
 msgid "Copied"
 msgstr "已复制"
 
-#: src/ui/mod.rs:449
+#: src/ui/mod.rs:469
 msgid "Spotify is being slow on the shared app."
 msgstr "Spotify 在共享应用上响应很慢。"
 
-#: src/ui/mod.rs:452
+#: src/ui/mod.rs:472
 msgid ""
 "Spotifast no longer offers the shared app, and Spotify can stop accepting it "
 "at any time. Set up your own free Spotify app and you won't have to wait."
@@ -3185,11 +3185,11 @@ msgstr ""
 
 #. Translators: a button that opens a page explaining why
 #. the banner it sits in appeared.
-#: src/ui/mod.rs:462 src/ui/mod.rs:493
+#: src/ui/mod.rs:482 src/ui/mod.rs:513
 msgid "Why?"
 msgstr "为什么？"
 
-#: src/ui/mod.rs:485
+#: src/ui/mod.rs:505
 msgid ""
 "Spotify refused the key that unlocks the audio. Spotifast can't fix that, "
 "but it sometimes clears up on its own. You can still play on your phone or "
@@ -3198,23 +3198,23 @@ msgstr ""
 "Spotify 拒绝提供解锁音频的密钥。Spotifast 没法解决，但有时过一会儿会自己恢"
 "复。你仍然可以在手机或其他 Spotify 设备上播放。"
 
-#: src/ui/mod.rs:489
+#: src/ui/mod.rs:509
 msgid "Play on another device"
 msgstr "在其他设备上播放"
 
-#: src/ui/mod.rs:540
+#: src/ui/mod.rs:560
 msgid "Close banner"
 msgstr "关闭横幅"
 
-#: src/ui/mod.rs:711
+#: src/ui/mod.rs:731
 msgid "Minimize"
 msgstr "最小化"
 
-#: src/ui/mod.rs:712
+#: src/ui/mod.rs:732
 msgid "Maximize"
 msgstr "最大化"
 
-#: src/ui/mod.rs:713
+#: src/ui/mod.rs:733
 msgid "Restore"
 msgstr "还原"
 
@@ -3383,19 +3383,19 @@ msgstr "剩余 {duration}"
 msgid "Played"
 msgstr "已播放"
 
-#: src/ui/topbar.rs:248 src/ui/mcloud/topbar.rs:64
+#: src/ui/topbar.rs:248 src/ui/mcloud/topbar.rs:87
 msgid "Show sidebar (Ctrl+B)"
 msgstr "显示侧边栏 (Ctrl+B)"
 
-#: src/ui/topbar.rs:249 src/ui/mcloud/topbar.rs:65
+#: src/ui/topbar.rs:249 src/ui/mcloud/topbar.rs:88
 msgid "Show sidebar (Cmd+B)"
 msgstr "显示侧边栏 (Cmd+B)"
 
-#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:104
+#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:127
 msgid "Back"
 msgstr "后退"
 
-#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:111
+#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:134
 msgid "Forward"
 msgstr "前进"
 
@@ -3462,11 +3462,11 @@ msgstr "正在等待 Spotify…"
 msgid "Version {version} is available."
 msgstr "版本 {version} 已推出。"
 
-#: src/ui/topbar.rs:620
+#: src/ui/topbar.rs:621
 msgid "What do you want to play?"
 msgstr "想听什么？"
 
-#: src/ui/topbar.rs:650 src/ui/topbar.rs:654 src/ui/mcloud/sidebar.rs:236
+#: src/ui/topbar.rs:657 src/ui/topbar.rs:661 src/ui/mcloud/sidebar.rs:236
 #: src/ui/browse.rs:223
 msgid "Browse"
 msgstr "浏览"

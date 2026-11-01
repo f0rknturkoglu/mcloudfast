@@ -611,6 +611,7 @@ pub(super) fn search_box(app: &mut App, ui: &mut egui::Ui, search_width: f32) {
     let selected = egui::TextEdit::load_state(ui.ctx(), id)
         .and_then(|state| state.cursor.char_range())
         .is_some_and(|range| !range.is_empty());
+    let pill_rect = ui.max_rect();
     let response = super::widgets::search_field(
         ui,
         &palette,
@@ -621,28 +622,28 @@ pub(super) fn search_box(app: &mut App, ui: &mut egui::Ui, search_width: f32) {
         search_width,
     );
     if crate::ui::mcloud::active(ui.ctx()) {
-        let divider_x = response.rect.right() - 40.0;
-        let cy = response.rect.center().y;
+        let divider_x = pill_rect.right() - 36.0;
+        let cy = pill_rect.center().y;
         ui.painter().vline(
             divider_x,
             (cy - 9.0)..=(cy + 9.0),
             Stroke::new(1.0, Color32::from_white_alpha(38)),
         );
         let browse_rect =
-            Rect::from_center_size(pos2(response.rect.right() - 20.0, cy), vec2(28.0, 28.0));
+            Rect::from_center_size(pos2(pill_rect.right() - 18.0, cy), vec2(28.0, 28.0));
         let browse_resp = ui.interact(browse_rect, id.with("browse-drawer"), Sense::click());
-        let browse_color = if browse_resp.hovered() {
+        let is_browse = matches!(app.page(), Page::Browse);
+        let browse_icon = if is_browse {
+            Icon::McloudBrowseDrawerActive
+        } else {
+            Icon::McloudBrowseDrawer
+        };
+        let browse_color = if is_browse || browse_resp.hovered() {
             Color32::WHITE
         } else {
             Color32::from_white_alpha(175)
         };
-        theme::paint_icon(
-            ui,
-            Icon::McloudBrowseDrawer,
-            browse_rect,
-            18.0,
-            browse_color,
-        );
+        theme::paint_icon(ui, browse_icon, browse_rect, 18.0, browse_color);
         browse_resp.widget_info(|| {
             egui::WidgetInfo::labeled(
                 egui::WidgetType::Button,

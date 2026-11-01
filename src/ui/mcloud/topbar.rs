@@ -44,6 +44,29 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     if fastframe_titlebar::enabled() {
         fastframe_titlebar::drag(ui, band);
     }
+
+    let scrolled_id = Id::new(("page-scrolled", app.page().encode()));
+    let scrolled = ui
+        .ctx()
+        .data(|data| data.get_temp::<f32>(scrolled_id))
+        .unwrap_or(0.0);
+    let progress = (scrolled / 20.0).clamp(0.0, 1.0);
+
+    if progress > 0.0 {
+        let glass = super::glass::paint(ui, band, app.settings.mcloud_glass);
+        let fill_color = if glass {
+            Color32::from_rgba_unmultiplied(0x1a, 0x1a, 0x1a, (60.0 * progress) as u8)
+        } else {
+            Color32::from_rgba_unmultiplied(0x2a, 0x2a, 0x2a, (158.0 * progress) as u8)
+        };
+        ui.painter().rect_filled(band, 0.0, fill_color);
+        ui.painter().hline(
+            band.x_range(),
+            band.bottom(),
+            Stroke::new(1.0, Color32::from_white_alpha((18.0 * progress) as u8)),
+        );
+    }
+
     // A soft shade from the top keeps the controls readable over bright
     // pages.
     crate::ui::widgets::paint_vertical_gradient(

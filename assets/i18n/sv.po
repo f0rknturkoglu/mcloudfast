@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 03:05+0300\n"
+"POT-Creation-Date: 2026-11-01 03:33+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Swedish\n"
@@ -77,7 +77,7 @@ msgstr "Spellista • {owner}"
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
 #: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:225
-#: src/ui/mcloud/topbar.rs:155
+#: src/ui/mcloud/topbar.rs:178
 msgid "Home"
 msgstr "Hem"
 
@@ -331,7 +331,7 @@ msgid "Recent"
 msgstr "Senaste"
 
 #: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:78
-#: src/ui/friends.rs:65 src/ui/mod.rs:714 src/window.rs:35
+#: src/ui/friends.rs:65 src/ui/mod.rs:734 src/window.rs:35
 msgid "Close"
 msgstr "Stäng"
 
@@ -1184,7 +1184,7 @@ msgstr "Kunde inte ändra blandning"
 msgid "Couldn't change repeat"
 msgstr "Kunde inte ändra upprepning"
 
-#: src/app.rs:13953 src/ui/mod.rs:481
+#: src/app.rs:13953 src/ui/mod.rs:501
 msgid "Spotify won't let this computer play this song right now."
 msgstr "Spotify låter inte den här datorn spela den här låten just nu."
 
@@ -2705,7 +2705,7 @@ msgstr ""
 "godta den. Konfigurera din egen gratis Spotify-app så att inget stoppar din "
 "musik. Det tar några minuter."
 
-#: src/ui/dialogs.rs:50 src/ui/mod.rs:456
+#: src/ui/dialogs.rs:50 src/ui/mod.rs:476
 msgid "Set up personal app"
 msgstr "Konfigurera personlig app"
 
@@ -3263,11 +3263,11 @@ msgstr "Klistra in appens Client ID i fältet och logga in."
 msgid "Copied"
 msgstr "Kopierat"
 
-#: src/ui/mod.rs:449
+#: src/ui/mod.rs:469
 msgid "Spotify is being slow on the shared app."
 msgstr "Spotify är långsamt med den delade appen."
 
-#: src/ui/mod.rs:452
+#: src/ui/mod.rs:472
 msgid ""
 "Spotifast no longer offers the shared app, and Spotify can stop accepting it "
 "at any time. Set up your own free Spotify app and you won't have to wait."
@@ -3278,11 +3278,11 @@ msgstr ""
 
 #. Translators: a button that opens a page explaining why
 #. the banner it sits in appeared.
-#: src/ui/mod.rs:462 src/ui/mod.rs:493
+#: src/ui/mod.rs:482 src/ui/mod.rs:513
 msgid "Why?"
 msgstr "Varför?"
 
-#: src/ui/mod.rs:485
+#: src/ui/mod.rs:505
 msgid ""
 "Spotify refused the key that unlocks the audio. Spotifast can't fix that, "
 "but it sometimes clears up on its own. You can still play on your phone or "
@@ -3292,23 +3292,23 @@ msgstr ""
 "men ibland löser det sig av sig självt. Du kan fortfarande spela på mobilen "
 "eller en annan Spotify-enhet."
 
-#: src/ui/mod.rs:489
+#: src/ui/mod.rs:509
 msgid "Play on another device"
 msgstr "Spela på en annan enhet"
 
-#: src/ui/mod.rs:540
+#: src/ui/mod.rs:560
 msgid "Close banner"
 msgstr "Stäng banner"
 
-#: src/ui/mod.rs:711
+#: src/ui/mod.rs:731
 msgid "Minimize"
 msgstr "Minimera"
 
-#: src/ui/mod.rs:712
+#: src/ui/mod.rs:732
 msgid "Maximize"
 msgstr "Maximera"
 
-#: src/ui/mod.rs:713
+#: src/ui/mod.rs:733
 msgid "Restore"
 msgstr "Återställ"
 
@@ -3481,19 +3481,19 @@ msgstr "{duration} kvar"
 msgid "Played"
 msgstr "Spelad"
 
-#: src/ui/topbar.rs:248 src/ui/mcloud/topbar.rs:64
+#: src/ui/topbar.rs:248 src/ui/mcloud/topbar.rs:87
 msgid "Show sidebar (Ctrl+B)"
 msgstr "Visa sidofältet (Ctrl+B)"
 
-#: src/ui/topbar.rs:249 src/ui/mcloud/topbar.rs:65
+#: src/ui/topbar.rs:249 src/ui/mcloud/topbar.rs:88
 msgid "Show sidebar (Cmd+B)"
 msgstr "Visa sidofältet (Cmd+B)"
 
-#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:104
+#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:127
 msgid "Back"
 msgstr "Bakåt"
 
-#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:111
+#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:134
 msgid "Forward"
 msgstr "Framåt"
 
@@ -3561,11 +3561,11 @@ msgstr "Väntar på Spotify…"
 msgid "Version {version} is available."
 msgstr "Version {version} finns tillgänglig."
 
-#: src/ui/topbar.rs:620
+#: src/ui/topbar.rs:621
 msgid "What do you want to play?"
 msgstr "Vad vill du spela?"
 
-#: src/ui/topbar.rs:650 src/ui/topbar.rs:654 src/ui/mcloud/sidebar.rs:236
+#: src/ui/topbar.rs:657 src/ui/topbar.rs:661 src/ui/mcloud/sidebar.rs:236
 #: src/ui/browse.rs:223
 msgid "Browse"
 msgstr "Bläddra"

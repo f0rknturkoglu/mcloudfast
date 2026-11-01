@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 03:05+0300\n"
+"POT-Creation-Date: 2026-11-01 03:33+0300\n"
 "PO-Revision-Date: 2026-09-23 20:00+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: European Portuguese\n"
@@ -77,7 +77,7 @@ msgstr "Playlist • {owner}"
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
 #: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:225
-#: src/ui/mcloud/topbar.rs:155
+#: src/ui/mcloud/topbar.rs:178
 msgid "Home"
 msgstr "Início"
 
@@ -331,7 +331,7 @@ msgid "Recent"
 msgstr "Recentes"
 
 #: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:78
-#: src/ui/friends.rs:65 src/ui/mod.rs:714 src/window.rs:35
+#: src/ui/friends.rs:65 src/ui/mod.rs:734 src/window.rs:35
 msgid "Close"
 msgstr "Fechar"
 
@@ -1189,7 +1189,7 @@ msgstr "Não foi possível alterar a ordem aleatória"
 msgid "Couldn't change repeat"
 msgstr "Não foi possível alterar a repetição"
 
-#: src/app.rs:13953 src/ui/mod.rs:481
+#: src/app.rs:13953 src/ui/mod.rs:501
 msgid "Spotify won't let this computer play this song right now."
 msgstr "O Spotify não está a deixar este computador tocar esta música agora."
 
@@ -2742,7 +2742,7 @@ msgstr ""
 "qualquer momento. Configura a tua própria app gratuita do Spotify para que "
 "nada pare a tua música. Demora só alguns minutos."
 
-#: src/ui/dialogs.rs:50 src/ui/mod.rs:456
+#: src/ui/dialogs.rs:50 src/ui/mod.rs:476
 msgid "Set up personal app"
 msgstr "Configurar app pessoal"
 
@@ -3299,11 +3299,11 @@ msgstr "Cola o Client ID da app no campo e inicia sessão."
 msgid "Copied"
 msgstr "Copiado"
 
-#: src/ui/mod.rs:449
+#: src/ui/mod.rs:469
 msgid "Spotify is being slow on the shared app."
 msgstr "O Spotify está lento na app partilhada."
 
-#: src/ui/mod.rs:452
+#: src/ui/mod.rs:472
 msgid ""
 "Spotifast no longer offers the shared app, and Spotify can stop accepting it "
 "at any time. Set up your own free Spotify app and you won't have to wait."
@@ -3314,11 +3314,11 @@ msgstr ""
 
 #. Translators: a button that opens a page explaining why
 #. the banner it sits in appeared.
-#: src/ui/mod.rs:462 src/ui/mod.rs:493
+#: src/ui/mod.rs:482 src/ui/mod.rs:513
 msgid "Why?"
 msgstr "Porquê?"
 
-#: src/ui/mod.rs:485
+#: src/ui/mod.rs:505
 msgid ""
 "Spotify refused the key that unlocks the audio. Spotifast can't fix that, "
 "but it sometimes clears up on its own. You can still play on your phone or "
@@ -3328,23 +3328,23 @@ msgstr ""
 "resolver isso, mas às vezes passa sozinho. Continuas a poder ouvir no "
 "telemóvel ou noutro dispositivo com Spotify."
 
-#: src/ui/mod.rs:489
+#: src/ui/mod.rs:509
 msgid "Play on another device"
 msgstr "Reproduzir noutro dispositivo"
 
-#: src/ui/mod.rs:540
+#: src/ui/mod.rs:560
 msgid "Close banner"
 msgstr "Fechar aviso"
 
-#: src/ui/mod.rs:711
+#: src/ui/mod.rs:731
 msgid "Minimize"
 msgstr "Minimizar"
 
-#: src/ui/mod.rs:712
+#: src/ui/mod.rs:732
 msgid "Maximize"
 msgstr "Maximizar"
 
-#: src/ui/mod.rs:713
+#: src/ui/mod.rs:733
 msgid "Restore"
 msgstr "Restaurar"
 
@@ -3515,19 +3515,19 @@ msgstr "Faltam {duration}"
 msgid "Played"
 msgstr "Ouvido"
 
-#: src/ui/topbar.rs:248 src/ui/mcloud/topbar.rs:64
+#: src/ui/topbar.rs:248 src/ui/mcloud/topbar.rs:87
 msgid "Show sidebar (Ctrl+B)"
 msgstr "Mostrar barra lateral (Ctrl+B)"
 
-#: src/ui/topbar.rs:249 src/ui/mcloud/topbar.rs:65
+#: src/ui/topbar.rs:249 src/ui/mcloud/topbar.rs:88
 msgid "Show sidebar (Cmd+B)"
 msgstr "Mostrar barra lateral (Cmd+B)"
 
-#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:104
+#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:127
 msgid "Back"
 msgstr "Voltar"
 
-#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:111
+#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:134
 msgid "Forward"
 msgstr "Avançar"
 
@@ -3596,11 +3596,11 @@ msgstr "A aguardar o Spotify…"
 msgid "Version {version} is available."
 msgstr "A versão {version} está disponível."
 
-#: src/ui/topbar.rs:620
+#: src/ui/topbar.rs:621
 msgid "What do you want to play?"
 msgstr "O que queres ouvir?"
 
-#: src/ui/topbar.rs:650 src/ui/topbar.rs:654 src/ui/mcloud/sidebar.rs:236
+#: src/ui/topbar.rs:657 src/ui/topbar.rs:661 src/ui/mcloud/sidebar.rs:236
 #: src/ui/browse.rs:223
 msgid "Browse"
 msgstr "Explorar"

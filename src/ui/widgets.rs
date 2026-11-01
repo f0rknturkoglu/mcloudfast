@@ -3275,11 +3275,11 @@ pub fn search_field(
     hint: &str,
     width: f32,
 ) -> egui::Response {
-    let height = 34.0;
-    let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
-    let has_focus = ui.memory(|memory| memory.has_focus(id));
     let is_mcloud_topbar =
         crate::ui::mcloud::active(ui.ctx()) && id == egui::Id::new("global-search");
+    let height = if is_mcloud_topbar { 36.0 } else { 34.0 };
+    let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
+    let has_focus = ui.memory(|memory| memory.has_focus(id));
     if !is_mcloud_topbar {
         let fill = if has_focus {
             palette.surface_hover
@@ -3307,7 +3307,7 @@ pub fn search_field(
         .image(palette.secondary, 16.0)
         .paint_at(ui, icon_rect);
     let right_pad = if is_mcloud_topbar {
-        if text.is_empty() { 44.0 } else { 70.0 }
+        if text.is_empty() { 42.0 } else { 66.0 }
     } else {
         30.0
     };
@@ -3355,7 +3355,7 @@ pub fn search_field(
         // the child's top edge, dropping the glyph below the midline.
         let clear_size = 15.0;
         let clear_x = if is_mcloud_topbar {
-            rect.right() - 56.0
+            rect.right() - 50.0
         } else {
             rect.right() - 17.0
         };

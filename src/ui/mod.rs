@@ -365,7 +365,8 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
             // colour, which shows as a pale band over a cover's tint; the
             // page casts a shadow under the header instead.
             ui.spacing_mut().scroll.fade.strength = 0.0;
-            if artist_tint.is_none() {
+            let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
+            if !mcloud && artist_tint.is_none() {
                 topbar::show(app, ui);
             }
             // One banner at a time: a song that will not play matters more
@@ -382,6 +383,16 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                 crate::settings::Interface::Spotifast => 0,
                 crate::settings::Interface::Mcloud => mcloud::player::PAGE_CLEARANCE as i8,
             };
+            let inset = if app.settings.sidebar_visible {
+                0.0
+            } else {
+                theme::titlebar_inset(ui.ctx())
+            };
+            let top_margin = if mcloud {
+                (mcloud::topbar::HEIGHT + inset) as i8
+            } else {
+                4
+            };
             let scroll = crate::autoscroll::show(
                 ui,
                 egui::ScrollArea::vertical()
@@ -393,7 +404,7 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                         .inner_margin(Margin {
                             left: widgets::PAGE_PADDING as i8,
                             right: widgets::PAGE_PADDING as i8,
-                            top: 4,
+                            top: top_margin,
                             bottom: 48 + page_clearance,
                         })
                         .show(ui, |ui| {
@@ -427,7 +438,16 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
             );
             ui.ctx()
                 .data_mut(|data| data.insert_temp(scrolled_id, scroll.state.offset.y));
-            header_shadow(ui, scroll.inner_rect, scroll.state.offset.y, palette.dark);
+            if !mcloud {
+                header_shadow(ui, scroll.inner_rect, scroll.state.offset.y, palette.dark);
+            } else if artist_tint.is_none() {
+                let topbar_rect = Rect::from_min_size(
+                    rect.min,
+                    vec2(rect.width(), mcloud::topbar::HEIGHT + inset),
+                );
+                let mut topbar_ui = ui.new_child(egui::UiBuilder::new().max_rect(topbar_rect));
+                topbar::show(app, &mut topbar_ui);
+            }
         });
 }
 
