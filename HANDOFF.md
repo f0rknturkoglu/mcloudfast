@@ -1,6 +1,6 @@
 # mcloudfast: devir notu
 
-Son güncelleme: 1 Kasım 2026
+Son güncelleme: 2 Kasım 2026
 
 ## Proje ne
 
@@ -37,6 +37,16 @@ dosyalarına sadece küçük dallanmalar eklendi, böylece upstream çakışmala
 | `topbar.rs` | Üst çubuk (geri/ileri, ev, arama) |
 | `pages.rs` | Albüm ve playlist başlığı, Shuffle/Play butonları |
 | `artist.rs` | Sanatçı sayfası (başlık görseli, Top Songs ızgarası, raflar) |
+| `lyrics.rs` | Kelime kelime doldurma, Spicy Lyrics glow'u, satır ölçeği, ara noktaları — hem tam ekran hem sağ panel ortak |
+
+Lyrics'e ait diğer dosyalar:
+
+| Dosya | Ne yapıyor |
+|---|---|
+| `src/lyrics.rs` | Kaynak ayrıştırma (Spotify `color-lyrics`, LRC/enhanced LRC, LRCLIB), `pieces()` zamanları, yazarlar (`writers_from_credits`) |
+| `src/ui/lyrics.rs` | Panel ve tam ekran çizimi, `painted_words()`, `writers_line()`, `repaint_for_lyrics()` |
+| `src/player.rs` | `lyrics_json()` ve `track_credits_json()` (spclient) |
+| `src/backend.rs` | Lirik + yazar akışı; önbellek `spotify-<id>.json` |
 
 Spotifast'te kancaların olduğu yerler:
 
@@ -96,6 +106,54 @@ Topbar liquid glass kontrolleri (geri/ileri kapsülü, Home daire butonu ve aram
 Sidebar glow (mcloud `user.css:206` `#am-sidebar-glow` ile sayfa kapağının/renginin kenardan sızması),
 Browse sayfası (`Page::Browse`) ve sidebar "Göz At" bağlantısı.
 
+## Lyrics (2 Kasım 2026)
+
+Sağ panel ve tam ekran aynı yolu kullanıyor (`ui/lyrics.rs` → `mcloud::lyrics`).
+
+**Bitenler.**
+- Kelime kelime dolum: kaynak kelime zamanı veriyorsa o (Spotify
+  `SYLLABLE_SYNCED`, enhanced LRC `<mm:ss.xx>`), yoksa tahmin.
+- Spicy Lyrics'in görselleri (kaynaktan alınan değerlerle):
+  - glow: kelime eğrisi 0→0.15→0.6→1 (0→1→1→0), satır eğrisi 0→0.5→1;
+    yarıçap satır 0.06–0.32 em, kelime 0.05–0.20 em; 4 halka × 12 kopya,
+    kopya alpha 0.06; söylenmiş kelimede 0.28 iz; satırın son kelimesi ×1.5.
+    Bloom sadece ışığın ulaştığı kelimelerle sınırlı.
+  - pasif satırlar 0.95 ölçekte, söylenen satır yerine büyüyor
+    (`lit_line_scale`); sarma genişliği ölçekle bölünüyor, satır yeniden
+    sarılmıyor (test: `mcloud_lines_grow_into_place_without_rewrapping`).
+  - tek şeritte süpürme: `EDGE = 0.55 em`, 16 şerit; ışık kelime
+    boşluklarını kesintisiz geçiyor.
+  - ara noktaları: `dot_state()` — 0.75→1.05→1 şişme, −0.12 em yükselme,
+    dolumla birlikte 3 halkalı glow.
+  - yazarlar: son satırın altında `Written by {names}`, 16 dilde.
+- Tahmin modeli: kelimeler `karakter × 85 ms` tempoda dolar; satırın artan
+  süresi **son kelimede tutulur** (nota tutma). Dar satırlarda kelimeler eşit
+  sıkışır. Uzatılmış ünlü (`loooove`) daha ağır (`drawn_out()`).
+- Düzeltilen hata: bir kelime tamamen söylendiğinde f32 glyph genişlik
+  toplamı bir milyonluk kısa düşüp ışığı o kelimenin sonunda **kalıcı olarak**
+  durduruyordu (`SLACK`), satırın kalanı hiç yanmıyordu.
+- `Lyrics.writers` alanı Spotify `songWriters`'tan veya
+  spclient `track-credits-view/v0/experimental/{id}/credits` yanıtından
+  (`roleCredits`, önce `roleTitle`, yoksa ikinci rol) geliyor; lirik
+  önbelleğiyle saklanıyor.
+- Sağ panel oynarken kare istemiyordu (takılma); `repaint_for_lyrics()`
+  artık kelime doldururken her kareyi, satır yanarken her kareyi, yoksa
+  sıradaki satırı istiyor.
+
+**Neden bazı parçalarda tutma kayıyor.** Kaynakta kelime zamanı yok:
+önbellekteki 952 satırın tamamı `LINE_SYNCED`. Spotify kelime zamanı
+verdiğinde (log: `spotify lyrics for <id> are SYLLABLE_SYNCED`) tutma doğru.
+Aynı işi yapan eklentilerin kaynakları:
+- Spicy Lyrics: `api.spicylyrics.org` (TTML, kendi sunucusu).
+- Liquid Lyrics: Spicy API + `spclient…/color-lyrics/v2/track/`.
+- Beautiful Lyrics: `beautiful-lyrics.socalifornian.live/lyrics/{id}`
+  (kullanıcının Spotify token'ı ile kendi backend'i).
+- Lyrics Plus: Musixmatch RichSync (`apic-appmobile.musixmatch.com`,
+  `richsync_compact_type=words`, app token'ı).
+Hiçbiri metinden/sesten çıkarmıyor; hepsi gerçek kelime zamanı verisi kullanıyor.
+mcloudfast bu üçüncü taraf/hosted kaynaklara bağlanmıyor (repo kuralları:
+hosted servis yok, bakım riski).
+
 ## Kalanlar (sırayla önerilen)
 
 Sayfaların hepsi güncel mcloud reposuna (bulutakbulutt/mcloud) göre eşitlendi:
@@ -110,6 +168,28 @@ Sayfaların hepsi güncel mcloud reposuna (bulutakbulutt/mcloud) göre eşitlend
 - Sayfa boşluğu `--am-pad`; kenar çubuğu `--am-side`
   (`settings.mcloud_sidebar_width`, yalnızca sürükleyince kaydediliyor).
 
+Lyrics'te kalanlar (Spicy'den alınabilecekler):
+- **Pasif satırlarda uzaklık bulanıklığı** (`applyBlur`: aktif satırdan
+  uzaklık × 1.25 px, ~6.8 px tavan). egui'de metin blur'u yok; N adet soluk
+  kopya pahalı. Şimdilik dikey fade ile idare ediliyor.
+- **Harf dalgası** (`RefreshedEmphasis`): harf başına scale +0.10, merkezden
+  0.03 em açılma, 0.025 em yukarı, kelime boyunca gecikmeli, min 1 s, son
+  kelimede ×1.6. Tam hali harf harf galley ister; ucuz hali söylenen kelimeyi
+  büyük puntoyla yeniden dizip üstüne çizmek (pompalama).
+- **Duet / arka vokal hizalaması**: `OppositeAligned` + background satırlar.
+  Spotify `color-lyrics` bu veriyi vermiyor.
+- **Romanizasyon**: Japonca/Korece dönüşüm (Kuromoji/opencc). Büyük iş,
+  CJK şarkılarda gerçek kazanç.
+- **TTML yan dosyası**: şarkının yanına `.ttml`/`.xml` konursa kelime
+  zamanları (ve yazarlar) oradan gelir. `local_tags::lyrics` şu an sadece
+  `.lrc` yan dosyasını okuyor; enhanced LRC'nin kelime damgaları zaten
+  ayrıştırılıyor.
+- **Hece ağırlığı**: denendi, naif ünlü-grubu sayımı sessiz `e` (İngilizce
+  "one", "love") ve Türkçe aksanlarda pacing'i bozduğu için geri alındı.
+  Bir sözlük/CMUdict olmadan önerilmiyor.
+- **Üçüncü taraf provider**: yukarıdaki hosted kaynaklardan biri (opsiyonel
+  ayar) — ToS/kırılganlık nedeniyle varsayılan yapılmadı.
+
 Web API izin vermediği için yapılamayanlar:
 - Browse kategori görselleri.
 - Aramadaki "Featuring X" rafı (Spotify'ın editoryal listeleri).
@@ -121,6 +201,12 @@ fark görülürse önce güncel repoya bak.
 
 ## Bilinen durumlar
 
+- `cargo clean` çalıştırıldı (2 Kasım 2026): `target/` boş, ilk build soğuk
+  olacak. Lirik testleri `--features demo` ister
+  (`cargo test --features demo --lib lyrics::tests`).
+- Lyrics yazarları resmî olmayan `track-credits-view` uç noktasından geliyor;
+  ayrıştırma rol başlığına, o yoksa ikinci role bakıyor. Yanıt değişirse
+  log'da `spotify credits unavailable` görünür.
 - Kullanıcının Spotify geliştirici uygulamasının kotası doldu ("Development
   Mode quota is exhausted"). Bu yüzden diskografi gelmiyor; sanatçı
   sayfasında Latest Release ve albüm rafları boş görünüyor. Kod tarafında
