@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 02:50+0300\n"
+"POT-Creation-Date: 2026-11-01 03:05+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -80,7 +80,7 @@ msgstr ""
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
 #: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:225
-#: src/ui/mcloud/topbar.rs:158
+#: src/ui/mcloud/topbar.rs:155
 msgid "Home"
 msgstr ""
 
@@ -681,39 +681,39 @@ msgstr ""
 msgid "Select all"
 msgstr ""
 
-#: src/ui/widgets.rs:3367
+#: src/ui/widgets.rs:3377
 msgid "Clear"
 msgstr ""
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3412
+#: src/ui/widgets.rs:3422
 #, rust-format
 msgid "Built with love by {name}"
 msgstr ""
 
-#: src/ui/widgets.rs:3557
+#: src/ui/widgets.rs:3567
 msgid "Host"
 msgstr ""
 
-#: src/ui/widgets.rs:3574
+#: src/ui/widgets.rs:3584
 msgid "Port"
 msgstr ""
 
-#: src/ui/widgets.rs:3592
+#: src/ui/widgets.rs:3602
 msgid "Username"
 msgstr ""
 
-#: src/ui/widgets.rs:3603
+#: src/ui/widgets.rs:3613
 msgid "Password"
 msgstr ""
 
-#: src/ui/widgets.rs:3621
+#: src/ui/widgets.rs:3631
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
 msgstr ""
 
-#: src/ui/widgets.rs:3625
+#: src/ui/widgets.rs:3635
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -3358,11 +3358,11 @@ msgstr ""
 msgid "Show sidebar (Cmd+B)"
 msgstr ""
 
-#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:107
+#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:104
 msgid "Back"
 msgstr ""
 
-#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:114
+#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:111
 msgid "Forward"
 msgstr ""
 
@@ -3431,6 +3431,11 @@ msgstr ""
 
 #: src/ui/topbar.rs:620
 msgid "What do you want to play?"
+msgstr ""
+
+#: src/ui/topbar.rs:650 src/ui/topbar.rs:654 src/ui/mcloud/sidebar.rs:236
+#: src/ui/browse.rs:223
+msgid "Browse"
 msgstr ""
 
 #: src/ui/update.rs:19
@@ -3799,10 +3804,6 @@ msgid ""
 "Spotifast needs a graphics driver with OpenGL 2.0 or newer, and this PC or "
 "virtual machine does not provide one. Install the graphics driver, or turn "
 "on GPU acceleration for the virtual machine. Open {url} to read more?"
-msgstr ""
-
-#: src/ui/mcloud/sidebar.rs:236 src/ui/browse.rs:223
-msgid "Browse"
 msgstr ""
 
 #: src/ui/mcloud/sidebar.rs:348

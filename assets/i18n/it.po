@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 02:50+0300\n"
+"POT-Creation-Date: 2026-11-01 03:05+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Italian\n"
@@ -77,7 +77,7 @@ msgstr "Playlist • {owner}"
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
 #: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:225
-#: src/ui/mcloud/topbar.rs:158
+#: src/ui/mcloud/topbar.rs:155
 msgid "Home"
 msgstr "Home"
 
@@ -680,33 +680,33 @@ msgstr "Incolla"
 msgid "Select all"
 msgstr "Seleziona tutto"
 
-#: src/ui/widgets.rs:3367
+#: src/ui/widgets.rs:3377
 msgid "Clear"
 msgstr "Cancella"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3412
+#: src/ui/widgets.rs:3422
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "Fatto con amore da {name}"
 
-#: src/ui/widgets.rs:3557
+#: src/ui/widgets.rs:3567
 msgid "Host"
 msgstr "Host"
 
-#: src/ui/widgets.rs:3574
+#: src/ui/widgets.rs:3584
 msgid "Port"
 msgstr "Porta"
 
-#: src/ui/widgets.rs:3592
+#: src/ui/widgets.rs:3602
 msgid "Username"
 msgstr "Nome utente"
 
-#: src/ui/widgets.rs:3603
+#: src/ui/widgets.rs:3613
 msgid "Password"
 msgstr "Password"
 
-#: src/ui/widgets.rs:3621
+#: src/ui/widgets.rs:3631
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
@@ -714,7 +714,7 @@ msgstr ""
 "L’accesso al proxy vale per le richieste Web. La riproduzione locale usa "
 "questo proxy solo senza accesso."
 
-#: src/ui/widgets.rs:3625
+#: src/ui/widgets.rs:3635
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -3527,11 +3527,11 @@ msgstr "Mostra barra laterale (Ctrl+B)"
 msgid "Show sidebar (Cmd+B)"
 msgstr "Mostra barra laterale (Cmd+B)"
 
-#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:107
+#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:104
 msgid "Back"
 msgstr "Indietro"
 
-#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:114
+#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:111
 msgid "Forward"
 msgstr "Avanti"
 
@@ -3603,6 +3603,11 @@ msgstr "La versione {version} è disponibile."
 #: src/ui/topbar.rs:620
 msgid "What do you want to play?"
 msgstr "Cosa vuoi ascoltare?"
+
+#: src/ui/topbar.rs:650 src/ui/topbar.rs:654 src/ui/mcloud/sidebar.rs:236
+#: src/ui/browse.rs:223
+msgid "Browse"
+msgstr "Scopri"
 
 #: src/ui/update.rs:19
 msgid "Update Spotifast"
@@ -3982,10 +3987,6 @@ msgstr ""
 "questo PC o macchina virtuale non lo fornisce. Installa il driver grafico, "
 "oppure attiva l’accelerazione GPU della macchina virtuale. Aprire {url} per "
 "saperne di più?"
-
-#: src/ui/mcloud/sidebar.rs:236 src/ui/browse.rs:223
-msgid "Browse"
-msgstr "Scopri"
 
 #: src/ui/mcloud/sidebar.rs:348
 msgid "Show all"

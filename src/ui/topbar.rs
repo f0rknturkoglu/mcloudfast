@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use egui::{Align, CornerRadius, Galley, Layout, Sense, Vec2, pos2, vec2};
+use egui::{Align, Color32, CornerRadius, Galley, Layout, Rect, Sense, Stroke, Vec2, pos2, vec2};
 
 use crate::api::models::pick_image;
 use crate::app::App;
@@ -620,6 +620,43 @@ pub(super) fn search_box(app: &mut App, ui: &mut egui::Ui, search_width: f32) {
         &gettext(locale, "What do you want to play?"),
         search_width,
     );
+    if crate::ui::mcloud::active(ui.ctx()) {
+        let divider_x = response.rect.right() - 40.0;
+        let cy = response.rect.center().y;
+        ui.painter().vline(
+            divider_x,
+            (cy - 9.0)..=(cy + 9.0),
+            Stroke::new(1.0, Color32::from_white_alpha(38)),
+        );
+        let browse_rect =
+            Rect::from_center_size(pos2(response.rect.right() - 20.0, cy), vec2(28.0, 28.0));
+        let browse_resp = ui.interact(browse_rect, id.with("browse-drawer"), Sense::click());
+        let browse_color = if browse_resp.hovered() {
+            Color32::WHITE
+        } else {
+            Color32::from_white_alpha(175)
+        };
+        theme::paint_icon(
+            ui,
+            Icon::McloudBrowseDrawer,
+            browse_rect,
+            18.0,
+            browse_color,
+        );
+        browse_resp.widget_info(|| {
+            egui::WidgetInfo::labeled(
+                egui::WidgetType::Button,
+                true,
+                gettext(locale, "Browse").as_ref(),
+            )
+        });
+        if browse_resp
+            .on_hover_text(gettext(locale, "Browse"))
+            .clicked()
+        {
+            app.actions.push(Action::Open(Page::Browse));
+        }
+    }
     if app.search.focus_requested {
         app.search.focus_requested = false;
         response.request_focus();

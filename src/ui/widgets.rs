@@ -3306,9 +3306,14 @@ pub fn search_field(
     Icon::Search
         .image(palette.secondary, 16.0)
         .paint_at(ui, icon_rect);
+    let right_pad = if is_mcloud_topbar {
+        if text.is_empty() { 44.0 } else { 70.0 }
+    } else {
+        30.0
+    };
     let field_rect = Rect::from_min_max(
         pos2(rect.left() + 34.0, rect.top() + 1.0),
-        pos2(rect.right() - 30.0, rect.bottom() - 1.0),
+        pos2(rect.right() - right_pad, rect.bottom() - 1.0),
     );
     let mut child = ui.new_child(
         UiBuilder::new()
@@ -3349,8 +3354,13 @@ pub fn search_field(
         // glyph; a smaller child makes egui clamp its centered layout to
         // the child's top edge, dropping the glyph below the midline.
         let clear_size = 15.0;
+        let clear_x = if is_mcloud_topbar {
+            rect.right() - 56.0
+        } else {
+            rect.right() - 17.0
+        };
         let clear_rect = Rect::from_center_size(
-            pos2(rect.right() - 17.0, rect.center().y),
+            pos2(clear_x, rect.center().y),
             Vec2::splat(clear_size + theme::ICON_BUTTON_PAD),
         );
         let mut clear = ui.new_child(

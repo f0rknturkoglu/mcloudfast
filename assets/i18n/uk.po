@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 02:50+0300\n"
+"POT-Creation-Date: 2026-11-01 03:05+0300\n"
 "PO-Revision-Date: 2026-10-06 18:00+0300\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Ukrainian\n"
@@ -78,7 +78,7 @@ msgstr "Плейліст • {owner}"
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
 #: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:225
-#: src/ui/mcloud/topbar.rs:158
+#: src/ui/mcloud/topbar.rs:155
 msgid "Home"
 msgstr "Головна"
 
@@ -684,33 +684,33 @@ msgstr "Вставити"
 msgid "Select all"
 msgstr "Виділити все"
 
-#: src/ui/widgets.rs:3367
+#: src/ui/widgets.rs:3377
 msgid "Clear"
 msgstr "Очистити"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3412
+#: src/ui/widgets.rs:3422
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "Створено з любов’ю: {name}"
 
-#: src/ui/widgets.rs:3557
+#: src/ui/widgets.rs:3567
 msgid "Host"
 msgstr "Хост"
 
-#: src/ui/widgets.rs:3574
+#: src/ui/widgets.rs:3584
 msgid "Port"
 msgstr "Порт"
 
-#: src/ui/widgets.rs:3592
+#: src/ui/widgets.rs:3602
 msgid "Username"
 msgstr "Ім’я користувача"
 
-#: src/ui/widgets.rs:3603
+#: src/ui/widgets.rs:3613
 msgid "Password"
 msgstr "Пароль"
 
-#: src/ui/widgets.rs:3621
+#: src/ui/widgets.rs:3631
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
@@ -718,7 +718,7 @@ msgstr ""
 "Облікові дані проксі застосовуються до вебзапитів. Локальне відтворення "
 "використовує цей проксі, лише якщо облікові дані не вказано."
 
-#: src/ui/widgets.rs:3625
+#: src/ui/widgets.rs:3635
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -3538,11 +3538,11 @@ msgstr "Показати бічну панель (Ctrl+B)"
 msgid "Show sidebar (Cmd+B)"
 msgstr "Показати бічну панель (Cmd+B)"
 
-#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:107
+#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:104
 msgid "Back"
 msgstr "Назад"
 
-#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:114
+#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:111
 msgid "Forward"
 msgstr "Вперед"
 
@@ -3614,6 +3614,11 @@ msgstr "Доступна версія {version}."
 #: src/ui/topbar.rs:620
 msgid "What do you want to play?"
 msgstr "Що хочете послухати?"
+
+#: src/ui/topbar.rs:650 src/ui/topbar.rs:654 src/ui/mcloud/sidebar.rs:236
+#: src/ui/browse.rs:223
+msgid "Browse"
+msgstr "Огляд"
 
 #: src/ui/update.rs:19
 msgid "Update Spotifast"
@@ -3998,10 +4003,6 @@ msgstr ""
 "комп’ютер чи ця віртуальна машина його не надає. Установіть графічний "
 "драйвер або увімкніть GPU-прискорення для віртуальної машини. Відкрити "
 "{url}, щоб дізнатися більше?"
-
-#: src/ui/mcloud/sidebar.rs:236 src/ui/browse.rs:223
-msgid "Browse"
-msgstr "Огляд"
 
 #: src/ui/mcloud/sidebar.rs:348
 msgid "Show all"

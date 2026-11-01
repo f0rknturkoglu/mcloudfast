@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-01 02:50+0300\n"
+"POT-Creation-Date: 2026-11-01 03:05+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Traditional Chinese\n"
@@ -77,7 +77,7 @@ msgstr "播放清單 • {owner}"
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
 #: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:225
-#: src/ui/mcloud/topbar.rs:158
+#: src/ui/mcloud/topbar.rs:155
 msgid "Home"
 msgstr "首頁"
 
@@ -673,40 +673,40 @@ msgstr "貼上"
 msgid "Select all"
 msgstr "全選"
 
-#: src/ui/widgets.rs:3367
+#: src/ui/widgets.rs:3377
 msgid "Clear"
 msgstr "清除"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3412
+#: src/ui/widgets.rs:3422
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "由 {name} 用心打造"
 
-#: src/ui/widgets.rs:3557
+#: src/ui/widgets.rs:3567
 msgid "Host"
 msgstr "主機"
 
-#: src/ui/widgets.rs:3574
+#: src/ui/widgets.rs:3584
 msgid "Port"
 msgstr "連接埠"
 
-#: src/ui/widgets.rs:3592
+#: src/ui/widgets.rs:3602
 msgid "Username"
 msgstr "使用者名稱"
 
-#: src/ui/widgets.rs:3603
+#: src/ui/widgets.rs:3613
 msgid "Password"
 msgstr "密碼"
 
-#: src/ui/widgets.rs:3621
+#: src/ui/widgets.rs:3631
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
 msgstr ""
 "Proxy 登入資訊僅套用於 Web 要求。本機播放只會在不需登入時使用這個 Proxy。"
 
-#: src/ui/widgets.rs:3625
+#: src/ui/widgets.rs:3635
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -3397,11 +3397,11 @@ msgstr "顯示側邊欄 (Ctrl+B)"
 msgid "Show sidebar (Cmd+B)"
 msgstr "顯示側邊欄 (Cmd+B)"
 
-#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:107
+#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:360 src/ui/mcloud/topbar.rs:104
 msgid "Back"
 msgstr "上一頁"
 
-#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:114
+#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:111
 msgid "Forward"
 msgstr "下一頁"
 
@@ -3471,6 +3471,11 @@ msgstr "版本 {version} 現已推出。"
 #: src/ui/topbar.rs:620
 msgid "What do you want to play?"
 msgstr "想播放什麼？"
+
+#: src/ui/topbar.rs:650 src/ui/topbar.rs:654 src/ui/mcloud/sidebar.rs:236
+#: src/ui/browse.rs:223
+msgid "Browse"
+msgstr "瀏覽"
 
 #: src/ui/update.rs:19
 msgid "Update Spotifast"
@@ -3840,10 +3845,6 @@ msgstr ""
 "Spotifast 需要支援 OpenGL 2.0 或更新版本的顯示卡驅動程式，而這台電腦或虛擬機"
 "器沒有提供。請安裝顯示卡驅動程式，或為虛擬機器開啟 GPU 加速。要開啟 {url} 了"
 "解更多嗎？"
-
-#: src/ui/mcloud/sidebar.rs:236 src/ui/browse.rs:223
-msgid "Browse"
-msgstr "瀏覽"
 
 #: src/ui/mcloud/sidebar.rs:348
 msgid "Show all"

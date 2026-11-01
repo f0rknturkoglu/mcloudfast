@@ -16,7 +16,7 @@ pub const HEIGHT: f32 = 62.0;
 const TOP: f32 = 12.0;
 const ROW: f32 = 50.0;
 const SIDE: f32 = 20.0;
-const BUTTON: f32 = 32.0;
+const BUTTON: f32 = 36.0;
 const SEARCH_MAX: f32 = 620.0;
 
 /// mcloud's toolbar fill: a dark glass, 58% of #1e1e1e.
@@ -81,10 +81,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     }
 
     // Back and forward share one capsule, each lighting its own half.
-    let capsule = Rect::from_min_size(
-        pos2(left, y - BUTTON / 2.0),
-        vec2(2.0 * BUTTON + 8.0, BUTTON),
-    );
+    let capsule = Rect::from_min_size(pos2(left, y - BUTTON / 2.0), vec2(2.0 * BUTTON, BUTTON));
     let glass = super::glass::paint(ui, capsule, app.settings.mcloud_glass);
     if !glass {
         ui.painter().rect_filled(
@@ -109,7 +106,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         ),
         (
             Rect::from_min_max(pos2(capsule.center().x, capsule.top()), capsule.max),
-            Icon::ChevronRight,
+            Icon::McloudChevron,
             app.can_go_forward(),
             gettext(locale, "Forward"),
             Action::Forward,
@@ -138,7 +135,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         } else {
             Color32::from_rgb(0xe6, 0xe6, 0xe6)
         };
-        theme::paint_icon(ui, icon, rect, 18.0, color);
+        theme::paint_icon(ui, icon, rect, 20.0, color);
         if enabled && response.on_hover_text(label.as_ref()).clicked() {
             app.actions.push(action);
         }
@@ -162,14 +159,21 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     {
         app.actions.push(Action::Open(Page::Home));
     }
-    let field = Rect::from_min_size(pos2(home.right() + 8.0, y - 17.0), vec2(search_width, 34.0));
+    let field = Rect::from_min_size(
+        pos2(home.right() + 8.0, y - BUTTON / 2.0),
+        vec2(search_width, BUTTON),
+    );
     let glass = super::glass::paint(ui, field, app.settings.mcloud_glass);
     if !glass {
         ui.painter()
-            .rect_filled(field, CornerRadius::same(17), fill(false));
+            .rect_filled(field, CornerRadius::same((BUTTON / 2.0) as u8), fill(false));
     }
-    ui.painter()
-        .rect_stroke(field, CornerRadius::same(17), ring(), StrokeKind::Inside);
+    ui.painter().rect_stroke(
+        field,
+        CornerRadius::same((BUTTON / 2.0) as u8),
+        ring(),
+        StrokeKind::Inside,
+    );
     let mut field_ui = ui.new_child(egui::UiBuilder::new().max_rect(field));
     crate::ui::topbar::search_box(app, &mut field_ui, search_width);
 }
@@ -199,7 +203,7 @@ fn circle(
     } else {
         Color32::from_rgb(0xe6, 0xe6, 0xe6)
     };
-    theme::paint_icon(ui, icon, rect, 18.0, color);
+    theme::paint_icon(ui, icon, rect, 20.0, color);
     theme::focus_ring(ui, &response);
     response.on_hover_text(label)
 }

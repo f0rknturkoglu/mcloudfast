@@ -592,6 +592,7 @@ fastframe_icons::icons! {
         McloudBack => "mcloud-back",
         McloudBell => "mcloud-bell",
         McloudBrowse => "mcloud-browse",
+        McloudBrowseDrawer => "mcloud-browse-drawer",
         McloudChevron => "mcloud-chevron",
         McloudClock => "mcloud-clock",
         McloudDevices => "mcloud-devices",
