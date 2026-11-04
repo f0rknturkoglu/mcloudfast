@@ -156,6 +156,11 @@ hosted servis yok, bakım riski).
 
 ## Kalanlar (sırayla önerilen)
 
+**Temel problemlerden sonra:** mcloud'un `STATUS.md`'sindeki Spotify ile
+Apple Music karşılaştırmaları görev listesine çevrildi:
+[MCLOUD-GOREVLER.md](MCLOUD-GOREVLER.md). Temel problemler çözülünce
+oradan başla.
+
 Sayfaların hepsi güncel mcloud reposuna (bulutakbulutt/mcloud) göre eşitlendi:
 - Sanatçı başlığı: isim 40pt; ⓘ 48 / Play 72 / takip 48. Sağ üstte paylaş + "…".
 - ⓘ Hakkında kartı (`mcloud/artist.rs`). Veri, Pathfinder artist overview'dan

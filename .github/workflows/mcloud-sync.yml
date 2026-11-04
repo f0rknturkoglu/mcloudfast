@@ -1,0 +1,58 @@
+name: mcloud sync
+
+# Once a day: what mcloud merged, closed or wrote into STATUS.md since the
+# inbox's mark goes into MCLOUD-GOREVLER.md's inbox, as a pull request on the
+# `mcloud-sync` branch (rebuilt from main each run, so an open one only grows).
+# Creating it needs Settings → Actions → General → "Allow GitHub Actions to
+# create and approve pull requests". GitHub turns schedules off after 60 days
+# without activity in the repository; run it by hand to turn them back on.
+
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: mcloud-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Collect what is new in mcloud
+        id: sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/mcloud-sync.py
+
+      - name: Open or update the pull request
+        if: steps.sync.outputs.added != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git switch -C mcloud-sync
+          git add MCLOUD-GOREVLER.md
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "Inbox: what is new in mcloud"
+          git push --force origin mcloud-sync
+          body="$RUNNER_TEMP/body.md"
+          {
+            echo "mcloud'da yeni çıkanlar, \`MCLOUD-GOREVLER.md\`'nin gelen kutusuna eklendi."
+            echo "Merge et, sonra kayıtları görevlere çevir."
+            echo
+            sed -n '/<!-- mcloud-sync:start/,/<!-- mcloud-sync:end -->/p' MCLOUD-GOREVLER.md | grep '^- '
+          } > "$body"
+          if [ "$(gh pr view mcloud-sync --json state --jq .state 2>/dev/null)" = OPEN ]; then
+            gh pr edit mcloud-sync --body-file "$body"
+          else
+            gh pr create --head mcloud-sync --base main --title "mcloud: gelen kutusu" --body-file "$body"
+          fi

@@ -18,6 +18,7 @@ evidence = load("check-review-evidence")
 settings = load("check-new-settings")
 media = load("check-review-media")
 ci_scope = load("ci-scope")
+mcloud_sync = load("mcloud-sync")
 
 LOCK = """
 version = 4
@@ -275,6 +276,36 @@ class CiScopeTest(unittest.TestCase):
 
     def test_an_unreadable_change_runs_everything(self):
         self.assertEqual(ci_scope.scope("pull_request", None, set()), (True, ci_scope.EVERYTHING))
+
+
+class McloudSyncTest(unittest.TestCase):
+    INBOX = "# Tasks\n\n<!-- mcloud-sync:start since=2026-11-03T12:00:00Z -->\n- old · [PR #1](https://x/1): One\n<!-- mcloud-sync:end -->\n"
+    SINCE = mcloud_sync.parse_time("2026-11-03T12:00:00Z")
+    NOW = mcloud_sync.parse_time("2026-11-04T06:00:00Z")
+
+    def entry(self, when, number, notes=()):
+        return mcloud_sync.item(when, f"PR #{number}", f"Title [{number}]", f"https://x/{number}", list(notes))
+
+    def test_new_entries_are_added_in_order_and_the_mark_moves(self):
+        text, lines = mcloud_sync.update(self.INBOX, [self.entry("2026-11-04T01:00:00Z", 3), self.entry("2026-11-03T13:00:00Z", 2, ["STATUS.md değişti"])], self.SINCE, self.NOW)
+        self.assertEqual(lines, ["- 2026-11-03 · [PR #2](https://x/2): Title \\[2\\] (STATUS.md değişti)", "- 2026-11-04 · [PR #3](https://x/3): Title \\[3\\]"])
+        self.assertIn("since=2026-11-04T05:00:00Z", text)
+        self.assertLess(text.index("PR #1"), text.index("PR #2"))
+        self.assertLess(text.index("PR #3"), text.index("mcloud-sync:end"))
+
+    def test_known_links_and_older_items_are_left_out(self):
+        text, lines = mcloud_sync.update(self.INBOX, [self.entry("2026-11-04T01:00:00Z", 1), self.entry("2026-11-03T11:00:00Z", 4)], self.SINCE, self.NOW)
+        self.assertEqual(lines, [])
+        self.assertEqual(text.count("PR #1"), 1)
+
+    def test_an_empty_inbox_stays_well_formed(self):
+        empty = "<!-- mcloud-sync:start since=2026-11-03T12:00:00Z -->\n<!-- mcloud-sync:end -->\n"
+        text, lines = mcloud_sync.update(empty, [], self.SINCE, self.NOW)
+        self.assertEqual(text, "<!-- mcloud-sync:start since=2026-11-04T05:00:00Z -->\n<!-- mcloud-sync:end -->\n")
+
+    def test_missing_marks_stop_the_run(self):
+        with self.assertRaises(SystemExit):
+            mcloud_sync.update("# Tasks\n", [], self.SINCE, self.NOW)
 
 
 if __name__ == "__main__":
