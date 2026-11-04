@@ -461,7 +461,14 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
         ui,
         follow,
         "mcloud-artist-follow",
-        (Icon::McloudStar, 20.5),
+        (
+            if following {
+                Icon::McloudStarFilled
+            } else {
+                Icon::McloudStar
+            },
+            20.5,
+        ),
         true,
         (following, bounce_scale),
     );

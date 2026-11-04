@@ -621,6 +621,7 @@ fastframe_icons::icons! {
         McloudShare => "mcloud-share",
         McloudShuffle => "mcloud-shuffle",
         McloudStar => "mcloud-star",
+        McloudStarFilled => "mcloud-star-filled",
         McloudVolume => "mcloud-volume",
         McloudVolume1 => "mcloud-volume1",
         McloudVolume2 => "mcloud-volume2",

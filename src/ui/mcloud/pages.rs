@@ -18,6 +18,8 @@ use crate::theme::{self, Icon, Palette};
 use crate::ui::collection::{Actions, Hero};
 use crate::ui::widgets;
 
+const ART_MIN: f32 = 150.0;
+const ART_MAX: f32 = 270.0;
 const ART_RADIUS: f32 = 10.0;
 /// The action buttons' height, and the round ones' width.
 const BUTTON: f32 = 36.0;
@@ -25,6 +27,10 @@ const BUTTON: f32 = 36.0;
 /// its size when its label changes.
 const PLAY_WIDTH: f32 = 128.0;
 const ACTIONS_ID: &str = "mcloud-hero-actions";
+pub(in crate::ui::mcloud) const HERO_SCROLL_THRESHOLD_ID: &str = "mcloud-hero-scroll-threshold";
+/// Below this content width (corresponding to ~1250pt window with sidebar and
+/// right panel), the title block drops below the cover artwork.
+const STACKED_HERO_WIDTH: f32 = 580.0;
 
 pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
     let palette = app.palette;
@@ -35,9 +41,85 @@ pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
         .and_then(|uri| app.softened_covers.texture(ui.ctx(), &art_loader, uri));
     ui.add_space(12.0);
     let page_width = ui.available_width();
-    let size = (page_width * 0.24).clamp(150.0, 270.0);
+    let size = (page_width * 0.45).clamp(ART_MIN, ART_MAX);
+    let stacked = page_width < STACKED_HERO_WIDTH;
     let gap = (page_width * 0.024).clamp(20.0, 32.0);
-    let (row, _) = ui.allocate_exact_size(vec2(page_width, size), Sense::hover());
+
+    let text_width = if stacked {
+        page_width
+    } else {
+        (page_width - size - gap).max(120.0)
+    };
+    let half_white = Color32::from_white_alpha(128);
+    let title = widgets::ellipsized(
+        ui,
+        hero.title,
+        theme::bold(26.0),
+        palette.text,
+        text_width,
+        2,
+    );
+    // The names that open a page lead: the owner, or the album's artists. A
+    // playlist whose owner has no page still leads with the owner.
+    let mut names: Vec<_> = hero
+        .byline
+        .iter()
+        .take_while(|(_, page)| page.is_some())
+        .collect();
+    if names.is_empty() && !hero.round {
+        names.extend(hero.byline.first());
+    }
+    let creator = (!names.is_empty()).then(|| {
+        names
+            .iter()
+            .map(|(name, _)| name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    });
+    let creator = creator.map(|text| {
+        widgets::ellipsized(
+            ui,
+            &text,
+            theme::regular(26.0),
+            palette.accent,
+            text_width,
+            1,
+        )
+    });
+    let details: Vec<&str> = hero
+        .byline
+        .iter()
+        .skip(names.len())
+        .map(|(text, _)| text.as_str())
+        .collect();
+    let details = (!details.is_empty()).then(|| {
+        widgets::ellipsized(
+            ui,
+            &details.join(" • "),
+            theme::semibold(12.0),
+            half_white,
+            text_width,
+            1,
+        )
+    });
+    let description = hero
+        .description
+        .as_deref()
+        .filter(|text| !text.is_empty())
+        .map(|text| widgets::ellipsized(ui, text, theme::regular(13.0), half_white, text_width, 3));
+    let top_block_height = title.size().y
+        + creator.as_ref().map_or(0.0, |galley| galley.size().y + 6.0)
+        + details.as_ref().map_or(0.0, |galley| galley.size().y + 4.0);
+    let desc_height = description
+        .as_ref()
+        .map_or(0.0, |galley| galley.size().y + 8.0);
+    let total_height = if stacked {
+        size + 16.0 + top_block_height + desc_height
+    } else {
+        size
+    };
+
+    let (row, _) = ui.allocate_exact_size(vec2(page_width, total_height), Sense::hover());
     let art = Rect::from_min_size(row.min, egui::Vec2::splat(size));
     let radius = if hero.round { size / 2.0 } else { ART_RADIUS };
 
@@ -97,77 +179,40 @@ pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
         );
     }
 
-    let left = art.right() + gap;
-    let width = (row.right() - left).max(0.0);
-    // The buttons take the band along the artwork's bottom edge.
-    let actions = Rect::from_min_max(pos2(left, art.bottom() - BUTTON), row.max);
-    // The pass is read before the data lock: egui's context locks are not
-    // reentrant.
     let pass = ui.ctx().cumulative_pass_nr();
-    ui.ctx()
-        .data_mut(|data| data.insert_temp(Id::new(ACTIONS_ID), (pass, actions)));
+    let (left, mut y, desc_y) = if stacked {
+        let start_y = art.bottom() + 16.0;
+        let scroll_trigger = total_height + BUTTON + 16.0;
+        ui.ctx().data_mut(|data| {
+            data.remove::<(u64, Rect)>(Id::new(ACTIONS_ID));
+            data.insert_temp(Id::new(HERO_SCROLL_THRESHOLD_ID), scroll_trigger);
+        });
+        (row.left(), start_y, start_y + top_block_height + 6.0)
+    } else {
+        let left = art.right() + gap;
+        // The buttons take the band along the artwork's bottom edge.
+        let actions = Rect::from_min_max(pos2(left, art.bottom() - BUTTON), row.max);
+        let scroll_trigger = size;
+        ui.ctx().data_mut(|data| {
+            data.insert_temp(Id::new(ACTIONS_ID), (pass, actions));
+            data.insert_temp(Id::new(HERO_SCROLL_THRESHOLD_ID), scroll_trigger);
+        });
+        let bottom_limit = actions.top() - 12.0 - desc_height;
+        let room = Rect::from_min_max(art.min, pos2(art.right(), bottom_limit.max(art.top())));
+        let start_y = (room.center().y - top_block_height / 2.0).max(art.top());
+        let desc_y = (actions.top() - 12.0 - description.as_ref().map_or(0.0, |g| g.size().y))
+            .max(start_y + top_block_height + 4.0);
+        (left, start_y, desc_y)
+    };
 
-    // The title and the creator share one size, the creator in the accent
-    // and regular weight; the details and the description follow at half
-    // white. The block is centred in the room above the buttons.
-    let size = (page_width * 0.021).clamp(20.0, 28.0);
-    let half_white = Color32::from_white_alpha(128);
-    let title = widgets::ellipsized(ui, hero.title, theme::bold(size), palette.text, width, 2);
-    // The names that open a page lead: the owner, or the album's artists. A
-    // playlist whose owner has no page still leads with the owner.
-    let mut names: Vec<_> = hero
-        .byline
-        .iter()
-        .take_while(|(_, page)| page.is_some())
-        .collect();
-    if names.is_empty() && !hero.round {
-        names.extend(hero.byline.first());
-    }
-    let creator = (!names.is_empty()).then(|| {
-        names
-            .iter()
-            .map(|(name, _)| name.as_str())
-            .collect::<Vec<_>>()
-            .join(", ")
-    });
-    let creator = creator
-        .map(|text| widgets::ellipsized(ui, &text, theme::regular(size), palette.accent, width, 1));
-    let details: Vec<&str> = hero
-        .byline
-        .iter()
-        .skip(names.len())
-        .map(|(text, _)| text.as_str())
-        .collect();
-    let details = (!details.is_empty()).then(|| {
-        widgets::ellipsized(
-            ui,
-            &details.join(" • "),
-            theme::regular(12.0),
-            half_white,
-            width,
-            1,
-        )
-    });
-    let description = hero
-        .description
-        .as_deref()
-        .filter(|text| !text.is_empty())
-        .map(|text| widgets::ellipsized(ui, text, theme::regular(12.0), half_white, width, 2));
-    let height = title.size().y
-        + creator.as_ref().map_or(0.0, |galley| galley.size().y + 6.0)
-        + details.as_ref().map_or(0.0, |galley| galley.size().y)
-        + description
-            .as_ref()
-            .map_or(0.0, |galley| galley.size().y + 4.0);
-    let room = Rect::from_min_max(art.min, pos2(art.right(), actions.top() - 12.0));
-    let mut y = (room.center().y - height / 2.0).max(art.top());
     let mut paint = |galley: Arc<egui::Galley>, color: Color32, after: f32| {
         let rect = Rect::from_min_size(pos2(left, y), galley.size());
         ui.painter().galley(rect.min, galley, color);
         y = rect.bottom() + after;
         rect
     };
-    paint(title, palette.text, 0.0);
+    // 26pt bold title + 26pt regular accent creator with 32pt line rhythm.
+    paint(title, palette.text, 4.0);
     if let Some(creator) = creator {
         let rect = paint(creator, palette.accent, 6.0);
         let target = names.iter().find_map(|(_, page)| page.clone());
@@ -190,16 +235,17 @@ pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
         }
     }
     if let Some(description) = description {
-        paint(description, half_white, 0.0);
+        ui.painter()
+            .galley(pos2(left, desc_y), description, half_white);
     }
-    ui.add_space(20.0);
+    ui.add_space(if stacked { 12.0 } else { 20.0 });
 }
 
 /// Shuffle, Play, then the save, radio and "…" buttons, in the
 /// band [`hero`] left for them, or on a row of their own on pages without
 /// one. The filter and the sort sit at the band's right end, as Spotify's
 /// list toolbar does under mcloud: a magnifier that opens into a field,
-/// then the sort.
+/// then the sort. When space is tight, sort hides first, then search (#103).
 pub(in crate::ui) fn actions_row(
     app: &mut App,
     ui: &mut egui::Ui,
@@ -216,9 +262,16 @@ pub(in crate::ui) fn actions_row(
     let enabled = ui.is_enabled();
     let tools = |app: &mut App, ui: &mut egui::Ui, filter: Option<&mut String>| {
         if let Some(filter) = filter {
+            let avail = ui.available_width();
+            if avail < 40.0 && filter.is_empty() {
+                return;
+            }
+            let show_sort = avail >= 180.0;
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.spacing_mut().item_spacing.x = 14.0;
-                sort_menu_button(app, ui);
+                if show_sort {
+                    sort_menu_button(app, ui);
+                }
                 filter_tool(app, ui, actions.name, filter);
             });
         }
@@ -605,20 +658,12 @@ fn controls(app: &mut App, ui: &mut egui::Ui, actions: &Actions<'_>, filtered: b
         }
     }
     if let Some((uri, saved)) = &actions.saved {
-        let (icon, tooltip, color) = if *saved {
-            (
-                actions.saved_icons.1,
-                &actions.saved_tooltips.1,
-                palette.accent,
-            )
+        let (icon, tooltip) = if *saved {
+            (Icon::McloudStarFilled, &actions.saved_tooltips.1)
         } else {
-            (
-                actions.saved_icons.0,
-                &actions.saved_tooltips.0,
-                palette.secondary,
-            )
+            (Icon::McloudStar, &actions.saved_tooltips.0)
         };
-        if round_button(ui, &palette, icon, color, tooltip).clicked() {
+        if round_button(ui, &palette, icon, palette.accent, tooltip).clicked() {
             app.actions.push(Action::ToggleSaved(uri.clone()));
         }
     }
@@ -627,7 +672,7 @@ fn controls(app: &mut App, ui: &mut egui::Ui, actions: &Actions<'_>, filtered: b
             ui,
             &palette,
             Icon::McloudPlus,
-            palette.secondary,
+            palette.accent,
             &gettext(locale, "Save as playlist"),
         )
         .clicked()
@@ -664,6 +709,49 @@ fn controls(app: &mut App, ui: &mut egui::Ui, actions: &Actions<'_>, filtered: b
                         actions.name,
                         actions.owned_playlist.as_ref(),
                     );
+                }
+                let current_page = app.page().clone();
+                if matches!(
+                    current_page,
+                    Page::Album(_) | Page::Playlist(_) | Page::LikedSongs
+                ) {
+                    widgets::menu_separator(ui, &palette);
+                    let is_album = matches!(current_page, Page::Album(_));
+                    let numbers_on = if is_album {
+                        app.settings.mcloud_album_numbers
+                    } else {
+                        app.settings.mcloud_playlist_numbers
+                    };
+                    if widgets::menu_item(ui, &palette, numbers_on.then_some(Icon::Check), "#") {
+                        if is_album {
+                            app.settings.mcloud_album_numbers = !numbers_on;
+                        } else {
+                            app.settings.mcloud_playlist_numbers = !numbers_on;
+                        }
+                        app.actions.push(Action::SettingsChanged);
+                    }
+                    let header_on = app.settings.mcloud_tracklist_header;
+                    if widgets::menu_item(
+                        ui,
+                        &palette,
+                        header_on.then_some(Icon::Check),
+                        &pgettext(locale, "column", "Title"),
+                    ) {
+                        app.settings.mcloud_tracklist_header = !header_on;
+                        app.actions.push(Action::SettingsChanged);
+                    }
+                    if is_album {
+                        let artist_on = !app.settings.mcloud_album_clean;
+                        if widgets::menu_item(
+                            ui,
+                            &palette,
+                            artist_on.then_some(Icon::Check),
+                            &gettext(locale, "Artist"),
+                        ) {
+                            app.settings.mcloud_album_clean = artist_on;
+                            app.actions.push(Action::SettingsChanged);
+                        }
+                    }
                 }
                 if let Some((page, loading)) = &actions.reload {
                     widgets::menu_separator(ui, &palette);
@@ -980,5 +1068,14 @@ mod tests {
         let top: Vec<String> = sorted.into_iter().map(|(g, _)| g).collect();
 
         assert_eq!(top, vec!["electronic", "ambient", "rock"]);
+    }
+
+    #[test]
+    fn hero_cover_size_clamps_between_150_and_270_and_stacks_when_narrow() {
+        let calc = |w: f32| (w * 0.45).clamp(ART_MIN, ART_MAX);
+        assert_eq!(calc(300.0), 150.0);
+        assert_eq!(calc(400.0), 180.0);
+        assert_eq!(calc(700.0), 270.0);
+        assert_eq!(ART_RADIUS, 10.0);
     }
 }

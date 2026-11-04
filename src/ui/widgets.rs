@@ -1562,10 +1562,22 @@ fn track_row_contents(
     if !ui.is_rect_visible(rect) && !response.has_focus() && !response.clicked() {
         return (response, None);
     }
+    let mcloud = super::mcloud::active(ui.ctx());
+    let mut cols = columns(width, &row);
+    if mcloud && row.number.is_none() {
+        cols.number = 0.0;
+    }
+    let album_row = mcloud && !row.show_cover && !row.show_album && !row.compact;
     // mcloud parts its rows with hairlines, as Apple Music does.
-    if super::mcloud::active(ui.ctx()) {
+    if mcloud {
+        let x_range = if album_row {
+            let left_inset = if cols.number > 0.0 { 48.0 } else { 16.0 };
+            egui::Rangef::new(rect.left() + left_inset, rect.right() - 8.0)
+        } else {
+            rect.x_range().shrink(8.0)
+        };
         ui.painter().hline(
-            rect.x_range().shrink(8.0),
+            x_range,
             rect.bottom() - 0.5,
             Stroke::new(1.0, Color32::from_white_alpha(23)),
         );
@@ -1646,28 +1658,33 @@ fn track_row_contents(
     }
     // The row highlight also shows keyboard focus. Do not add an outline
     // when a mouse click gives the row focus for arrow-key navigation.
-    let cols = columns(width, &row);
     let painter = ui.painter().clone();
-    let mut x = rect.left() + 8.0;
+    let mut x = rect.left()
+        + if mcloud && cols.number == 0.0 && !row.compact {
+            16.0
+        } else {
+            8.0
+        };
 
     // Number / play.
     if cols.number > 0.0 {
         let cell = Rect::from_min_size(pos2(x, rect.top()), vec2(cols.number, row_height));
-        if pending {
+        let cover_shows_state = mcloud && cols.cover > 0.0;
+        if !cover_shows_state && pending {
             let mut child = ui.new_child(
                 UiBuilder::new()
                     .max_rect(cell)
                     .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
             );
             theme::spinner(&mut child, 16.0, palette.accent);
-        } else if hovered && !unavailable {
+        } else if !cover_shows_state && hovered && !unavailable {
             let icon = if playing {
                 Icon::PauseFilled
             } else {
                 Icon::PlayFilled
             };
             theme::paint_icon(ui, icon, cell, 14.0, palette.text);
-        } else if playing {
+        } else if !cover_shows_state && playing {
             theme::paint_icon(ui, Icon::AudioLines, cell, 16.0, palette.accent);
         } else {
             let color = if is_current {
@@ -1680,7 +1697,7 @@ fn track_row_contents(
                 cell.center(),
                 egui::Align2::CENTER_CENTER,
                 label,
-                theme::regular(14.0),
+                theme::regular(if mcloud { 13.0 } else { 14.0 }),
                 color,
             );
         }
@@ -1706,9 +1723,10 @@ fn track_row_contents(
             },
             Some(app.backend.art()),
         );
-        // Without a number column the cover carries the play control:
-        // hover shows it, a click uses it, and what plays shows there.
-        if cols.number == 0.0 {
+        // Without a number column, or in mcloud where the cover carries the
+        // playing and hover state while the number column stays visible,
+        // paint the overlay on the cover.
+        if cols.number == 0.0 || mcloud {
             let scrim = |alpha: u8| {
                 painter.rect_filled(
                     cover_rect,
@@ -1760,6 +1778,21 @@ fn track_row_contents(
     } else {
         palette.secondary
     };
+    let hide_album_artist = album_row
+        && app.settings.mcloud_album_clean
+        && match row.item {
+            PlayableItem::Track(track) => track.album.as_ref().is_some_and(|album| {
+                !album.artists.is_empty()
+                    && !track.artists.is_empty()
+                    && track.artists.iter().all(|artist| {
+                        album.artists.iter().any(|a| {
+                            (artist.id.is_some() && artist.id == a.id)
+                                || artist.name.eq_ignore_ascii_case(&a.name)
+                        })
+                    })
+            }),
+            PlayableItem::Episode(_) => false,
+        };
     if row.thin {
         let mut child = ui.new_child(
             UiBuilder::new()
@@ -1771,7 +1804,13 @@ fn track_row_contents(
         theme::text(
             &mut child,
             row.item.name(),
-            theme::medium(14.0),
+            if album_row {
+                theme::regular(13.0)
+            } else if mcloud {
+                theme::medium(13.0)
+            } else {
+                theme::medium(14.0)
+            },
             title_color,
         );
         match row.item {
@@ -1779,19 +1818,21 @@ fn track_row_contents(
                 if track.explicit {
                     explicit_badge(&mut child, &palette);
                 }
-                theme::text(
-                    &mut child,
-                    "•",
-                    theme::regular(12.0),
-                    palette.secondary.gamma_multiply(0.6),
-                );
-                artist_links(
-                    &mut child,
-                    app,
-                    &track.artists,
-                    theme::regular(13.0),
-                    subtitle_color,
-                );
+                if !hide_album_artist {
+                    theme::text(
+                        &mut child,
+                        "•",
+                        theme::regular(12.0),
+                        palette.secondary.gamma_multiply(0.6),
+                    );
+                    artist_links(
+                        &mut child,
+                        app,
+                        &track.artists,
+                        theme::regular(13.0),
+                        subtitle_color,
+                    );
+                }
                 if let Some(added) = row.added_at.filter(|a| !a.starts_with("1970-01-01"))
                     && cols.added == 0.0
                 {
@@ -1851,6 +1892,25 @@ fn track_row_contents(
                 }
             }
         }
+    } else if hide_album_artist {
+        let mut child = ui.new_child(
+            UiBuilder::new()
+                .max_rect(title_rect)
+                .layout(Layout::left_to_right(Align::Center)),
+        );
+        child.set_clip_rect(title_rect.intersect(ui.clip_rect()));
+        child.spacing_mut().item_spacing = vec2(6.0, 0.0);
+        theme::text(
+            &mut child,
+            row.item.name(),
+            theme::regular(13.0),
+            title_color,
+        );
+        if let PlayableItem::Track(track) = row.item
+            && track.explicit
+        {
+            explicit_badge(&mut child, &palette);
+        }
     } else {
         let mut child = ui.new_child(
             UiBuilder::new()
@@ -1864,7 +1924,14 @@ fn track_row_contents(
         child.add_space(vertical_pad);
         child.horizontal(|ui| {
             ui.set_max_width(title_rect.width());
-            theme::text(ui, row.item.name(), theme::medium(14.5), title_color);
+            let title_font = if album_row {
+                theme::regular(13.0)
+            } else if mcloud {
+                theme::medium(13.0)
+            } else {
+                theme::medium(14.5)
+            };
+            theme::text(ui, row.item.name(), title_font, title_color);
         });
         child.horizontal(|ui| {
             ui.set_max_width(title_rect.width());
@@ -2044,8 +2111,14 @@ fn track_row_contents(
             {
                 child.set_opacity(0.0);
             }
-            // A liked heart stays green under the pointer.
-            let (icon, color, hover) = if saved == Some(true) {
+            // A liked indicator stays in the accent colour under the pointer.
+            let (icon, color, hover) = if mcloud {
+                if saved == Some(true) {
+                    (Icon::McloudStarFilled, palette.accent, palette.accent_hover)
+                } else {
+                    (Icon::McloudStar, palette.secondary, palette.accent)
+                }
+            } else if saved == Some(true) {
                 (Icon::HeartFilled, palette.accent, palette.accent_hover)
             } else {
                 (Icon::Heart, palette.secondary, palette.text)
@@ -2422,9 +2495,14 @@ pub fn table_header(
             clicked = Some(column);
         }
     };
+    let show_numbers = !mcloud
+        || ui
+            .ctx()
+            .data(|d| d.get_temp::<bool>(egui::Id::new("mcloud-table-show-numbers")))
+            .unwrap_or(true);
     let mut number_clicked = false;
-    let mut x = rect.left() + 8.0;
-    {
+    let mut x = rect.left() + if show_numbers { 8.0 } else { 16.0 };
+    if show_numbers {
         let number = Rect::from_center_size(pos2(x + 22.0, rect.center().y), vec2(30.0, 22.0));
         // With no sort chosen the list already plays its own order, and
         // the # says so: lit, arrow pointing down the list.
@@ -2475,8 +2553,8 @@ pub fn table_header(
         {
             number_clicked = true;
         }
+        x += 44.0;
     }
-    x += 44.0;
     if show_cover {
         x += 52.0;
     }

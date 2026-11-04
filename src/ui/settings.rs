@@ -1526,25 +1526,71 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 &appearance_rows[1],
                 |ui| language_picker(app, ui),
             );
-            filtered_row(
-                ui,
-                &palette,
-                &needle,
-                &appearance,
-                &appearance_rows[2],
-                |ui| {
-                    if widgets::switch(
-                        ui,
-                        &palette,
-                        &accent_from_art,
-                        &mut app.settings.accent_from_art,
-                    )
-                    .changed()
-                    {
-                        changed = true;
-                    }
-                },
-            );
+            if app.settings.interface == crate::settings::Interface::Mcloud {
+                use crate::settings::McloudPageTint;
+                let choices = [
+                    (McloudPageTint::Off, gettext(locale, "Off")),
+                    (
+                        McloudPageTint::Subtle,
+                        pgettext(locale, "glass", "Balanced"),
+                    ),
+                    (McloudPageTint::Full, pgettext(locale, "glass", "Full")),
+                ];
+                let choice_gap = 6.0;
+                let choices_width = choices
+                    .iter()
+                    .map(|(_, label)| theme::soft_button_width(ui, label))
+                    .sum::<f32>()
+                    + choice_gap * (choices.len() - 1) as f32;
+                filtered_row_sized(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[2],
+                    choices_width,
+                    |ui| {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = choice_gap;
+                            for (mode, label) in choices.iter().rev() {
+                                if theme::soft_button(
+                                    ui,
+                                    &palette,
+                                    None,
+                                    label,
+                                    app.settings.mcloud_page_tint == *mode,
+                                )
+                                .clicked()
+                                    && app.settings.mcloud_page_tint != *mode
+                                {
+                                    app.settings.mcloud_page_tint = *mode;
+                                    changed = true;
+                                }
+                            }
+                        });
+                    },
+                );
+            } else {
+                filtered_row(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[2],
+                    |ui| {
+                        if widgets::switch(
+                            ui,
+                            &palette,
+                            &accent_from_art,
+                            &mut app.settings.accent_from_art,
+                        )
+                        .changed()
+                        {
+                            changed = true;
+                        }
+                    },
+                );
+            }
             {
                 use crate::settings::PlayerBarVis;
                 let choices = [

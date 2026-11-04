@@ -764,7 +764,17 @@ fn table_contents(app: &mut App, ui: &mut egui::Ui, table: Table<'_>) {
         .pagination
         .filter(|page| page.total > 0 && sort.is_none() && needle.is_empty());
     let rows = finite.map_or(entry.visible.len(), |page| page.total as usize);
+    let mcloud = crate::ui::mcloud::active(ui.ctx());
+    let show_header = !mcloud || app.settings.mcloud_tracklist_header;
+    let show_numbers = !mcloud
+        || match table.page {
+            Page::Album(_) => app.settings.mcloud_album_numbers,
+            _ => app.settings.mcloud_playlist_numbers,
+        };
+    ui.ctx()
+        .data_mut(|d| d.insert_temp(egui::Id::new("mcloud-table-show-numbers"), show_numbers));
     if rows > 0
+        && show_header
         && let Some(column) = widgets::table_header(
             ui,
             &palette,
@@ -960,7 +970,7 @@ fn table_contents(app: &mut App, ui: &mut egui::Ui, table: Table<'_>) {
                 } else {
                     actual_index
                 },
-                number: Some(if sorted { row + 1 } else { actual_index + 1 }),
+                number: show_numbers.then_some(if sorted { row + 1 } else { actual_index + 1 }),
                 item,
                 context: &context,
                 show_cover,
@@ -2054,14 +2064,21 @@ pub fn album(app: &mut App, ui: &mut egui::Ui, id: &str) {
                     .iter()
                     .cloned()
                     .map(|mut track| {
-                        if track.album.is_none() {
-                            track.album = Some(Album {
-                                id: album.id.clone(),
-                                name: album.name.clone(),
-                                uri: album.uri.clone(),
-                                images: album.images.clone(),
-                                ..Album::default()
-                            });
+                        match &mut track.album {
+                            Some(track_album) if track_album.artists.is_empty() => {
+                                track_album.artists = album.artists.clone();
+                            }
+                            None => {
+                                track.album = Some(Album {
+                                    id: album.id.clone(),
+                                    name: album.name.clone(),
+                                    uri: album.uri.clone(),
+                                    images: album.images.clone(),
+                                    artists: album.artists.clone(),
+                                    ..Album::default()
+                                });
+                            }
+                            _ => {}
                         }
                         (PlayableItem::Track(track), None, None)
                     })
@@ -2129,7 +2146,7 @@ pub fn album(app: &mut App, ui: &mut egui::Ui, id: &str) {
                     show_cover: false,
                     show_added: false,
                     show_added_by: false,
-                    show_plays,
+                    show_plays: show_plays && !crate::ui::mcloud::active(ui.ctx()),
                     page: Page::Album(id.to_string()),
                     loading: page.tracks.loading,
                     error: page.tracks.error.as_deref(),

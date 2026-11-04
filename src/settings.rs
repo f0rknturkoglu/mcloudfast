@@ -70,6 +70,18 @@ pub enum GlassEffect {
     Eco,
 }
 
+/// How mcloud tints album and playlist pages from their artwork (`albumTint`
+/// in mcloud): flat (`Off`), a gentle top wash (`Subtle`), or the full page
+/// (`Full`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum McloudPageTint {
+    #[default]
+    Off,
+    Subtle,
+    Full,
+}
+
 /// How the tray icon is drawn on Linux and Windows: in colour, or white or
 /// black to match the panel. The macOS menu bar always gets the template
 /// image, which it draws black or white to match itself.
@@ -318,6 +330,17 @@ pub struct Settings {
     /// mcloud's sidebar width once dragged; until then it follows the
     /// window as mcloud's does. Spotifast's own keeps `sidebar_width`.
     pub mcloud_sidebar_width: Option<f32>,
+    /// Show track numbers on album pages in mcloud (`numbersAlbum`).
+    pub mcloud_album_numbers: bool,
+    /// Show track numbers on playlist and Liked Songs pages in mcloud (`numbers`).
+    pub mcloud_playlist_numbers: bool,
+    /// Show the track list column header row in mcloud (`tracklistHeader`).
+    pub mcloud_tracklist_header: bool,
+    /// Hide the artist subtitle on album rows unless a guest or another artist
+    /// appears on the track (`albumClean`).
+    pub mcloud_album_clean: bool,
+    /// Album and playlist page tint mode in mcloud (`albumTint`).
+    pub mcloud_page_tint: McloudPageTint,
     /// The interface language; older files without it follow the system.
     pub language: LanguageChoice,
     /// Filename selected from the local themes directory.
@@ -530,6 +553,11 @@ impl Default for Settings {
             interface: Interface::Spotifast,
             mcloud_glass: GlassEffect::Balanced,
             mcloud_sidebar_width: None,
+            mcloud_album_numbers: true,
+            mcloud_playlist_numbers: true,
+            mcloud_tracklist_header: true,
+            mcloud_album_clean: true,
+            mcloud_page_tint: McloudPageTint::Off,
             language: LanguageChoice::System,
             custom_theme: None,
             custom_theme_cache: None,

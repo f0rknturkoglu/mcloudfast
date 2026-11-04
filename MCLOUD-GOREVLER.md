@@ -112,7 +112,7 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
 
 ## C. Albüm ve playlist sayfaları
 
-12. **Başlık ölçüleri.** *Kontrol.* Kaynak: macOS 27 Music.
+12. **Başlık ölçüleri.** *Tamamlandı.* Kaynak: macOS 27 Music.
     - Kapak 150pt ile 270pt arasında, içerik genişliğinin %45'i. Music'te
       hep 270pt; ~1250pt altında başlık kapağın altına iniyor.
     - Kapak köşesi 10px.
@@ -120,31 +120,30 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
       32pt.
     - Yıl satırı 12pt semibold.
     - Playlist açıklaması metin sütununun en altında, 13px, en fazla 3 satır.
-13. **Parça satırları.** *Kontrol.*
+13. **Parça satırları.** *Tamamlandı.*
     - Apple'da satırlar tek satır ve daha ince. Liste metni 13pt.
     - Albüm satırlarında kapak yok. Ayırıcı çizgi 48px'ten başlıyor.
     - Sanatçı satırı olmayan albüm satırında numara dikeyde ortada.
     - Plays sütunu ve video etiketi yok.
     - Sanatçı satırı sadece konuk ya da başka sanatçı olan parçalarda var.
-14. **Kaydet butonu yıldız olsun.** *Kontrol.* Music'teki gibi boş ve dolu
+14. **Kaydet butonu yıldız olsun.** *Tamamlandı.* Music'teki gibi boş ve dolu
     yıldız, accent renkte. Kaydederken Spotify yeşili görünmesin. Shuffle,
     Play ve + da accent renkte.
-15. **mcloud'un sayfa ayarları.** *Yok* (ayarlarda sadece arayüz, cam ve
-    sidebar genişliği var).
+15. **mcloud'un sayfa ayarları.** *Tamamlandı.*
     - Parça numaraları: albüm ve playlist için ayrı ayrı. Gizlenince başlık
       16px sola kayar.
     - Albüm ve playlist rengi: kapalı / hafif / tam. Renk kapaktan gelir,
       light mode'da da çalışır.
     - Parça listesinin başlık satırını gizleme (mcloud B6).
-16. **Çalan parçanın göstergesi accent renkte olsun.** *Kontrol.* Spotify'ın
+16. **Çalan parçanın göstergesi accent renkte olsun.** *Tamamlandı.* Spotify'ın
     yeşil ekolayzırı olmasın. Kapağı olan satırda gösterge kapağın üstünde
     durur.
-17. **Dar alanda aksiyon satırı.** *Kontrol.* Yer kalmazsa önce sıralama,
+17. **Dar alanda aksiyon satırı.** *Tamamlandı.* Yer kalmazsa önce sıralama,
     sonra arama gizlensin (mcloud #103).
-18. **Kaydırınca çıkan başlık çubuğu.** *Kontrol.* Sayfanın en üstündeyken
+18. **Kaydırınca çıkan başlık çubuğu.** *Tamamlandı.* Sayfanın en üstündeyken
     gizli. Play kontrolleri çubuğun altına girince görünür. Cam: #2a2a2a
     %62, blur 30, satürasyon 1.8.
-19. **Yazı görünümü.** *Kontrol.* Negatif harf aralığı yok. mcloud bulgusu:
+19. **Yazı görünümü.** *Tamamlandı.* Negatif harf aralığı yok. mcloud bulgusu:
     Chromium'un `antialiased` yumuşatması harfleri Music'ten %25 daha ince
     çiziyordu. egui'nin SF Pro çizimini Music'in ekran görüntüsüyle
     karşılaştır. Referans: "Aynen Öyle", 26pt bold, 2x'te 273×57px.
@@ -261,7 +260,7 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
     mcloud bunu ucuza çözemedi. mcloudfast'ın shader'ında bilinear ya da
     mipmap örnekleme ucuz bir çözüm olabilir. Notlar: liquid-glass-research,
     `research/rim-aa/`.
-35. **Toolbar camının davranışı.** *Kontrol.* Her bölümün kendi hover ışığı
+35. **Toolbar camının davranışı.** *Tamamlandı.* Her bölümün kendi hover ışığı
     var. Basınca cam yay (spring) hareketiyle büyür. İmlecin etrafında
     parıltı var.
 36. **Cam modları ve sistem ayarı.** *Tamamlandı.* Full / Balanced / Eco zaten

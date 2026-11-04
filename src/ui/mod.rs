@@ -342,9 +342,16 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                 .ctx()
                 .data(|data| data.get_temp::<f32>(scrolled_id))
                 .unwrap_or(0.0);
-            // mcloud's playlist and album pages are flat, as Apple Music's.
-            let flat = app.settings.interface == crate::settings::Interface::Mcloud
+            // mcloud's playlist and album pages are flat by default, or tinted
+            // subtly or across the full page when `mcloud_page_tint` asks for it.
+            let mcloud_collection = app.settings.interface == crate::settings::Interface::Mcloud
                 && matches!(page, Page::Playlist(_) | Page::Album(_) | Page::LikedSongs);
+            let flat = mcloud_collection
+                && app.settings.mcloud_page_tint == crate::settings::McloudPageTint::Off;
+            let full_collection_tint = (mcloud_collection
+                && app.settings.mcloud_page_tint == crate::settings::McloudPageTint::Full)
+                .then_some(tint)
+                .flatten();
             // mcloud's artist page fills the window with the artist's
             // colour, deepening from 40% of its height down, and hides the
             // toolbar under its own floating buttons.
@@ -360,6 +367,12 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                 let fold = rect.top() + rect.height() * 0.4;
                 ui.painter().rect_filled(rect.with_max_y(fold), 0.0, top);
                 widgets::paint_vertical_gradient(ui, rect.with_min_y(fold), top, deep);
+            } else if let Some(cover_tint) = full_collection_tint {
+                let top_mix = if palette.dark { 0.34 } else { 0.24 };
+                let deep_mix = if palette.dark { 0.14 } else { 0.08 };
+                let top = palette.window.lerp_to_gamma(cover_tint, top_mix);
+                let deep = palette.window.lerp_to_gamma(cover_tint, deep_mix);
+                widgets::paint_vertical_gradient(ui, rect, top, deep);
             } else if let Some((top, bottom)) =
                 header_wash(&palette, overview, tint).filter(|_| !flat)
             {

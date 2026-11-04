@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-05 01:17+0300\n"
+"POT-Creation-Date: 2026-11-05 01:33+0300\n"
 "PO-Revision-Date: 2026-10-15 12:00+0900\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Korean\n"
@@ -29,13 +29,13 @@ msgid "Play {name}"
 msgstr "{name} 재생"
 
 #: src/ui/sidebar.rs:302 src/app.rs:3645 src/app.rs:23753
-#: src/ui/collection.rs:2281 src/ui/collection.rs:2510
+#: src/ui/collection.rs:2298 src/ui/collection.rs:2527
 #: src/ui/mcloud/search.rs:311
 msgid "Playlist"
 msgstr "플레이리스트"
 
 #: src/ui/sidebar.rs:312 src/ui/friends.rs:304 src/app.rs:3619 src/app.rs:23758
-#: src/ui/collection.rs:2503 src/ui/home.rs:123 src/ui/keys.rs:337
+#: src/ui/collection.rs:2520 src/ui/home.rs:123 src/ui/keys.rs:337
 #: src/ui/winamp/playlist.rs:653
 msgid "Liked Songs"
 msgstr "좋아요 표시한 곡"
@@ -54,8 +54,8 @@ msgstr "최근"
 msgid "Name"
 msgstr "이름"
 
-#: src/ui/sidebar.rs:361 src/ui/mcloud/pages.rs:304 src/ui/mcloud/pages.rs:307
-#: src/ui/mcloud/pages.rs:419
+#: src/ui/sidebar.rs:361 src/ui/mcloud/pages.rs:357 src/ui/mcloud/pages.rs:360
+#: src/ui/mcloud/pages.rs:472
 msgid "Recently added"
 msgstr "최근 추가됨"
 
@@ -79,7 +79,7 @@ msgstr "플레이리스트 • {owner}"
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
 #: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:245
-#: src/ui/mcloud/topbar.rs:180
+#: src/ui/mcloud/topbar.rs:233
 msgid "Home"
 msgstr "홈"
 
@@ -133,7 +133,7 @@ msgid "Artists"
 msgstr "아티스트"
 
 #: src/ui/sidebar.rs:1098 src/model.rs:828 src/ui/library.rs:37
-#: src/ui/search.rs:737 src/ui/mcloud/pages.rs:543
+#: src/ui/search.rs:737 src/ui/mcloud/pages.rs:596
 msgid "Podcasts"
 msgstr "팟캐스트"
 
@@ -149,8 +149,9 @@ msgstr "내 라이브러리에서 검색"
 #: src/ui/sidebar.rs:1243 src/app.rs:3680 src/ui/artist.rs:226
 #: src/ui/artist.rs:369 src/ui/home.rs:872 src/ui/library.rs:306
 #: src/ui/library.rs:528 src/ui/search.rs:177 src/ui/search.rs:509
-#: src/ui/winamp/playlist.rs:746 src/ui/mcloud/pages.rs:309
-#: src/ui/mcloud/pages.rs:393 src/ui/mcloud/search.rs:126
+#: src/ui/winamp/playlist.rs:746 src/ui/mcloud/pages.rs:362
+#: src/ui/mcloud/pages.rs:446 src/ui/mcloud/pages.rs:749
+#: src/ui/mcloud/search.rs:126
 msgid "Artist"
 msgstr "아티스트"
 
@@ -175,7 +176,7 @@ msgstr "최근 재생순으로 정렬"
 #: src/ui/sidebar.rs:1988 src/ui/player_bar.rs:798 src/ui/widgets.rs:1213
 #: src/ui/artist.rs:401 src/ui/collection.rs:310 src/ui/new_releases.rs:117
 #: src/ui/prerelease.rs:309 src/ui/search.rs:426 src/ui/show.rs:390
-#: src/ui/mcloud/player.rs:254 src/ui/mcloud/pages.rs:574
+#: src/ui/mcloud/player.rs:254 src/ui/mcloud/pages.rs:627
 #: src/ui/mcloud/artist.rs:380 src/ui/mcloud/search.rs:261
 msgid "Play"
 msgstr "재생"
@@ -198,8 +199,8 @@ msgstr[0] "플레이리스트 • {count}곡"
 #. Translators: Keep {count} exactly as written. It becomes a number of songs.
 #. Translators: Keep {count} exactly as written. It becomes the number of selected songs.
 #. Translators: {count} is a number of songs.
-#: src/i18n.rs:201 src/ui/widgets.rs:696 src/ui/collection.rs:2622
-#: src/ui/mcloud/pages.rs:809
+#: src/i18n.rs:201 src/ui/widgets.rs:696 src/ui/collection.rs:2639
+#: src/ui/mcloud/pages.rs:897
 #, rust-format
 msgid "{count} song"
 msgid_plural "{count} songs"
@@ -246,18 +247,18 @@ msgid "Add to playlist"
 msgstr "플레이리스트에 추가"
 
 #: src/ui/player_bar.rs:615 src/ui/widgets.rs:744 src/ui/widgets.rs:1018
-#: src/ui/widgets.rs:2056 src/ui/mcloud/player.rs:675
+#: src/ui/widgets.rs:2129 src/ui/mcloud/player.rs:675
 msgid "Save to Liked Songs"
 msgstr "좋아요 표시한 곡에 저장"
 
 #: src/ui/player_bar.rs:665 src/ui/widgets.rs:741 src/ui/widgets.rs:1015
-#: src/ui/widgets.rs:2054 src/ui/mcloud/player.rs:673
+#: src/ui/widgets.rs:2127 src/ui/mcloud/player.rs:673
 msgid "Remove from Liked Songs"
 msgstr "좋아요 표시한 곡에서 삭제"
 
 #: src/ui/player_bar.rs:742 src/ui/player_bar.rs:749 src/ui/collection.rs:364
 #: src/ui/new_releases.rs:146 src/ui/mcloud/player.rs:223
-#: src/ui/mcloud/pages.rs:584
+#: src/ui/mcloud/pages.rs:637
 msgid "Shuffle"
 msgstr "셔플"
 
@@ -266,7 +267,7 @@ msgid "Previous"
 msgstr "이전"
 
 #: src/ui/player_bar.rs:796 src/ui/friends.rs:208 src/ui/collection.rs:308
-#: src/ui/mcloud/player.rs:252 src/ui/mcloud/pages.rs:572
+#: src/ui/mcloud/player.rs:252 src/ui/mcloud/pages.rs:625
 #: src/ui/mcloud/artist.rs:378 src/ui/mcloud/search.rs:259
 msgid "Pause"
 msgstr "일시정지"
@@ -330,8 +331,8 @@ msgid "Recent"
 msgstr "최근 항목"
 
 #: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:184
-#: src/ui/friends.rs:65 src/ui/mod.rs:748 src/window.rs:35
-#: src/ui/mcloud/artist.rs:648
+#: src/ui/friends.rs:65 src/ui/mod.rs:761 src/window.rs:35
+#: src/ui/mcloud/artist.rs:655
 msgid "Close"
 msgstr "닫기"
 
@@ -369,8 +370,8 @@ msgstr "다음 재생 항목"
 msgid "Next up"
 msgstr "다음 재생"
 
-#: src/ui/queue.rs:625 src/ui/queue.rs:658 src/ui/widgets.rs:3039
-#: src/ui/collection.rs:1269 src/ui/prerelease.rs:242
+#: src/ui/queue.rs:625 src/ui/queue.rs:658 src/ui/widgets.rs:3117
+#: src/ui/collection.rs:1279 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr "다시 시도"
 
@@ -406,20 +407,20 @@ msgid "Play a song to see its lyrics."
 msgstr "가사를 보려면 곡을 재생하세요."
 
 #: src/ui/lyrics.rs:249 src/ui/lyrics.rs:266 src/ui/artist.rs:284
-#: src/ui/artist.rs:312 src/ui/collection.rs:719 src/ui/collection.rs:1848
-#: src/ui/collection.rs:1986 src/ui/collection.rs:2012
-#: src/ui/collection.rs:2076 src/ui/collection.rs:2198
-#: src/ui/collection.rs:2224 src/ui/collection.rs:2483 src/ui/home.rs:25
+#: src/ui/artist.rs:312 src/ui/collection.rs:719 src/ui/collection.rs:1858
+#: src/ui/collection.rs:1996 src/ui/collection.rs:2022
+#: src/ui/collection.rs:2093 src/ui/collection.rs:2215
+#: src/ui/collection.rs:2241 src/ui/collection.rs:2500 src/ui/home.rs:25
 #: src/ui/library.rs:465 src/ui/search.rs:100 src/ui/show.rs:66
 #: src/ui/show.rs:112 src/ui/show.rs:142
 msgid "You're offline"
 msgstr "오프라인 상태입니다"
 
 #: src/ui/lyrics.rs:252 src/ui/lyrics.rs:269 src/ui/artist.rs:287
-#: src/ui/artist.rs:315 src/ui/collection.rs:722 src/ui/collection.rs:1851
-#: src/ui/collection.rs:1989 src/ui/collection.rs:2015
-#: src/ui/collection.rs:2079 src/ui/collection.rs:2201
-#: src/ui/collection.rs:2227 src/ui/collection.rs:2486 src/ui/home.rs:34
+#: src/ui/artist.rs:315 src/ui/collection.rs:722 src/ui/collection.rs:1861
+#: src/ui/collection.rs:1999 src/ui/collection.rs:2025
+#: src/ui/collection.rs:2096 src/ui/collection.rs:2218
+#: src/ui/collection.rs:2244 src/ui/collection.rs:2503 src/ui/home.rs:34
 #: src/ui/library.rs:468 src/ui/show.rs:69 src/ui/show.rs:115
 #: src/ui/show.rs:145
 msgid "Spotifast will reconnect automatically when your connection returns."
@@ -452,8 +453,8 @@ msgstr "연주곡"
 msgid "No timed lyrics for this track."
 msgstr "이 트랙에는 시간 동기화된 가사가 없습니다."
 
-#: src/ui/lyrics.rs:620 src/ui/widgets.rs:2937 src/ui/widgets.rs:2977
-#: src/ui/widgets.rs:3005 src/app.rs:13917 src/ui/collection.rs:920
+#: src/ui/lyrics.rs:620 src/ui/widgets.rs:3015 src/ui/widgets.rs:3055
+#: src/ui/widgets.rs:3083 src/app.rs:13917 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr "불러오는 중…"
 
@@ -551,7 +552,7 @@ msgid "Go to podcast"
 msgstr "팟캐스트로 이동"
 
 #: src/ui/widgets.rs:1186 src/ui/widgets.rs:1298 src/ui/prerelease.rs:226
-#: src/ui/mcloud/artist.rs:977
+#: src/ui/mcloud/artist.rs:984
 msgid "Copy link"
 msgstr "링크 복사"
 
@@ -574,12 +575,12 @@ msgctxt "artist"
 msgid "Follow"
 msgstr "팔로우"
 
-#: src/ui/widgets.rs:1247 src/ui/collection.rs:2331 src/ui/collection.rs:2354
+#: src/ui/widgets.rs:1247 src/ui/collection.rs:2348 src/ui/collection.rs:2371
 #: src/ui/show.rs:242 src/ui/mcloud/search.rs:404
 msgid "Remove from Your Library"
 msgstr "내 라이브러리에서 삭제"
 
-#: src/ui/widgets.rs:1248 src/ui/collection.rs:2330
+#: src/ui/widgets.rs:1248 src/ui/collection.rs:2347
 msgid "Add to Your Library"
 msgstr "내 라이브러리에 추가"
 
@@ -609,109 +610,109 @@ msgstr "아티스트 라디오로 이동"
 msgid "Play {title}, {subtitle}"
 msgstr "{title}, {subtitle} 재생"
 
-#: src/ui/widgets.rs:2101 src/ui/artist.rs:431 src/ui/collection.rs:413
+#: src/ui/widgets.rs:2174 src/ui/artist.rs:431 src/ui/collection.rs:413
 #: src/ui/show.rs:260 src/ui/show.rs:468 src/ui/mcloud/player.rs:619
-#: src/ui/mcloud/pages.rs:643 src/ui/mcloud/artist.rs:978
+#: src/ui/mcloud/pages.rs:688 src/ui/mcloud/artist.rs:985
 msgid "More"
 msgstr "더 보기"
 
 #. Translators: The label beside the pointer while songs are dragged. {name} is the first song's name and {count} how many more songs are dragged with it.
-#: src/ui/widgets.rs:2253
+#: src/ui/widgets.rs:2326
 #, rust-format
 msgid "{name} + {count} more"
 msgid_plural "{name} + {count} more"
 msgstr[0] "{name} 외 {count}곡"
 
 #. Translators: {column} is a column heading of a song list, such as Title.
-#: src/ui/widgets.rs:2388
+#: src/ui/widgets.rs:2461
 #, rust-format
 msgid "Sort by {column}"
 msgstr "{column} 기준으로 정렬"
 
-#: src/ui/widgets.rs:2438
+#: src/ui/widgets.rs:2516
 msgid "Sort by playlist order"
 msgstr "플레이리스트 순서로 정렬"
 
-#: src/ui/widgets.rs:2473
+#: src/ui/widgets.rs:2551
 msgid "Original order, reversed"
 msgstr "원래 순서의 역순"
 
-#: src/ui/widgets.rs:2486
+#: src/ui/widgets.rs:2564
 msgctxt "column heading"
 msgid "TITLE"
 msgstr "제목"
 
-#: src/ui/widgets.rs:2515
+#: src/ui/widgets.rs:2593
 msgctxt "column heading"
 msgid "ALBUM"
 msgstr "앨범"
 
-#: src/ui/widgets.rs:2524 src/ui/mcloud/pages.rs:313
+#: src/ui/widgets.rs:2602 src/ui/mcloud/pages.rs:366
 msgctxt "column heading"
 msgid "ADDED BY"
 msgstr "추가한 사람"
 
-#: src/ui/widgets.rs:2533
+#: src/ui/widgets.rs:2611
 msgctxt "column heading"
 msgid "DATE ADDED"
 msgstr "추가한 날짜"
 
-#: src/ui/widgets.rs:2543
+#: src/ui/widgets.rs:2621
 msgctxt "column heading"
 msgid "PLAYS"
 msgstr "재생 횟수"
 
-#: src/ui/widgets.rs:2565 src/ui/widgets.rs:2595
+#: src/ui/widgets.rs:2643 src/ui/widgets.rs:2673
 msgid "Sort by duration"
 msgstr "재생 시간으로 정렬"
 
-#: src/ui/widgets.rs:3016 src/app.rs:14126 src/app.rs:14140
+#: src/ui/widgets.rs:3094 src/app.rs:14126 src/app.rs:14140
 msgid "Network connection error. Check your connection."
 msgstr "네트워크 연결 오류입니다. 연결 상태를 확인하세요."
 
-#: src/ui/widgets.rs:3280
+#: src/ui/widgets.rs:3358
 msgid "Cut"
 msgstr "잘라내기"
 
-#: src/ui/widgets.rs:3285 src/ui/login.rs:560
+#: src/ui/widgets.rs:3363 src/ui/login.rs:560
 msgid "Copy"
 msgstr "복사"
 
-#: src/ui/widgets.rs:3290
+#: src/ui/widgets.rs:3368
 msgid "Paste"
 msgstr "붙여넣기"
 
-#: src/ui/widgets.rs:3307
+#: src/ui/widgets.rs:3385
 msgid "Select all"
 msgstr "모두 선택"
 
-#: src/ui/widgets.rs:3444
+#: src/ui/widgets.rs:3522
 msgid "Clear"
 msgstr "지우기"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3489
+#: src/ui/widgets.rs:3567
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "{name}이(가) 정성껏 만들었습니다"
 
-#: src/ui/widgets.rs:3634
+#: src/ui/widgets.rs:3712
 msgid "Host"
 msgstr "호스트"
 
-#: src/ui/widgets.rs:3651
+#: src/ui/widgets.rs:3729
 msgid "Port"
 msgstr "포트"
 
-#: src/ui/widgets.rs:3669
+#: src/ui/widgets.rs:3747
 msgid "Username"
 msgstr "사용자 이름"
 
-#: src/ui/widgets.rs:3680
+#: src/ui/widgets.rs:3758
 msgid "Password"
 msgstr "비밀번호"
 
-#: src/ui/widgets.rs:3698
+#: src/ui/widgets.rs:3776
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
@@ -719,7 +720,7 @@ msgstr ""
 "프록시 로그인은 웹 요청에 적용됩니다. 로컬 재생은 로그인이 없을 때만 이 프록"
 "시를 사용합니다."
 
-#: src/ui/widgets.rs:3702
+#: src/ui/widgets.rs:3780
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -821,7 +822,7 @@ msgid "Radio"
 msgstr "라디오"
 
 #: src/app.rs:3661 src/api/models.rs:299 src/ui/prerelease.rs:71
-#: src/ui/mcloud/pages.rs:310 src/ui/mcloud/pages.rs:406
+#: src/ui/mcloud/pages.rs:363 src/ui/mcloud/pages.rs:459
 #: src/ui/mcloud/search.rs:148 src/ui/mcloud/search.rs:318
 msgid "Album"
 msgstr "앨범"
@@ -1187,7 +1188,7 @@ msgstr "셔플을 변경하지 못했습니다"
 msgid "Couldn't change repeat"
 msgstr "반복을 변경하지 못했습니다"
 
-#: src/app.rs:14110 src/ui/mod.rs:515
+#: src/app.rs:14110 src/ui/mod.rs:528
 msgid "Spotify won't let this computer play this song right now."
 msgstr "Spotify가 지금 이 컴퓨터에서 이 곡을 재생하지 못하게 하고 있습니다."
 
@@ -1242,7 +1243,7 @@ msgid "Preset name"
 msgstr "프리셋 이름"
 
 #. Translators: a search keyword for saving equalizer presets.
-#: src/ui/settings.rs:97 src/ui/settings.rs:2251
+#: src/ui/settings.rs:97 src/ui/settings.rs:2297
 msgid "Save preset"
 msgstr "프리셋 저장"
 
@@ -1702,7 +1703,7 @@ msgstr "시스템 설정 따르기는 Omarchy 색상을 사용합니다."
 msgid "Follow system uses your desktop's light or dark appearance."
 msgstr "시스템 설정 따르기는 데스크톱의 라이트 또는 다크 모드를 사용합니다."
 
-#: src/ui/settings.rs:1233 src/ui/settings.rs:2701
+#: src/ui/settings.rs:1233 src/ui/settings.rs:2747
 msgid "Language"
 msgstr "언어"
 
@@ -1761,7 +1762,7 @@ msgstr ""
 msgid "Allow clicks on empty player bar space to cycle the visualizer."
 msgstr "플레이어 바의 빈 공간을 클릭하면 시각화를 순환합니다."
 
-#: src/ui/settings.rs:1296 src/ui/settings.rs:2088
+#: src/ui/settings.rs:1296 src/ui/settings.rs:2134
 msgid "Frame rate"
 msgstr "프레임 레이트"
 
@@ -1793,12 +1794,12 @@ msgstr ""
 "떠 있는 플레이어의 유리를 그리는 방식입니다. 전체는 가장 정교하고 GPU를 가장 "
 "많이 쓰며, 절약은 불투명한 면으로 그립니다."
 
-#: src/ui/settings.rs:1375
+#: src/ui/settings.rs:1375 src/ui/settings.rs:1537
 msgctxt "glass"
 msgid "Full"
 msgstr "전체"
 
-#: src/ui/settings.rs:1376
+#: src/ui/settings.rs:1376 src/ui/settings.rs:1535
 msgctxt "glass"
 msgid "Balanced"
 msgstr "균형"
@@ -1808,36 +1809,36 @@ msgctxt "glass"
 msgid "Eco"
 msgstr "절약"
 
-#: src/ui/settings.rs:1551
+#: src/ui/settings.rs:1532 src/ui/settings.rs:1597
 msgid "Off"
 msgstr "끄기"
 
-#: src/ui/settings.rs:1552
+#: src/ui/settings.rs:1598
 msgid "Spectrum"
 msgstr "스펙트럼"
 
-#: src/ui/settings.rs:1553
+#: src/ui/settings.rs:1599
 msgid "Waveform"
 msgstr "파형"
 
-#: src/ui/settings.rs:1748
+#: src/ui/settings.rs:1794
 msgid "Proxy"
 msgstr "프록시"
 
-#: src/ui/settings.rs:1750
+#: src/ui/settings.rs:1796
 msgid "Mode, host, port, username and password"
 msgstr "모드, 호스트, 포트, 사용자 이름 및 비밀번호"
 
-#: src/ui/settings.rs:1753
+#: src/ui/settings.rs:1799
 msgid "Off, System, HTTP or SOCKS5 proxy for network requests."
 msgstr "네트워크 요청에 사용할 끄기, 시스템, HTTP 또는 SOCKS5 프록시입니다."
 
-#: src/ui/settings.rs:1763
+#: src/ui/settings.rs:1809
 msgctxt "proxy"
 msgid "Mode"
 msgstr "모드"
 
-#: src/ui/settings.rs:1766
+#: src/ui/settings.rs:1812
 msgid ""
 "Off ignores environment variables. System uses them, and the OS proxy on "
 "macOS and Windows."
@@ -1845,35 +1846,35 @@ msgstr ""
 "끄기는 환경 변수를 무시합니다. 시스템은 환경 변수를 사용하며, macOS와 Windows"
 "에서는 OS 프록시도 사용합니다."
 
-#: src/ui/settings.rs:1818 src/ui/login.rs:644
+#: src/ui/settings.rs:1864 src/ui/login.rs:644
 msgid "Apply settings"
 msgstr "설정 적용"
 
-#: src/ui/settings.rs:1830
+#: src/ui/settings.rs:1876
 msgid "Not using a proxy."
 msgstr "프록시를 사용하지 않습니다."
 
-#: src/ui/settings.rs:1831
+#: src/ui/settings.rs:1877
 msgid "Using the system proxy."
 msgstr "시스템 프록시를 사용합니다."
 
-#: src/ui/settings.rs:1842
+#: src/ui/settings.rs:1888
 msgid "Winamp skins"
 msgstr "Winamp 스킨"
 
-#: src/ui/settings.rs:1843 src/ui/winamp/mod.rs:724 src/ui/winamp/mod.rs:870
+#: src/ui/settings.rs:1889 src/ui/winamp/mod.rs:724 src/ui/winamp/mod.rs:870
 msgid "Always on top"
 msgstr "항상 위에 표시"
 
-#: src/ui/settings.rs:1844
+#: src/ui/settings.rs:1890
 msgid "Show Winamp in taskbar"
 msgstr "작업 표시줄에 Winamp 표시"
 
-#: src/ui/settings.rs:1847 src/ui/mcloud/player.rs:343
+#: src/ui/settings.rs:1893 src/ui/mcloud/player.rs:343
 msgid "Mini player"
 msgstr "미니 플레이어"
 
-#: src/ui/settings.rs:1851
+#: src/ui/settings.rs:1897
 msgid ""
 "Use classic Winamp .wsz skins. Press Ctrl+M or click the skin logo to "
 "return. Drop a skin on either window to add it."
@@ -1881,7 +1882,7 @@ msgstr ""
 "클래식 Winamp .wsz 스킨을 사용합니다. 돌아가려면 Ctrl+M을 누르거나 스킨 로고"
 "를 클릭하세요. 창에 스킨을 끌어다 놓으면 추가됩니다."
 
-#: src/ui/settings.rs:1855
+#: src/ui/settings.rs:1901
 msgid ""
 "Use classic Winamp .wsz skins. Press Cmd+Shift+M or click the skin logo to "
 "return. Drop a skin on either window to add it."
@@ -1889,34 +1890,34 @@ msgstr ""
 "클래식 Winamp .wsz 스킨을 사용합니다. 돌아가려면 Cmd+Shift+M을 누르거나 스킨 "
 "로고를 클릭하세요. 창에 스킨을 끌어다 놓으면 추가됩니다."
 
-#: src/ui/settings.rs:1861
+#: src/ui/settings.rs:1907
 msgid "Skin"
 msgstr "스킨"
 
 #. Translators: {folder} is the path of the skins folder.
-#: src/ui/settings.rs:1865
+#: src/ui/settings.rs:1911
 #, rust-format
 msgid "Installed skins are in {folder}. Find more at the Winamp Skin Museum."
 msgstr ""
 "설치된 스킨은 {folder}에 있습니다. Winamp Skin Museum에서 더 찾아보세요."
 
-#: src/ui/settings.rs:1870 src/ui/winamp/mod.rs:711
+#: src/ui/settings.rs:1916 src/ui/winamp/mod.rs:711
 msgid "Size"
 msgstr "크기"
 
-#: src/ui/settings.rs:1871
+#: src/ui/settings.rs:1917
 msgid "Whole-number scaling keeps skin pixels sharp."
 msgstr "정수 배율로 스킨 픽셀을 선명하게 유지합니다."
 
-#: src/ui/settings.rs:1876
+#: src/ui/settings.rs:1922
 msgid "Keep the Winamp window above everything else."
 msgstr "Winamp 창을 다른 모든 창 위에 유지합니다."
 
-#: src/ui/settings.rs:1882 src/ui/winamp/mod.rs:734
+#: src/ui/settings.rs:1928 src/ui/winamp/mod.rs:734
 msgid "Show in taskbar"
 msgstr "작업 표시줄에 표시"
 
-#: src/ui/settings.rs:1885
+#: src/ui/settings.rs:1931
 msgid ""
 "Keep a taskbar button for the mini player. The tray icon stays available "
 "when hidden."
@@ -1924,23 +1925,23 @@ msgstr ""
 "미니 플레이어의 작업 표시줄 버튼을 유지합니다. 숨겨도 트레이 아이콘은 계속 사"
 "용할 수 있습니다."
 
-#: src/ui/settings.rs:1890
+#: src/ui/settings.rs:1936
 msgid "Installed skins"
 msgstr "설치된 스킨"
 
-#: src/ui/settings.rs:1903
+#: src/ui/settings.rs:1949
 msgid "Switch to it"
 msgstr "전환하기"
 
-#: src/ui/settings.rs:1916
+#: src/ui/settings.rs:1962
 msgid "Skin Museum"
 msgstr "Skin Museum"
 
-#: src/ui/settings.rs:1942
+#: src/ui/settings.rs:1988
 msgid "Random"
 msgstr "무작위"
 
-#: src/ui/settings.rs:1981
+#: src/ui/settings.rs:2027
 #, rust-format
 msgid ""
 "Now showing {skin}. Another one is picked each time the mini player opens."
@@ -1948,11 +1949,11 @@ msgstr ""
 "현재 {skin}을(를) 표시 중입니다. 미니 플레이어를 열 때마다 다른 스킨이 선택됩"
 "니다."
 
-#: src/ui/settings.rs:2037
+#: src/ui/settings.rs:2083
 msgid "MilkDrop window"
 msgstr "MilkDrop 창"
 
-#: src/ui/settings.rs:2045
+#: src/ui/settings.rs:2091
 msgid ""
 "A projectM visualiser for local playback. Open it here, from the top bar, "
 "with Ctrl+Shift+K, or from the mini player's V menu. Press ? or F1 for its "
@@ -1961,7 +1962,7 @@ msgstr ""
 "로컬 재생용 projectM 시각화입니다. 여기, 상단 바, Ctrl+Shift+K 또는 미니 플레"
 "이어의 V 메뉴에서 열 수 있습니다. 단축키를 보려면 ? 또는 F1을 누르세요."
 
-#: src/ui/settings.rs:2049
+#: src/ui/settings.rs:2095
 msgid ""
 "A projectM visualiser for local playback. Open it here, from the top bar, "
 "with Cmd+Shift+K, or from the mini player's V menu. Press ? or F1 for its "
@@ -1970,12 +1971,12 @@ msgstr ""
 "로컬 재생용 projectM 시각화입니다. 여기, 상단 바, Cmd+Shift+K 또는 미니 플레"
 "이어의 V 메뉴에서 열 수 있습니다. 단축키를 보려면 ? 또는 F1을 누르세요."
 
-#: src/ui/settings.rs:2055 src/ui/settings.rs:2234
+#: src/ui/settings.rs:2101 src/ui/settings.rs:2280
 msgid "Presets"
 msgstr "프리셋"
 
 #. Translators: {folder} is the path of the MilkDrop presets folder.
-#: src/ui/settings.rs:2060
+#: src/ui/settings.rs:2106
 #, rust-format
 msgid ""
 "None yet in {folder}. Add .milk files here. Spotifast downloads presets when "
@@ -1985,7 +1986,7 @@ msgstr ""
 "어 있으면 MilkDrop을 처음 열 때 Spotifast가 프리셋을 다운로드합니다."
 
 #. Translators: {folder} is the path of the MilkDrop presets folder.
-#: src/ui/settings.rs:2066
+#: src/ui/settings.rs:2112
 #, rust-format
 msgid ""
 "One preset in {folder}. Add .milk files here. Spotifast downloads presets "
@@ -1995,7 +1996,7 @@ msgstr ""
 "어 있으면 MilkDrop을 처음 열 때 Spotifast가 프리셋을 다운로드합니다."
 
 #. Translators: {count} is the number of presets, {folder} the path of the MilkDrop presets folder.
-#: src/ui/settings.rs:2072
+#: src/ui/settings.rs:2118
 #, rust-format
 msgid ""
 "{count} preset in {folder}. Add .milk files here. Spotifast downloads "
@@ -2007,20 +2008,20 @@ msgstr[0] ""
 "{folder}에 프리셋이 {count}개 있습니다. 여기에 .milk 파일을 추가하세요. 폴더"
 "가 비어 있으면 MilkDrop을 처음 열 때 Spotifast가 프리셋을 다운로드합니다."
 
-#: src/ui/settings.rs:2081
+#: src/ui/settings.rs:2127
 msgid "Time per preset"
 msgstr "프리셋당 시간"
 
-#: src/ui/settings.rs:2084
+#: src/ui/settings.rs:2130
 msgid "How long each preset plays before the next fades in."
 msgstr "다음 프리셋이 페이드 인되기 전까지 각 프리셋이 재생되는 시간입니다."
 
-#: src/ui/settings.rs:2092
+#: src/ui/settings.rs:2138
 msgid "Lower rates use fewer resources. Uncapped draws as fast as possible."
 msgstr "낮을수록 리소스를 적게 사용합니다. 제한 없음은 최대한 빠르게 그립니다."
 
 #. Translators: {hz} is the screen's refresh rate in hertz.
-#: src/ui/settings.rs:2097
+#: src/ui/settings.rs:2143
 #, rust-format
 msgid ""
 "Your screen refreshes at {hz} Hz. Higher rates do not add visible frames. "
@@ -2029,49 +2030,49 @@ msgstr ""
 "화면 주사율이 {hz}Hz입니다. 이보다 높여도 보이는 프레임은 늘지 않습니다. 제"
 "한 없음은 최대한 빠르게 그립니다."
 
-#: src/ui/settings.rs:2104
+#: src/ui/settings.rs:2150
 msgid "Resolution"
 msgstr "해상도"
 
-#: src/ui/settings.rs:2107
+#: src/ui/settings.rs:2153
 msgid "Half and Quarter use fewer resources and scale the image back up."
 msgstr "절반과 1/4은 리소스를 적게 사용하며 이미지를 다시 확대합니다."
 
 #. Translators: search keywords for the MilkDrop preset download buttons.
-#: src/ui/settings.rs:2114
+#: src/ui/settings.rs:2160
 msgid "Get presets"
 msgstr "프리셋 받기"
 
-#: src/ui/settings.rs:2152
+#: src/ui/settings.rs:2198
 msgid "Fetching..."
 msgstr "가져오는 중..."
 
 #. Translators: {pack} is the name of a MilkDrop preset pack.
-#: src/ui/settings.rs:2155
+#: src/ui/settings.rs:2201
 #, rust-format
 msgid "Get {pack}"
 msgstr "{pack} 받기"
 
-#: src/ui/settings.rs:2206
+#: src/ui/settings.rs:2252
 msgctxt "resolution"
 msgid "Full"
 msgstr "전체"
 
-#: src/ui/settings.rs:2207
+#: src/ui/settings.rs:2253
 msgctxt "resolution"
 msgid "Half"
 msgstr "절반"
 
-#: src/ui/settings.rs:2208
+#: src/ui/settings.rs:2254
 msgctxt "resolution"
 msgid "Quarter"
 msgstr "1/4"
 
-#: src/ui/settings.rs:2222
+#: src/ui/settings.rs:2268
 msgid "Equalizer"
 msgstr "이퀄라이저"
 
-#: src/ui/settings.rs:2228
+#: src/ui/settings.rs:2274
 msgid ""
 "A ten-band equalizer for playback on this computer. It does not affect other "
 "devices."
@@ -2080,125 +2081,125 @@ msgstr ""
 "지 않습니다."
 
 #. Translators: a search keyword for the equalizer's preamplifier slider.
-#: src/ui/settings.rs:2236
+#: src/ui/settings.rs:2282
 msgid "Preamp"
 msgstr "프리앰프"
 
 #. Translators: a search keyword for the equalizer's frequency band sliders.
-#: src/ui/settings.rs:2238
+#: src/ui/settings.rs:2284
 msgid "Bands"
 msgstr "밴드"
 
 #. Translators: short label under the equalizer's preamplifier slider.
-#: src/ui/settings.rs:2320
+#: src/ui/settings.rs:2366
 msgctxt "equalizer"
 msgid "Pre"
 msgstr "프리"
 
-#: src/ui/settings.rs:2337
+#: src/ui/settings.rs:2383
 msgid "Storage"
 msgstr "저장 공간"
 
-#: src/ui/settings.rs:2340
+#: src/ui/settings.rs:2386
 msgid "Artwork cache"
 msgstr "아트워크 캐시"
 
 #. Translators: {folder} is the path of a cache folder.
-#: src/ui/settings.rs:2342 src/ui/settings.rs:2348
+#: src/ui/settings.rs:2388 src/ui/settings.rs:2394
 #, rust-format
 msgid "Stored in {folder}"
 msgstr "{folder}에 저장됨"
 
-#: src/ui/settings.rs:2355
+#: src/ui/settings.rs:2401
 msgid "Play history"
 msgstr "재생 기록"
 
 #. Translators: {file} is the path of the play history file.
-#: src/ui/settings.rs:2359
+#: src/ui/settings.rs:2405
 #, rust-format
 msgid "Tracks played here are stored in {file}. This file is never uploaded."
 msgstr ""
 "이 컴퓨터에서 재생한 트랙은 {file}에 저장됩니다. 이 파일은 업로드되지 않습니"
 "다."
 
-#: src/ui/settings.rs:2364
+#: src/ui/settings.rs:2410
 msgid "Sign-in"
 msgstr "로그인"
 
-#: src/ui/settings.rs:2367
+#: src/ui/settings.rs:2413
 msgid "Sign-ins are saved in the system credential store when available."
 msgstr "로그인 정보는 가능한 경우 시스템 자격 증명 저장소에 저장됩니다."
 
-#: src/ui/settings.rs:2379
+#: src/ui/settings.rs:2425
 msgid "Clear artwork"
 msgstr "아트워크 지우기"
 
-#: src/ui/settings.rs:2393
+#: src/ui/settings.rs:2439
 msgid "Clear history"
 msgstr "기록 지우기"
 
-#: src/ui/settings.rs:2405 src/ui/show.rs:42 src/ui/mcloud/artist.rs:410
-#: src/ui/mcloud/artist.rs:754
+#: src/ui/settings.rs:2451 src/ui/show.rs:42 src/ui/mcloud/artist.rs:410
+#: src/ui/mcloud/artist.rs:761
 msgid "About"
 msgstr "정보"
 
-#: src/ui/settings.rs:2408
+#: src/ui/settings.rs:2454
 msgid "Built with Rust, egui, and librespot. Not affiliated with Spotify."
 msgstr "Rust, egui, librespot으로 만들었습니다. Spotify와 관련이 없습니다."
 
-#: src/ui/settings.rs:2410
+#: src/ui/settings.rs:2456
 msgid "Check for updates"
 msgstr "업데이트 확인"
 
-#: src/ui/settings.rs:2411
+#: src/ui/settings.rs:2457
 msgid "Checking…"
 msgstr "확인 중…"
 
-#: src/ui/settings.rs:2412 src/ui/dialogs.rs:153 src/ui/keys.rs:379
+#: src/ui/settings.rs:2458 src/ui/dialogs.rs:153 src/ui/keys.rs:379
 #: src/ui/topbar.rs:452
 msgid "Keyboard shortcuts"
 msgstr "키보드 단축키"
 
-#: src/ui/settings.rs:2413 src/ui/update.rs:65
+#: src/ui/settings.rs:2459 src/ui/update.rs:65
 msgid "Release notes"
 msgstr "릴리스 노트"
 
-#: src/ui/settings.rs:2414
+#: src/ui/settings.rs:2460
 msgid "Source code"
 msgstr "소스 코드"
 
 #. Translators: {query} is the text typed into the settings search field.
-#: src/ui/settings.rs:2498
+#: src/ui/settings.rs:2544
 #, rust-format
 msgid "No settings for “{query}”"
 msgstr "“{query}”에 대한 설정이 없습니다"
 
-#: src/ui/settings.rs:2499
+#: src/ui/settings.rs:2545
 msgid "Try fewer words, or check the spelling."
 msgstr "더 적은 단어를 사용하거나 철자를 확인하세요."
 
-#: src/ui/settings.rs:2520
+#: src/ui/settings.rs:2566
 msgctxt "start with your computer"
 msgid "Off"
 msgstr "끄기"
 
-#: src/ui/settings.rs:2521
+#: src/ui/settings.rs:2567
 msgid "With the window"
 msgstr "창 열기"
 
-#: src/ui/settings.rs:2525
+#: src/ui/settings.rs:2571
 msgid "In the menu bar"
 msgstr "메뉴 막대에서"
 
-#: src/ui/settings.rs:2527
+#: src/ui/settings.rs:2573
 msgid "In the tray"
 msgstr "트레이에서"
 
-#: src/ui/settings.rs:2546
+#: src/ui/settings.rs:2592
 msgid "Allow Spotifast in System Settings, General, Login Items."
 msgstr "시스템 설정 > 일반 > 로그인 항목에서 Spotifast를 허용하세요."
 
-#: src/ui/settings.rs:2552
+#: src/ui/settings.rs:2598
 msgid ""
 "Starting in the menu bar needs Keep music playing when the window closes. "
 "Until then, the window opens."
@@ -2206,7 +2207,7 @@ msgstr ""
 "메뉴 막대에서 시작하려면 '창을 닫아도 음악 계속 재생'이 켜져 있어야 합니다. "
 "그 전까지는 창이 열립니다."
 
-#: src/ui/settings.rs:2557
+#: src/ui/settings.rs:2603
 msgid ""
 "Starting in the tray needs Keep music playing when the window closes. Until "
 "then, the window opens."
@@ -2214,15 +2215,15 @@ msgstr ""
 "트레이에서 시작하려면 '창을 닫아도 음악 계속 재생'이 켜져 있어야 합니다. 그 "
 "전까지는 창이 열립니다."
 
-#: src/ui/settings.rs:2563
+#: src/ui/settings.rs:2609
 msgid "Open Spotifast when you log in, with its window or in the menu bar."
 msgstr "로그인할 때 Spotifast를 창과 함께 열거나 메뉴 막대에서 시작합니다."
 
-#: src/ui/settings.rs:2568
+#: src/ui/settings.rs:2614
 msgid "Open Spotifast when you log in, with its window or in the tray."
 msgstr "로그인할 때 Spotifast를 창과 함께 열거나 트레이에서 시작합니다."
 
-#: src/ui/settings.rs:2674
+#: src/ui/settings.rs:2720
 msgctxt "language"
 msgid "System"
 msgstr "시스템"
@@ -2388,8 +2389,8 @@ msgstr "최근 약 6개월간의 감상 기록으로 계산합니다."
 msgid "Calculated from several years of listening history."
 msgstr "여러 해의 감상 기록으로 계산합니다."
 
-#: src/model.rs:823 src/model.rs:950 src/ui/mcloud/pages.rs:486
-#: src/ui/mcloud/pages.rs:541
+#: src/model.rs:823 src/model.rs:950 src/ui/mcloud/pages.rs:539
+#: src/ui/mcloud/pages.rs:594
 msgctxt "filter"
 msgid "All"
 msgstr "전체"
@@ -2406,26 +2407,26 @@ msgstr "에피소드"
 msgid "Singles & EPs"
 msgstr "싱글 및 EP"
 
-#: src/settings.rs:195
+#: src/settings.rs:207
 msgctxt "theme"
 msgid "Dark"
 msgstr "다크"
 
-#: src/settings.rs:196
+#: src/settings.rs:208
 msgctxt "theme"
 msgid "Light"
 msgstr "라이트"
 
-#: src/settings.rs:197
+#: src/settings.rs:209
 msgid "Follow system"
 msgstr "시스템 설정 따르기"
 
-#: src/settings.rs:223
+#: src/settings.rs:235
 msgctxt "proxy"
 msgid "Off"
 msgstr "끄기"
 
-#: src/settings.rs:224
+#: src/settings.rs:236
 msgctxt "proxy"
 msgid "System"
 msgstr "시스템"
@@ -2522,11 +2523,11 @@ msgctxt "artist"
 msgid "Following"
 msgstr "팔로잉"
 
-#: src/ui/collection.rs:126 src/ui/mcloud/pages.rs:53
+#: src/ui/collection.rs:126 src/ui/mcloud/pages.rs:135
 msgid "Enlarge cover"
 msgstr "커버 크게 보기"
 
-#: src/ui/collection.rs:315 src/ui/mcloud/pages.rs:598
+#: src/ui/collection.rs:315 src/ui/mcloud/pages.rs:651
 msgid "No playable songs in this view"
 msgstr "이 보기에 재생 가능한 곡이 없습니다"
 
@@ -2534,13 +2535,13 @@ msgstr "이 보기에 재생 가능한 곡이 없습니다"
 msgid "Shuffle off"
 msgstr "셔플 끄기"
 
-#: src/ui/collection.rs:400 src/ui/collection.rs:426 src/ui/mcloud/pages.rs:631
-#: src/ui/mcloud/pages.rs:655
+#: src/ui/collection.rs:400 src/ui/collection.rs:426 src/ui/mcloud/pages.rs:676
+#: src/ui/mcloud/pages.rs:700
 msgid "Save as playlist"
 msgstr "플레이리스트로 저장"
 
-#: src/ui/collection.rs:453 src/ui/mcloud/pages.rs:262
-#: src/ui/mcloud/pages.rs:276 src/ui/mcloud/library.rs:73
+#: src/ui/collection.rs:453 src/ui/mcloud/pages.rs:315
+#: src/ui/mcloud/pages.rs:329 src/ui/mcloud/library.rs:73
 msgid "Filter"
 msgstr "필터"
 
@@ -2552,40 +2553,40 @@ msgstr "새로고침하는 중…"
 msgid "Refresh"
 msgstr "새로고침"
 
-#: src/ui/collection.rs:912 src/ui/collection.rs:939
+#: src/ui/collection.rs:922 src/ui/collection.rs:949
 msgid "Unavailable"
 msgstr "사용할 수 없음"
 
-#: src/ui/collection.rs:918
+#: src/ui/collection.rs:928
 msgid "You're offline. Reconnect to load more songs."
 msgstr "오프라인 상태입니다. 곡을 더 불러오려면 다시 연결하세요."
 
-#: src/ui/collection.rs:1074
+#: src/ui/collection.rs:1084
 msgid "Nothing here yet"
 msgstr "아직 아무것도 없습니다"
 
-#: src/ui/collection.rs:1075
+#: src/ui/collection.rs:1085
 msgid "Added songs appear here."
 msgstr "추가한 곡이 여기에 표시됩니다."
 
-#: src/ui/collection.rs:1729 src/ui/home.rs:992
+#: src/ui/collection.rs:1739 src/ui/home.rs:992
 msgid "Your top songs"
 msgstr "내 인기 곡"
 
-#: src/ui/collection.rs:2277
+#: src/ui/collection.rs:2294
 msgid "Collaborative Playlist"
 msgstr "공동 작업 플레이리스트"
 
-#: src/ui/collection.rs:2279
+#: src/ui/collection.rs:2296
 msgid "Public Playlist"
 msgstr "공개 플레이리스트"
 
-#: src/ui/collection.rs:2353 src/ui/mcloud/search.rs:415
+#: src/ui/collection.rs:2370 src/ui/mcloud/search.rs:415
 msgid "Save to Your Library"
 msgstr "내 라이브러리에 저장"
 
 #. Translators: {count} is the number of people who saved a playlist.
-#: src/ui/collection.rs:2634
+#: src/ui/collection.rs:2651
 #, rust-format
 msgid "{count} save"
 msgid_plural "{count} saves"
@@ -2593,26 +2594,26 @@ msgstr[0] "저장 {count}회"
 
 #. Translators: {count} is a number of songs and {duration} their total
 #. length, such as "2 hr 13 min".
-#: src/ui/collection.rs:2647
+#: src/ui/collection.rs:2664
 #, rust-format
 msgid "{count} song, {duration}"
 msgid_plural "{count} songs, {duration}"
 msgstr[0] "{count}곡, {duration}"
 
 #. Translators: {name} is the name of someone who added songs to the playlist.
-#: src/ui/collection.rs:2717
+#: src/ui/collection.rs:2734
 #, rust-format
 msgid "with {name}"
 msgstr "{name} 참여"
 
 #. Translators: {first} and {second} are names of people who added songs.
-#: src/ui/collection.rs:2721
+#: src/ui/collection.rs:2738
 #, rust-format
 msgid "with {first} and {second}"
 msgstr "{first}, {second} 참여"
 
 #. Translators: {count} is how many other people added songs to the playlist.
-#: src/ui/collection.rs:2728
+#: src/ui/collection.rs:2745
 #, rust-format
 msgid "and {count} other"
 msgid_plural "and {count} others"
@@ -2692,7 +2693,7 @@ msgstr ""
 "습니다. 음악이 끊기지 않도록 무료 Spotify 앱을 직접 설정하세요. 몇 분이면 됩"
 "니다."
 
-#: src/ui/dialogs.rs:50 src/ui/mod.rs:490
+#: src/ui/dialogs.rs:50 src/ui/mod.rs:503
 msgid "Set up personal app"
 msgstr "개인 앱 설정"
 
@@ -3247,11 +3248,11 @@ msgstr "앱의 클라이언트 ID를 입력란에 붙여넣고 로그인하세�
 msgid "Copied"
 msgstr "복사됨"
 
-#: src/ui/mod.rs:483
+#: src/ui/mod.rs:496
 msgid "Spotify is being slow on the shared app."
 msgstr "공유 앱에서 Spotify가 느려지고 있습니다."
 
-#: src/ui/mod.rs:486
+#: src/ui/mod.rs:499
 msgid ""
 "Spotifast no longer offers the shared app, and Spotify can stop accepting it "
 "at any time. Set up your own free Spotify app and you won't have to wait."
@@ -3262,11 +3263,11 @@ msgstr ""
 
 #. Translators: a button that opens a page explaining why
 #. the banner it sits in appeared.
-#: src/ui/mod.rs:496 src/ui/mod.rs:527
+#: src/ui/mod.rs:509 src/ui/mod.rs:540
 msgid "Why?"
 msgstr "이유는?"
 
-#: src/ui/mod.rs:519
+#: src/ui/mod.rs:532
 msgid ""
 "Spotify refused the key that unlocks the audio. Spotifast can't fix that, "
 "but it sometimes clears up on its own. You can still play on your phone or "
@@ -3276,23 +3277,23 @@ msgstr ""
 "없지만, 저절로 해결되기도 합니다. 휴대폰이나 다른 Spotify 기기에서는 계속 재"
 "생할 수 있습니다."
 
-#: src/ui/mod.rs:523
+#: src/ui/mod.rs:536
 msgid "Play on another device"
 msgstr "다른 기기에서 재생"
 
-#: src/ui/mod.rs:574
+#: src/ui/mod.rs:587
 msgid "Close banner"
 msgstr "배너 닫기"
 
-#: src/ui/mod.rs:745
+#: src/ui/mod.rs:758
 msgid "Minimize"
 msgstr "최소화"
 
-#: src/ui/mod.rs:746
+#: src/ui/mod.rs:759
 msgid "Maximize"
 msgstr "최대화"
 
-#: src/ui/mod.rs:747
+#: src/ui/mod.rs:760
 msgid "Restore"
 msgstr "복원"
 
@@ -3320,8 +3321,8 @@ msgstr "Spotify에 사전 저장"
 msgid "Track list preview"
 msgstr "트랙 목록 미리 보기"
 
-#: src/ui/prerelease.rs:260 src/ui/mcloud/pages.rs:308
-#: src/ui/mcloud/pages.rs:380
+#: src/ui/prerelease.rs:260 src/ui/mcloud/pages.rs:361
+#: src/ui/mcloud/pages.rs:433 src/ui/mcloud/pages.rs:738
 msgctxt "column"
 msgid "Title"
 msgstr "제목"
@@ -3461,19 +3462,19 @@ msgstr "{duration} 남음"
 msgid "Played"
 msgstr "재생함"
 
-#: src/ui/topbar.rs:248 src/ui/mcloud/topbar.rs:89
+#: src/ui/topbar.rs:248 src/ui/mcloud/topbar.rs:129
 msgid "Show sidebar (Ctrl+B)"
 msgstr "사이드바 표시 (Ctrl+B)"
 
-#: src/ui/topbar.rs:249 src/ui/mcloud/topbar.rs:90
+#: src/ui/topbar.rs:249 src/ui/mcloud/topbar.rs:130
 msgid "Show sidebar (Cmd+B)"
 msgstr "사이드바 표시 (Cmd+B)"
 
-#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:976 src/ui/mcloud/topbar.rs:129
+#: src/ui/topbar.rs:268 src/ui/mcloud/artist.rs:983 src/ui/mcloud/topbar.rs:182
 msgid "Back"
 msgstr "뒤로"
 
-#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:136
+#: src/ui/topbar.rs:279 src/ui/mcloud/topbar.rs:189
 msgid "Forward"
 msgstr "앞으로"
 
@@ -3923,42 +3924,42 @@ msgstr ""
 msgid "Show all"
 msgstr "모두 보기"
 
-#: src/ui/mcloud/pages.rs:305 src/ui/mcloud/pages.rs:312
-#: src/ui/mcloud/pages.rs:375
+#: src/ui/mcloud/pages.rs:358 src/ui/mcloud/pages.rs:365
+#: src/ui/mcloud/pages.rs:428
 msgid "Custom order"
 msgstr "사용자 지정 순서"
 
-#: src/ui/mcloud/pages.rs:311 src/ui/mcloud/pages.rs:448
+#: src/ui/mcloud/pages.rs:364 src/ui/mcloud/pages.rs:501
 msgid "Duration"
 msgstr "재생 시간"
 
-#: src/ui/mcloud/pages.rs:542
+#: src/ui/mcloud/pages.rs:595
 msgid "Music"
 msgstr "음악"
 
 #. Translators: Heading for other albums by this artist below an album page.
-#: src/ui/mcloud/pages.rs:899
+#: src/ui/mcloud/pages.rs:987
 #, rust-format
 msgid "More by {artist}"
 msgstr "{artist}의 다른 앨범"
 
-#: src/ui/mcloud/artist.rs:699
+#: src/ui/mcloud/artist.rs:706
 msgid "Monthly listeners"
 msgstr "월별 청취자"
 
-#: src/ui/mcloud/artist.rs:702
+#: src/ui/mcloud/artist.rs:709
 msgid "Followers"
 msgstr "팔로워"
 
-#: src/ui/mcloud/artist.rs:725
+#: src/ui/mcloud/artist.rs:732
 msgid "Top cities"
 msgstr "주요 도시"
 
-#: src/ui/mcloud/artist.rs:1214
+#: src/ui/mcloud/artist.rs:1221
 msgid "Latest release"
 msgstr "최신 발매"
 
-#: src/ui/mcloud/artist.rs:1362
+#: src/ui/mcloud/artist.rs:1369
 msgid "Top Songs"
 msgstr "인기 곡"
 
