@@ -293,7 +293,8 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
 ## Gelen kutusu
 
 mcloud'da yeni çıkanlar. `.github/workflows/mcloud-sync.yml` her gün bakar ve
-yeni kayıtları buraya ekleyen bir PR açar (açık PR varsa onu günceller).
+yeni kayıtları buraya ekleyip `main`'e commit eder. Sadece bu dosyaya, sadece
+aşağıdaki iki işaretin arasına yazar; işaretleri silme.
 Eklenenler: mcloud `main`'e merge edilen PR'lar, tamamlanıp kapanan issue'lar
 ve PR'sız `STATUS.md` commit'leri.
 
