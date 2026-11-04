@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-05 01:33+0300\n"
+"POT-Creation-Date: 2026-11-05 01:45+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Traditional Chinese\n"
@@ -28,19 +28,19 @@ msgstr "暫停 {name}"
 msgid "Play {name}"
 msgstr "播放 {name}"
 
-#: src/ui/sidebar.rs:302 src/app.rs:3645 src/app.rs:23753
+#: src/ui/sidebar.rs:302 src/app.rs:3645 src/app.rs:23755
 #: src/ui/collection.rs:2298 src/ui/collection.rs:2527
-#: src/ui/mcloud/search.rs:311
+#: src/ui/mcloud/search.rs:311 src/ui/mcloud/search.rs:576
 msgid "Playlist"
 msgstr "播放清單"
 
-#: src/ui/sidebar.rs:312 src/ui/friends.rs:304 src/app.rs:3619 src/app.rs:23758
+#: src/ui/sidebar.rs:312 src/ui/friends.rs:304 src/app.rs:3619 src/app.rs:23760
 #: src/ui/collection.rs:2520 src/ui/home.rs:123 src/ui/keys.rs:337
 #: src/ui/winamp/playlist.rs:653
 msgid "Liked Songs"
 msgstr "已按讚的歌曲"
 
-#: src/ui/sidebar.rs:353 src/ui/mcloud/library.rs:89
+#: src/ui/sidebar.rs:353 src/ui/mcloud/library.rs:129
 msgid "Library order"
 msgstr "音樂庫順序"
 
@@ -50,7 +50,7 @@ msgid "Recently played"
 msgstr "最近播放"
 
 #: src/ui/sidebar.rs:358 src/ui/dialogs.rs:366 src/ui/dialogs.rs:523
-#: src/ui/mcloud/library.rs:89
+#: src/ui/mcloud/library.rs:129
 msgid "Name"
 msgstr "名稱"
 
@@ -78,13 +78,13 @@ msgid "Playlist • {owner}"
 msgstr "播放清單 • {owner}"
 
 #: src/ui/sidebar.rs:968 src/i18n.rs:269 src/i18n.rs:272 src/ui/keys.rs:333
-#: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:245
+#: src/ui/topbar.rs:259 src/ui/mcloud/sidebar.rs:361
 #: src/ui/mcloud/topbar.rs:233
 msgid "Home"
 msgstr "首頁"
 
 #: src/ui/sidebar.rs:979 src/app.rs:8611 src/ui/keys.rs:316
-#: src/ui/mcloud/sidebar.rs:234
+#: src/ui/mcloud/sidebar.rs:350
 msgid "Search"
 msgstr "搜尋"
 
@@ -104,7 +104,8 @@ msgstr "顯示為列表"
 msgid "Show as grid"
 msgstr "顯示為網格"
 
-#: src/ui/sidebar.rs:1043 src/ui/mcloud/sidebar.rs:302
+#: src/ui/sidebar.rs:1043 src/ui/mcloud/sidebar.rs:291
+#: src/ui/mcloud/sidebar.rs:458
 msgid "Create a playlist"
 msgstr "建立播放清單"
 
@@ -112,23 +113,23 @@ msgstr "建立播放清單"
 msgid "Search Your Library"
 msgstr "搜尋音樂庫"
 
-#: src/ui/sidebar.rs:1075 src/ui/mcloud/sidebar.rs:265
+#: src/ui/sidebar.rs:1075 src/ui/mcloud/sidebar.rs:381
 msgid "Library"
 msgstr "音樂庫"
 
 #: src/ui/sidebar.rs:1095 src/app.rs:8585 src/model.rs:827 src/ui/search.rs:686
-#: src/ui/mcloud/sidebar.rs:306
+#: src/ui/mcloud/sidebar.rs:297 src/ui/mcloud/sidebar.rs:462
 msgid "Playlists"
 msgstr "播放清單"
 
 #: src/ui/sidebar.rs:1096 src/model.rs:826 src/model.rs:951
-#: src/ui/library.rs:27 src/ui/search.rs:613 src/ui/mcloud/sidebar.rs:277
+#: src/ui/library.rs:27 src/ui/search.rs:613 src/ui/mcloud/sidebar.rs:393
 #: src/ui/mcloud/artist.rs:202
 msgid "Albums"
 msgstr "專輯"
 
 #: src/ui/sidebar.rs:1097 src/model.rs:825 src/ui/library.rs:32
-#: src/ui/search.rs:545 src/ui/mcloud/sidebar.rs:274
+#: src/ui/search.rs:545 src/ui/mcloud/sidebar.rs:390
 msgid "Artists"
 msgstr "藝人"
 
@@ -151,7 +152,7 @@ msgstr "在音樂庫中搜尋"
 #: src/ui/library.rs:528 src/ui/search.rs:177 src/ui/search.rs:509
 #: src/ui/winamp/playlist.rs:746 src/ui/mcloud/pages.rs:362
 #: src/ui/mcloud/pages.rs:446 src/ui/mcloud/pages.rs:749
-#: src/ui/mcloud/search.rs:126
+#: src/ui/mcloud/search.rs:126 src/ui/mcloud/search.rs:553
 msgid "Artist"
 msgstr "藝人"
 
@@ -165,7 +166,7 @@ msgstr "Podcast • {publisher}"
 msgid "Nothing here yet."
 msgstr "這裡還沒有內容。"
 
-#: src/ui/sidebar.rs:1338 src/ui/mcloud/library.rs:158
+#: src/ui/sidebar.rs:1338 src/ui/mcloud/library.rs:209
 msgid "No matches."
 msgstr "沒有相符的項目。"
 
@@ -322,7 +323,7 @@ msgstr "待播清單"
 msgid "Lyrics"
 msgstr "歌詞"
 
-#: src/ui/player_bar.rs:1071 src/ui/friends.rs:53 src/ui/mcloud/sidebar.rs:675
+#: src/ui/player_bar.rs:1071 src/ui/friends.rs:53 src/ui/mcloud/sidebar.rs:1039
 msgid "Listening activity"
 msgstr "收聽動態"
 
@@ -454,7 +455,7 @@ msgid "No timed lyrics for this track."
 msgstr "這首歌沒有同步歌詞。"
 
 #: src/ui/lyrics.rs:620 src/ui/widgets.rs:3015 src/ui/widgets.rs:3055
-#: src/ui/widgets.rs:3083 src/app.rs:13917 src/ui/collection.rs:930
+#: src/ui/widgets.rs:3083 src/app.rs:13919 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr "載入中…"
 
@@ -499,7 +500,7 @@ msgstr "從這個播放清單中移除"
 msgid "Filter playlists"
 msgstr "篩選播放清單"
 
-#: src/ui/widgets.rs:875 src/ui/dialogs.rs:359
+#: src/ui/widgets.rs:875 src/ui/dialogs.rs:359 src/ui/mcloud/sidebar.rs:442
 msgid "New playlist"
 msgstr "新增播放清單"
 
@@ -666,7 +667,7 @@ msgstr "播放次數"
 msgid "Sort by duration"
 msgstr "依長度排序"
 
-#: src/ui/widgets.rs:3094 src/app.rs:14126 src/app.rs:14140
+#: src/ui/widgets.rs:3094 src/app.rs:14128 src/app.rs:14142
 msgid "Network connection error. Check your connection."
 msgstr "網路連線錯誤。請檢查連線。"
 
@@ -686,7 +687,7 @@ msgstr "貼上"
 msgid "Select all"
 msgstr "全選"
 
-#: src/ui/widgets.rs:3522
+#: src/ui/widgets.rs:3522 src/ui/mcloud/library.rs:124
 msgid "Clear"
 msgstr "清除"
 
@@ -818,6 +819,7 @@ msgstr "電台"
 #: src/app.rs:3661 src/api/models.rs:299 src/ui/prerelease.rs:71
 #: src/ui/mcloud/pages.rs:363 src/ui/mcloud/pages.rs:459
 #: src/ui/mcloud/search.rs:148 src/ui/mcloud/search.rs:318
+#: src/ui/mcloud/search.rs:575
 msgid "Album"
 msgstr "專輯"
 
@@ -871,7 +873,7 @@ msgid "Queue cleared"
 msgstr "已清除待播清單"
 
 #. Translators: Keep {date} unchanged. It is a date in YYYY-MM-DD form.
-#: src/app.rs:6689 src/app.rs:23743
+#: src/app.rs:6689 src/app.rs:23745
 #, rust-format
 msgid "Queue {date}"
 msgstr "待播清單 {date}"
@@ -1088,114 +1090,114 @@ msgid "{count} pasted link could not be added"
 msgid_plural "{count} pasted links could not be added"
 msgstr[0] "有 {count} 個貼上的連結無法加入"
 
-#: src/app.rs:12014
+#: src/app.rs:12016
 msgid "Spotify doesn't let apps remove a playlist description, so it was kept"
 msgstr "Spotify 不允許應用程式移除播放清單說明，因此說明已保留"
 
-#: src/app.rs:12076 src/app.rs:12089
+#: src/app.rs:12078 src/app.rs:12091
 msgid "Link copied"
 msgstr "已複製連結"
 
 #. Translators: {count} is a number of song links, always more than one.
-#: src/app.rs:12093
+#: src/app.rs:12095
 #, rust-format
 msgid "{count} link copied"
 msgid_plural "{count} links copied"
 msgstr[0] "已複製 {count} 個連結"
 
-#: src/app.rs:12388
+#: src/app.rs:12390
 msgid ""
 "Spotify doesn't let apps reorder your playlists, so this order is saved on "
 "this computer"
 msgstr ""
 "Spotify 不允許應用程式重新排列你的播放清單，因此這個順序會儲存在這台電腦上"
 
-#: src/app.rs:12543
+#: src/app.rs:12545
 msgid "Restarting local playback"
 msgstr "正在重新啟動本機播放"
 
-#: src/app.rs:12579
+#: src/app.rs:12581
 msgid "Local playback needs Spotify Premium"
 msgstr "本機播放需要 Spotify Premium"
 
-#: src/app.rs:12629
+#: src/app.rs:12631
 msgid "Play history cleared"
 msgstr "已清除播放紀錄"
 
 #. Translators: {size} is a size in megabytes, such as 12.5.
-#: src/app.rs:12640
+#: src/app.rs:12642
 #, rust-format
 msgid "Cleared {size} MB of artwork"
 msgstr "已清除 {size} MB 的封面圖片"
 
 #. Translators: {error} is an error message.
-#: src/app.rs:12646
+#: src/app.rs:12648
 #, rust-format
 msgid "Couldn't clear artwork: {error}"
 msgstr "無法清除封面圖片：{error}"
 
-#: src/app.rs:12873
+#: src/app.rs:12875
 msgid "Downloading MilkDrop preset packs"
 msgstr "正在下載 MilkDrop 預設集套件"
 
 #. Translators: {name} is the name of a visualizer preset pack.
-#: src/app.rs:12907
+#: src/app.rs:12909
 #, rust-format
 msgid "Downloading {name} presets"
 msgstr "正在下載 {name} 預設集"
 
-#: src/app.rs:14060
+#: src/app.rs:14062
 msgid "Couldn't start playback"
 msgstr "無法開始播放"
 
-#: src/app.rs:14061
+#: src/app.rs:14063
 msgid "Couldn't pause"
 msgstr "無法暫停"
 
-#: src/app.rs:14062
+#: src/app.rs:14064
 msgid "Couldn't skip"
 msgstr "無法跳過"
 
-#: src/app.rs:14063
+#: src/app.rs:14065
 msgid "Couldn't go back"
 msgstr "無法返回"
 
-#: src/app.rs:14064
+#: src/app.rs:14066
 msgid "Couldn't seek"
 msgstr "無法調整播放位置"
 
-#: src/app.rs:14065
+#: src/app.rs:14067
 msgid "Couldn't change the volume"
 msgstr "無法調整音量"
 
-#: src/app.rs:14066
+#: src/app.rs:14068
 msgid "Couldn't change shuffle"
 msgstr "無法切換隨機播放"
 
-#: src/app.rs:14067
+#: src/app.rs:14069
 msgid "Couldn't change repeat"
 msgstr "無法切換重複播放"
 
-#: src/app.rs:14110 src/ui/mod.rs:528
+#: src/app.rs:14112 src/ui/mod.rs:528
 msgid "Spotify won't let this computer play this song right now."
 msgstr "Spotify 現在不讓這台電腦播放這首歌。"
 
-#: src/app.rs:14117
+#: src/app.rs:14119
 msgid ""
 "No audio output device was found. Connect or enable one, then press play "
 "again."
 msgstr "找不到音訊輸出裝置。請連接或啟用一個裝置，然後再按一次播放。"
 
-#: src/app.rs:14131
+#: src/app.rs:14133
 msgid ""
 "Spotify doesn't make this playlist's songs available to third-party apps."
 msgstr "Spotify 不提供這個播放清單的歌曲給第三方應用程式。"
 
-#: src/app.rs:14252
+#: src/app.rs:14254
 msgid "Spotify sign-in expired. Sign in again, then retry the cover upload."
 msgstr "Spotify 登入已過期。請重新登入，然後再次嘗試上傳封面。"
 
-#: src/app.rs:14257
+#: src/app.rs:14259
 msgid ""
 "Spotify refused this cover. Check that you own the playlist, then sign in "
 "again to grant image upload permission. If using a personal app, reconnect "
@@ -1204,19 +1206,19 @@ msgstr ""
 "Spotify 拒絕了這張封面。請確認你是播放清單的擁有者，然後重新登入以授予上傳圖"
 "片的權限。如果使用個人應用程式，也請在設定中重新連線。"
 
-#: src/app.rs:14261
+#: src/app.rs:14263
 msgid "Spotify rejected the image size. Choose a smaller image."
 msgstr "Spotify 拒絕了這個圖片大小，請選擇較小的圖片。"
 
 #. Translators: {error} is an error message.
-#: src/app.rs:14264
+#: src/app.rs:14266
 #, rust-format
 msgid "Couldn't upload the cover: {error}. Try again."
 msgstr "無法上傳封面：{error}。請再試一次。"
 
 #. Translators: Keep {track} unchanged. It is the name of the song,
 #. playlist, album, or artist the radio is based on, not translated.
-#: src/app.rs:23763 src/app/radio.rs:38
+#: src/app.rs:23765 src/app/radio.rs:38
 #, rust-format
 msgid "{track} Radio"
 msgstr "{track} 電台"
@@ -2356,7 +2358,7 @@ msgctxt "filter"
 msgid "All"
 msgstr "全部"
 
-#: src/model.rs:824 src/ui/search.rs:461 src/ui/mcloud/sidebar.rs:280
+#: src/model.rs:824 src/ui/search.rs:461 src/ui/mcloud/sidebar.rs:396
 msgid "Songs"
 msgstr "歌曲"
 
@@ -2435,7 +2437,8 @@ msgstr "無法載入自訂主題。請執行 spotifast reload-themes 再試一�
 msgid "Popular"
 msgstr "熱門"
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:303
+#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:292
+#: src/ui/mcloud/sidebar.rs:459
 msgid "Show less"
 msgstr "顯示較少"
 
@@ -2494,7 +2497,7 @@ msgid "Save as playlist"
 msgstr "儲存為播放清單"
 
 #: src/ui/collection.rs:453 src/ui/mcloud/pages.rs:315
-#: src/ui/mcloud/pages.rs:329 src/ui/mcloud/library.rs:73
+#: src/ui/mcloud/pages.rs:329 src/ui/mcloud/library.rs:99
 msgid "Filter"
 msgstr "篩選"
 
@@ -3016,7 +3019,7 @@ msgstr "關閉視窗"
 msgid "Quit"
 msgstr "結束"
 
-#: src/ui/library.rs:17 src/ui/mcloud/sidebar.rs:269
+#: src/ui/library.rs:17 src/ui/mcloud/sidebar.rs:385
 msgid "Recently Added"
 msgstr "最近加入"
 
@@ -3028,7 +3031,7 @@ msgstr "尚未加入任何內容"
 msgid "Recently added music appears here."
 msgstr "最近加入的音樂會顯示在這裡。"
 
-#: src/ui/library.rs:22 src/ui/mcloud/sidebar.rs:320
+#: src/ui/library.rs:22 src/ui/mcloud/sidebar.rs:480
 msgid "All Playlists"
 msgstr "所有播放清單"
 
@@ -3488,7 +3491,7 @@ msgstr "版本 {version} 現已推出。"
 msgid "What do you want to play?"
 msgstr "想播放什麼？"
 
-#: src/ui/topbar.rs:651 src/ui/topbar.rs:655 src/ui/mcloud/sidebar.rs:256
+#: src/ui/topbar.rs:651 src/ui/topbar.rs:655 src/ui/mcloud/sidebar.rs:372
 msgid "Browse"
 msgstr "瀏覽"
 
@@ -3861,7 +3864,7 @@ msgstr ""
 "器沒有提供。請安裝顯示卡驅動程式，或為虛擬機器開啟 GPU 加速。要開啟 {url} 了"
 "解更多嗎？"
 
-#: src/ui/mcloud/sidebar.rs:368
+#: src/ui/mcloud/sidebar.rs:703
 msgid "Show all"
 msgstr "顯示全部"
 
@@ -3910,14 +3913,14 @@ msgstr "瀏覽全部"
 
 #. Translators: How many albums, artists or playlists a library view
 #. holds. Keep {count}.
-#: src/ui/mcloud/library.rs:174
+#: src/ui/mcloud/library.rs:225
 #, rust-format
 msgid "{count} item"
 msgid_plural "{count} items"
 msgstr[0] "{count} 個項目"
 
 #. Translators: The kind of a search result row.
-#: src/ui/mcloud/search.rs:304
+#: src/ui/mcloud/search.rs:304 src/ui/mcloud/search.rs:574
 msgctxt "search result"
 msgid "Song"
 msgstr "歌曲"

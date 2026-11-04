@@ -162,8 +162,7 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
 
 ## E. Sidebar
 
-21. **Show All / Show Less ve hareketler.** *Kontrol* (başlıkta "Show less"
-    var).
+21. **Show All / Show Less ve hareketler.** *Tamamlandı.*
     - Liste kapalıyken sadece en altta "Show All" var. Açıkken bu satır
       kalkar. Yerine yapışkan (sticky) başlıkta "Show Less" hapı çıkar. Aynı
       anda iki kontrol olmaz.
@@ -174,22 +173,22 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
     - Sıra değişince satırlar kayarak yer değiştirir: 300 ms,
       `cubic-bezier(.2,0,0,1)`. Yeni satır 8px düşerek 200 ms'de belirir.
       Hareketi azalt ayarı açıksa hareket yok.
-22. **Son çalınanlar ne zaman güncellenir.** *Kontrol.*
+22. **Son çalınanlar ne zaman güncellenir.** *Tamamlandı.*
     - Çalan liste değişince 0.1 s sonra bakılır. Liste en üste gelene kadar
       0.4 / 1.5 / 5 / 15 s'de tekrar bakılır.
     - Fare ya da klavye odağı listedeyken arka plan yenilemesi bekler.
-23. **"+" menüsü ve yerinde adlandırma.** *Kontrol* (Spotifast'te dialog var).
+23. **"+" menüsü ve yerinde adlandırma.** *Tamamlandı.*
     - "+" menüsünde Yeni Çalma Listesi ve Yeni Klasör var.
     - Ad listenin en üstündeki bir alanda yazılır. Enter ya da alandan
       çıkmak oluşturur, Esc iptal eder.
     - Oluşan liste hemen açılır.
-24. **Sidebar ölçüleri ve yapısı.** *Kontrol.*
+24. **Sidebar ölçüleri ve yapısı.** *Tamamlandı.*
     - Satır 32px, iç boşluk 16px, ikon 18px, bölüm başlığı 11px.
     - Malzeme: #252525, %76 opak.
     - Parıltının tavanı: 0.4'e kadar olduğu gibi, sonra ~0.66'da yumuşak
       tavan. Büyük renkli alanlar patlamasın.
     - "Mağaza" başlığı yok. "Göz At", Ara ve Ana Sayfa'nın altında, 2x2 ikonla.
-25. **Hesap satırı.** *Kontrol.*
+25. **Hesap satırı.** *Tamamlandı.*
     - Playlist'ler altından devam ederken liste son 16px'te soluklaşır ve
       ince bir çizgi görünür. Listenin sonunda ikisi de kalkar.
     - En dar sidebar'da (170px) isim üç noktayla kısalır, butonlar sayfaya
@@ -197,7 +196,7 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
 
 ## F. Arama
 
-26. **Arama önerileri penceresi.** *Yok.* macOS 27 Music'te ölçüldü.
+26. **Arama önerileri penceresi.** *Tamamlandı.* macOS 27 Music'te ölçüldü.
     - **Pencere:** alanın kenarlarından 1.5pt içeride. Üstü, alanın odak
       halkasının ~1pt altında. Köşeler 13–14pt. Üstte ve altta 5pt boşluk.
       En fazla 523pt yükseklik (3 sorgu + 7 sonuç).
@@ -212,12 +211,12 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
       beyaz. Escape pencereyi kapatır.
     - **Cam:** blur σ ≈ 21pt. Parlaklık 44 + 0.044·L. Renk ×1.14.
     - **Yüklenirken:** aynı camda 3 sorgu ve sonuç iskeleti.
-27. **Arama alanı.** *Kontrol.*
+27. **Arama alanı.** *Tamamlandı.*
     - Büyütecin merceği yuvarlak ucun merkez çizgisinde, 2px sağda.
       Kullanıcı +2px'i +1px'e tercih etti.
     - Metin 36px'ten başlar.
     - Pencere daralınca alan ikona dönüşmez, sadece daralır.
-28. **Kütüphane filtresi ve sıralama.** *Kontrol.* Filtre alanı macOS'taki
+28. **Kütüphane filtresi ve sıralama.** *Tamamlandı.* Filtre alanı macOS'taki
     gibi yuvarlak ve büyüteçli. Sıralama bir pop-up buton: menü seçili
     öğe butonun üstüne gelecek şekilde açılır.
 

@@ -11,7 +11,7 @@ use egui::{
 use crate::api::models::{Playlist, pick_image};
 use crate::app::App;
 use crate::i18n::gettext;
-use crate::model::{Action, Dialog, Page};
+use crate::model::{Action, Page};
 use crate::theme::{self, Icon};
 
 const ROW_HEIGHT: f32 = 32.0;
@@ -32,6 +32,33 @@ const RECENT_PLAYLISTS: usize = 5;
 const TEXT: Color32 = Color32::from_rgb(0xf2, 0xf2, 0xf2);
 const HEADING: Color32 = Color32::from_rgba_premultiplied(92, 92, 92, 92);
 const QUIET: Color32 = Color32::from_rgba_premultiplied(140, 140, 140, 140);
+
+/// Checkpoints (in seconds) after `playing_context_uri` changes at which the
+/// sidebar checks whether the newly playing playlist has moved to the top of
+/// recents.
+pub(crate) const RECENTS_POLL_DELAYS: [f64; 5] = [0.1, 0.4, 1.5, 5.0, 15.0];
+
+#[derive(Clone, Default)]
+struct RecentsSyncState {
+    last_playing: Option<String>,
+    changed_at: Option<f64>,
+    displayed_recents: Vec<String>,
+}
+
+#[derive(Clone, Copy)]
+struct CollapseScrollAnim {
+    start_y: f32,
+    target_y: f32,
+    started_at: f64,
+    duration: f32,
+}
+
+/// Ease-out cubic (`1 - (1 - t)^3`) used when scrolling back up before
+/// collapsing a deep playlist list.
+pub(crate) fn ease_out_cubic(t: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    1.0 - (1.0 - t).powi(3)
+}
 
 /// What leads a row.
 enum Leading<'a> {
@@ -198,15 +225,104 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 Stroke::new(1.0, Color32::from_white_alpha(10)),
             );
             let list = area.with_max_y(area.bottom() - ACCOUNT_HEIGHT);
-            ui.scope_builder(UiBuilder::new().max_rect(list), |ui| {
-                egui::ScrollArea::vertical()
-                    .id_salt("mcloud-sidebar")
-                    .auto_shrink(false)
-                    .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-                    .show(ui, |ui| contents(app, ui));
+            let scroll_anim_id = egui::Id::new("mcloud-sidebar-collapse-anim");
+            let expanded_id = egui::Id::new("mcloud-playlists-expanded");
+            let anim = ui
+                .ctx()
+                .data(|d| d.get_temp::<CollapseScrollAnim>(scroll_anim_id));
+            let mut forced_scroll_y = None;
+            if let Some(anim) = anim {
+                let now = ui.ctx().input(|i| i.time);
+                let elapsed = (now - anim.started_at) as f32;
+                if anim.duration <= 0.0 || elapsed >= anim.duration {
+                    forced_scroll_y = Some(anim.target_y);
+                    ui.ctx().data_mut(|d| {
+                        d.remove::<CollapseScrollAnim>(scroll_anim_id);
+                        d.insert_temp(expanded_id, false);
+                    });
+                } else {
+                    let t = ease_out_cubic(elapsed / anim.duration);
+                    forced_scroll_y = Some(anim.start_y + (anim.target_y - anim.start_y) * t);
+                    ui.ctx().request_repaint();
+                }
+            }
+            let mut sticky_heading_y = None;
+            let scroll_out = ui
+                .scope_builder(UiBuilder::new().max_rect(list), |ui| {
+                    let mut scroll = egui::ScrollArea::vertical()
+                        .id_salt("mcloud-sidebar")
+                        .auto_shrink(false)
+                        .scroll_bar_visibility(
+                            egui::scroll_area::ScrollBarVisibility::AlwaysHidden,
+                        );
+                    if let Some(y) = forced_scroll_y {
+                        scroll = scroll.vertical_scroll_offset(y);
+                    }
+                    scroll.show(ui, |ui| contents(app, ui, &mut sticky_heading_y))
+                })
+                .inner;
+            let scroll_y = scroll_out.state.offset.y;
+            let viewport_h = scroll_out.inner_rect.height();
+            let content_h = scroll_out.content_size.y;
+            ui.ctx().data_mut(|d| {
+                d.insert_temp(
+                    egui::Id::new("mcloud-sidebar-scroll-metrics"),
+                    (scroll_y, viewport_h),
+                );
             });
+
+            // Sticky "Playlists" header with "Show less" when expanded and scrolled past the heading.
+            let expanded = ui
+                .ctx()
+                .data(|d| d.get_temp::<bool>(expanded_id))
+                .unwrap_or(false);
+            if expanded
+                && let Some(heading_top) = sticky_heading_y
+                && heading_top < list.top()
+            {
+                let sticky_rect =
+                    Rect::from_min_size(pos2(list.left(), list.top()), vec2(list.width(), 28.0));
+                ui.painter().rect_filled(sticky_rect, 0.0, fill);
+                ui.painter().hline(
+                    sticky_rect.x_range(),
+                    sticky_rect.bottom() - 0.5,
+                    Stroke::new(1.0, Color32::from_white_alpha(15)),
+                );
+                let add = gettext(app.locale, "Create a playlist");
+                let show_less = gettext(app.locale, "Show less");
+                let (less_clicked, create_clicked) = paint_heading_in_rect(
+                    ui,
+                    sticky_rect,
+                    "mcloud-sticky-playlists-heading",
+                    &gettext(app.locale, "Playlists"),
+                    Some((Some(show_less.as_ref()), add.as_ref())),
+                );
+                if less_clicked {
+                    trigger_show_less(ui.ctx(), scroll_y, viewport_h);
+                }
+                if create_clicked {
+                    start_inline_playlist_creation(ui.ctx(), app.locale);
+                }
+            }
+
+            // Item #25: When playlists continue below the viewport, fade the bottom 16px
+            // and show a subtle 1px hairline; at the end of the list, remove both.
+            if scroll_y + viewport_h < content_h - 1.0 {
+                let fade = Rect::from_min_max(
+                    pos2(area.left(), (list.bottom() - 16.0).max(list.top())),
+                    pos2(area.right(), list.bottom()),
+                );
+                crate::ui::widgets::paint_vertical_gradient(ui, fade, Color32::TRANSPARENT, fill);
+                ui.painter().hline(
+                    area.x_range(),
+                    list.bottom() - 0.5,
+                    Stroke::new(1.0, Color32::from_white_alpha(18)),
+                );
+            }
+
             let account = Rect::from_min_max(pos2(area.left(), list.bottom()), area.max);
             ui.scope_builder(UiBuilder::new().max_rect(account), |ui| {
+                ui.set_clip_rect(account.intersect(ui.clip_rect()));
                 account_row(app, ui);
             });
         });
@@ -223,7 +339,7 @@ fn default_width(window: f32) -> f32 {
     (window * 0.155).clamp(220.0, 300.0)
 }
 
-fn contents(app: &mut App, ui: &mut egui::Ui) {
+fn contents(app: &mut App, ui: &mut egui::Ui, sticky_heading_y: &mut Option<f32>) {
     let locale = app.locale;
     let page = app.page().clone();
     ui.spacing_mut().item_spacing.y = 0.0;
@@ -262,7 +378,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
         app.actions.push(Action::Open(Page::Browse));
     }
 
-    heading(ui, &gettext(locale, "Library"), None);
+    heading(ui, &gettext(locale, "Library"), None, &mut None);
     for (icon, label, target) in [
         (
             Icon::McloudClock,
@@ -286,13 +402,53 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
         }
     }
 
-    playlists(app, ui, &page);
+    playlists(app, ui, &page, sticky_heading_y);
     ui.add_space(20.0);
+}
+
+fn trigger_show_less(ctx: &egui::Context, scroll_y: f32, viewport_h: f32) {
+    let expanded_id = egui::Id::new("mcloud-playlists-expanded");
+    let scroll_anim_id = egui::Id::new("mcloud-sidebar-collapse-anim");
+    let target_y = 0.0_f32;
+    let reduce_motion = crate::motion::reduced(ctx);
+    if !reduce_motion && scroll_y > target_y + 16.0 && viewport_h > 0.0 {
+        let max_distance = 2.0 * viewport_h;
+        let start_y = scroll_y.min(target_y + max_distance);
+        let distance = (start_y - target_y).max(0.0);
+        let duration = 0.30 + 0.20 * (distance / max_distance).clamp(0.0, 1.0);
+        let now = ctx.input(|i| i.time);
+        ctx.data_mut(|d| {
+            d.insert_temp(
+                scroll_anim_id,
+                CollapseScrollAnim {
+                    start_y,
+                    target_y,
+                    started_at: now,
+                    duration,
+                },
+            );
+        });
+        ctx.request_repaint();
+    } else {
+        ctx.data_mut(|d| {
+            d.remove::<CollapseScrollAnim>(scroll_anim_id);
+            d.insert_temp(expanded_id, false);
+        });
+    }
+}
+
+fn start_inline_playlist_creation(ctx: &egui::Context, locale: crate::i18n::Locale) {
+    let inline_id = egui::Id::new("mcloud-inline-create-playlist");
+    let default_name = gettext(locale, "New playlist").into_owned();
+    ctx.data_mut(|d| {
+        d.insert_temp(inline_id, default_name);
+        d.insert_temp(inline_id.with("focus"), true);
+    });
 }
 
 /// Pinned playlists first, in pin order, then the most recently played,
 /// as Spotify's own sidebar sorted by Recents; "Show all" lists the rest.
-fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page) {
+fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &mut Option<f32>) {
     let locale = app.locale;
     let expanded_id = egui::Id::new("mcloud-playlists-expanded");
     let mut expanded = ui
@@ -305,16 +461,20 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page) {
         ui,
         &gettext(locale, "Playlists"),
         Some((expanded.then_some(show_less.as_ref()), add.as_ref())),
+        sticky_heading_y,
     );
     if less {
-        expanded = false;
+        let (scroll_y, viewport_h) = ui
+            .ctx()
+            .data(|d| d.get_temp::<(f32, f32)>(egui::Id::new("mcloud-sidebar-scroll-metrics")))
+            .unwrap_or((0.0, 0.0));
+        trigger_show_less(ui.ctx(), scroll_y, viewport_h);
+        expanded = ui
+            .data(|data| data.get_temp::<bool>(expanded_id))
+            .unwrap_or(false);
     }
     if create {
-        app.actions.push(Action::ShowDialog(Dialog::CreatePlaylist {
-            name: String::new(),
-            public: false,
-            add_uris: Vec::new(),
-        }));
+        start_inline_playlist_creation(ui.ctx(), locale);
     }
 
     let all_playlists = gettext(locale, "All Playlists");
@@ -330,37 +490,212 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page) {
         app.actions.push(Action::Open(Page::AllPlaylists));
     }
 
+    // Item #23: Inline playlist creation row at the top of the playlists list.
+    let inline_id = egui::Id::new("mcloud-inline-create-playlist");
+    let inline_draft = ui.data(|d| d.get_temp::<String>(inline_id));
+    if let Some(mut draft) = inline_draft {
+        let (rect, _) =
+            ui.allocate_exact_size(vec2(ui.available_width(), ROW_HEIGHT), Sense::hover());
+        ui.painter().rect_filled(
+            rect,
+            CornerRadius::same(ROW_RADIUS),
+            Color32::from_white_alpha(20),
+        );
+        let lead = Rect::from_min_size(
+            pos2(rect.left() + 14.0, rect.center().y - ART_SIZE / 2.0),
+            Vec2::splat(ART_SIZE),
+        );
+        ui.painter()
+            .rect_filled(lead, CornerRadius::same(4), Color32::from_white_alpha(20));
+        theme::paint_icon(ui, Icon::McloudMusic, lead, 14.0, QUIET);
+        let field_rect = Rect::from_min_max(
+            pos2(lead.right() + 8.0, rect.top() + 2.0),
+            pos2(rect.right() - 8.0, rect.bottom() - 2.0),
+        );
+        let edit_id = inline_id.with("edit");
+        let mut child = ui.new_child(
+            UiBuilder::new()
+                .max_rect(field_rect)
+                .layout(egui::Layout::left_to_right(egui::Align::Center)),
+        );
+        let response = child.add(
+            egui::TextEdit::singleline(&mut draft)
+                .id(edit_id)
+                .font(theme::medium(13.0))
+                .text_color(TEXT)
+                .frame(egui::Frame::NONE)
+                .desired_width(field_rect.width()),
+        );
+        let ask_focus = ui
+            .data(|d| d.get_temp::<bool>(inline_id.with("focus")))
+            .unwrap_or(false);
+        if ask_focus {
+            response.request_focus();
+            if let Some(mut state) = egui::TextEdit::load_state(ui.ctx(), edit_id) {
+                let end = egui::text::CCursor::new(draft.chars().count());
+                state
+                    .cursor
+                    .set_char_range(Some(egui::text::CCursorRange::two(
+                        egui::text::CCursor::new(0),
+                        end,
+                    )));
+                state.store(ui.ctx(), edit_id);
+            }
+            ui.data_mut(|d| d.remove::<bool>(inline_id.with("focus")));
+        }
+        let esc = ui.input(|i| i.key_pressed(egui::Key::Escape));
+        let enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
+        if esc {
+            ui.data_mut(|d| d.remove::<String>(inline_id));
+        } else if enter || response.lost_focus() {
+            let trimmed = draft.trim().to_string();
+            ui.data_mut(|d| d.remove::<String>(inline_id));
+            if !trimmed.is_empty() {
+                app.actions.push(Action::CreatePlaylist {
+                    name: trimmed,
+                    public: false,
+                    add_uris: Vec::new(),
+                });
+            }
+        } else {
+            ui.data_mut(|d| d.insert_temp(inline_id, draft));
+        }
+    }
+
     let Some(all) = app.library.playlists.get() else {
         return;
     };
-    let order = playlist_order(
+
+    // Item #22: Recents polling schedule (0.1s, 0.4s, 1.5s, 5s, 15s) on playing context
+    // change, and deferring background reorders while pointer/focus is inside the list.
+    let playing = app.playing_context_uri();
+    let sync_id = egui::Id::new("mcloud-sidebar-recents-sync");
+    let list_active_id = egui::Id::new("mcloud-sidebar-list-active");
+    let list_active = ui
+        .data(|d| d.get_temp::<bool>(list_active_id))
+        .unwrap_or(false);
+    let now = ui.ctx().input(|i| i.time);
+    let mut sync = ui
+        .data(|d| d.get_temp::<RecentsSyncState>(sync_id))
+        .unwrap_or_else(|| RecentsSyncState {
+            last_playing: playing.clone(),
+            changed_at: None,
+            displayed_recents: app.recent_contexts.clone(),
+        });
+    let playing_changed = sync.last_playing != playing;
+    if playing_changed {
+        sync.last_playing = playing.clone();
+        sync.changed_at = playing.as_ref().map(|_| now);
+        sync.displayed_recents = app.recent_contexts.clone();
+    } else if !list_active {
+        sync.displayed_recents = app.recent_contexts.clone();
+    }
+    if let (Some(uri), Some(started)) = (playing.as_deref(), sync.changed_at) {
+        let is_pinned = app.settings.pinned_contexts.iter().any(|p| p == uri);
+        let is_top = sync.displayed_recents.first().is_some_and(|r| r == uri);
+        let is_playlist = all.iter().any(|p| p.uri == uri);
+        if is_playlist && !is_pinned && !is_top {
+            let elapsed = (now - started).max(0.0);
+            if elapsed >= RECENTS_POLL_DELAYS[0] {
+                if !list_active {
+                    sync.displayed_recents.retain(|r| r != uri);
+                    sync.displayed_recents.insert(0, uri.to_string());
+                    sync.changed_at = None;
+                }
+            } else if let Some(&next_delay) = RECENTS_POLL_DELAYS.iter().find(|&&d| d > elapsed) {
+                ui.ctx()
+                    .request_repaint_after(std::time::Duration::from_secs_f64(
+                        (next_delay - elapsed).max(0.02),
+                    ));
+            }
+        } else {
+            sync.changed_at = None;
+        }
+    }
+    ui.data_mut(|d| d.insert_temp(sync_id, sync.clone()));
+
+    let collapsed_order = playlist_order(
         all,
         &app.settings.pinned_contexts,
-        &app.recent_contexts,
-        expanded,
+        &sync.displayed_recents,
+        false,
     );
+    let collapsed_count = collapsed_order.len();
+    let order = if expanded {
+        playlist_order(
+            all,
+            &app.settings.pinned_contexts,
+            &sync.displayed_recents,
+            true,
+        )
+    } else {
+        collapsed_order
+    };
     let more = !expanded && order.len() < all.len();
 
-    let playing = app.playing_context_uri();
+    let focus_new_id = egui::Id::new("mcloud-playlists-focus-first-new");
+    let focus_first_new = ui
+        .data(|d| d.get_temp::<bool>(focus_new_id))
+        .unwrap_or(false);
+    if focus_first_new {
+        ui.data_mut(|d| d.remove::<bool>(focus_new_id));
+    }
+
+    let reduce_motion = crate::motion::reduced(ui.ctx());
     let art_px = app.art_px(ART_SIZE);
     let mut open = None;
-    for index in order {
+    let mut any_hovered_or_focused = false;
+    for (slot, index) in order.into_iter().enumerate() {
         let playlist = &all[index];
         let image = pick_image(&playlist.images, art_px);
         let active = matches!(page, Page::Playlist(id) if *id == playlist.id);
         let here = playing.as_deref() == Some(playlist.uri.as_str());
-        if row(
+        let slot_id = egui::Id::new(("mcloud-sidebar-slot", &playlist.uri));
+        let prev_slot = ui.data(|d| d.get_temp::<f32>(slot_id));
+        ui.data_mut(|d| d.insert_temp(slot_id, slot as f32));
+        let target_y = slot as f32 * ROW_HEIGHT;
+        let anim_y = if reduce_motion {
+            target_y
+        } else if prev_slot.is_some() {
+            ui.ctx().animate_value_with_time(
+                slot_id.with("reorder-y"),
+                target_y,
+                crate::motion::seconds(ui.ctx(), 0.30),
+            )
+        } else {
+            // New row drops 8px over 200ms.
+            let drop = ui.ctx().animate_value_with_time(
+                slot_id.with("entry-drop"),
+                0.0,
+                crate::motion::seconds(ui.ctx(), 0.20),
+            );
+            target_y + drop
+        };
+        if prev_slot.is_none() && !reduce_motion {
+            ui.ctx()
+                .data_mut(|d| d.insert_temp(slot_id.with("entry-drop"), -8.0_f32));
+        }
+        let y_shift = (anim_y - target_y).clamp(-64.0, 64.0);
+        let response = row_shifted(
             ui,
             Leading::Art(image, app.backend.art()),
             &playlist.name,
             active,
             here,
-        )
-        .clicked()
-        {
+            y_shift,
+        );
+        if focus_first_new && slot == collapsed_count {
+            response.request_focus();
+        }
+        if response.hovered() || response.has_focus() {
+            any_hovered_or_focused = true;
+        }
+        if response.clicked() {
             open = Some(Page::Playlist(playlist.id.clone()));
         }
     }
+    ui.data_mut(|d| d.insert_temp(list_active_id, any_hovered_or_focused));
+
     if more
         && row(
             ui,
@@ -372,6 +707,7 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page) {
         .clicked()
     {
         expanded = true;
+        ui.data_mut(|d| d.insert_temp(focus_new_id, true));
     }
     if let Some(page) = open {
         app.actions.push(Action::Open(page));
@@ -418,10 +754,26 @@ fn playlist_order(
 
 /// A section heading. With `buttons`, it carries "Show less" (when given)
 /// and a "+" on its right; returns whether each was clicked.
-fn heading(ui: &mut egui::Ui, label: &str, buttons: Option<(Option<&str>, &str)>) -> (bool, bool) {
+fn heading(
+    ui: &mut egui::Ui,
+    label: &str,
+    buttons: Option<(Option<&str>, &str)>,
+    top_out: &mut Option<f32>,
+) -> (bool, bool) {
     ui.add_space(16.0);
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 13.0), Sense::hover());
+    *top_out = Some(rect.top());
     ui.add_space(4.0);
+    paint_heading_in_rect(ui, rect, "heading", label, buttons)
+}
+
+fn paint_heading_in_rect(
+    ui: &mut egui::Ui,
+    rect: Rect,
+    id_salt: &str,
+    label: &str,
+    buttons: Option<(Option<&str>, &str)>,
+) -> (bool, bool) {
     ui.painter().text(
         pos2(rect.left() + 6.0, rect.center().y),
         egui::Align2::LEFT_CENTER,
@@ -437,7 +789,7 @@ fn heading(ui: &mut egui::Ui, label: &str, buttons: Option<(Option<&str>, &str)>
         pos2(rect.right() - 5.0 - 11.0, rect.center().y + 1.0),
         Vec2::splat(22.0),
     );
-    let plus_response = ui.interact(plus, ui.id().with(("heading-add", label)), Sense::click());
+    let plus_response = ui.interact(plus, ui.id().with((id_salt, "add", label)), Sense::click());
     plus_response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, add));
     if plus_response.hovered() {
         ui.painter()
@@ -462,7 +814,7 @@ fn heading(ui: &mut egui::Ui, label: &str, buttons: Option<(Option<&str>, &str)>
             ),
             vec2(galley.size().x + 16.0, 20.0),
         );
-        let response = ui.interact(pill, ui.id().with(("heading-less", label)), Sense::click());
+        let response = ui.interact(pill, ui.id().with((id_salt, "less", label)), Sense::click());
         response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, less));
         let (fill, color) = if response.hovered() {
             (Color32::from_white_alpha(31), TEXT)
@@ -489,8 +841,20 @@ fn row(
     active: bool,
     playing: bool,
 ) -> egui::Response {
-    let (rect, response) =
+    row_shifted(ui, leading, label, active, playing, 0.0)
+}
+
+fn row_shifted(
+    ui: &mut egui::Ui,
+    leading: Leading<'_>,
+    label: &str,
+    active: bool,
+    playing: bool,
+    y_shift: f32,
+) -> egui::Response {
+    let (alloc_rect, response) =
         ui.allocate_exact_size(vec2(ui.available_width(), ROW_HEIGHT), Sense::click());
+    let rect = alloc_rect.translate(vec2(0.0, y_shift));
     if ui.is_rect_visible(rect) {
         let fill = if active {
             Color32::from_white_alpha(31)
@@ -741,5 +1105,13 @@ mod tests {
             vec![7, 0, 1, 2, 3, 4]
         );
         assert_eq!(playlist_order(&playlists[..2], &[], &[], false), vec![0, 1]);
+    }
+
+    #[test]
+    fn ease_out_cubic_and_recents_poll_schedule_match_spec() {
+        assert_eq!(ease_out_cubic(0.0), 0.0);
+        assert_eq!(ease_out_cubic(1.0), 1.0);
+        assert!((ease_out_cubic(0.5) - 0.875).abs() < 1e-5);
+        assert_eq!(RECENTS_POLL_DELAYS, [0.1, 0.4, 1.5, 5.0, 15.0]);
     }
 }

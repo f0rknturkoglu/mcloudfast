@@ -450,6 +450,512 @@ fn list_row(app: &mut App, ui: &mut egui::Ui, row: Row<'_>) {
     }
 }
 
+pub(crate) const POPUP_INSET_X: f32 = 1.5;
+pub(crate) const POPUP_TOP_GAP: f32 = 2.5;
+pub(crate) const POPUP_RADIUS: u8 = 14;
+pub(crate) const POPUP_PAD_Y: f32 = 5.0;
+pub(crate) const POPUP_MAX_HEIGHT: f32 = 523.0;
+pub(crate) const QUERY_ROW_HEIGHT: f32 = 24.0;
+pub(crate) const RESULT_ROW_HEIGHT: f32 = 52.0;
+pub(crate) const SEPARATOR_HEIGHT: f32 = 11.0;
+
+#[derive(Clone)]
+pub(crate) struct SuggestionResult {
+    pub uri: String,
+    pub title: String,
+    pub subtitle: String,
+    pub image: Option<String>,
+    pub round: bool,
+    pub target: SuggestionTarget,
+}
+
+#[derive(Clone)]
+pub(crate) enum SuggestionTarget {
+    Open(Page),
+    PlayTrack(String),
+}
+
+/// Computes up to 3 query completions for `query` from recent searches and
+/// loaded results.
+pub(crate) fn collect_query_suggestions(
+    query: &str,
+    history: &[String],
+    results: Option<&SearchResults>,
+) -> Vec<String> {
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+    let lower = trimmed.to_lowercase();
+    let mut out: Vec<String> = Vec::with_capacity(3);
+    let mut push = |candidate: &str| {
+        let c = candidate.trim();
+        if c.is_empty() || out.len() >= 3 {
+            return;
+        }
+        let cl = c.to_lowercase();
+        if cl.starts_with(&lower) && !out.iter().any(|existing| existing.eq_ignore_ascii_case(c)) {
+            out.push(c.to_string());
+        }
+    };
+    push(trimmed);
+    for item in history {
+        push(item);
+    }
+    if let Some(res) = results {
+        if let Some(artists) = &res.artists {
+            for a in &artists.items {
+                push(&a.name);
+            }
+        }
+        if let Some(tracks) = &res.tracks {
+            for t in &tracks.items {
+                push(&t.name);
+            }
+        }
+        if let Some(albums) = &res.albums {
+            for al in &albums.items {
+                push(&al.name);
+            }
+        }
+    }
+    out.truncate(3);
+    out
+}
+
+/// Splits `suggestion` into `(typed_prefix, completion_suffix)` matching `query`.
+pub(crate) fn split_query_completion<'a>(query: &str, suggestion: &'a str) -> (&'a str, &'a str) {
+    let trimmed = query.trim();
+    let char_count = trimmed.chars().count();
+    let split_byte = suggestion
+        .char_indices()
+        .nth(char_count)
+        .map(|(idx, _)| idx)
+        .unwrap_or(suggestion.len());
+    let prefix = &suggestion[..split_byte];
+    if prefix.eq_ignore_ascii_case(trimmed) {
+        (prefix, &suggestion[split_byte..])
+    } else {
+        (suggestion, "")
+    }
+}
+
+fn collect_result_suggestions(
+    locale: crate::i18n::Locale,
+    art_px: u32,
+    results: &SearchResults,
+) -> Vec<SuggestionResult> {
+    let mut out = Vec::with_capacity(7);
+    if let Some(artist) = results.artists.as_ref().and_then(|p| p.items.first()) {
+        out.push(SuggestionResult {
+            uri: artist.uri.clone(),
+            title: artist.name.clone(),
+            subtitle: gettext(locale, "Artist").into_owned(),
+            image: pick_image(&artist.images, art_px).map(str::to_string),
+            round: true,
+            target: SuggestionTarget::Open(Page::Artist(artist.id.clone())),
+        });
+    }
+    let songs = results
+        .tracks
+        .as_ref()
+        .map(|p| p.items.as_slice())
+        .unwrap_or_default();
+    let albums = results
+        .albums
+        .as_ref()
+        .map(|p| p.items.as_slice())
+        .unwrap_or_default();
+    let playlists = results
+        .playlists
+        .as_ref()
+        .map(|p| p.items.as_slice())
+        .unwrap_or_default();
+    let song_kind = pgettext(locale, "search result", "Song");
+    let album_kind = gettext(locale, "Album");
+    let playlist_kind = gettext(locale, "Playlist");
+    for row in mix(songs, playlists, albums) {
+        if out.len() >= 7 {
+            break;
+        }
+        match row {
+            Row::Song(track) => {
+                let artists = join_names(track.artists.iter().map(|a| a.name.as_str()));
+                out.push(SuggestionResult {
+                    uri: track.uri.clone(),
+                    title: track.name.clone(),
+                    subtitle: format!("{song_kind} · {artists}"),
+                    image: track.image(art_px).map(str::to_string),
+                    round: false,
+                    target: SuggestionTarget::PlayTrack(track.uri.clone()),
+                });
+            }
+            Row::Album(album) => {
+                let artists = join_names(album.artists.iter().map(|a| a.name.as_str()));
+                out.push(SuggestionResult {
+                    uri: album.uri.clone(),
+                    title: album.name.clone(),
+                    subtitle: format!("{album_kind} · {artists}"),
+                    image: pick_image(&album.images, art_px).map(str::to_string),
+                    round: false,
+                    target: SuggestionTarget::Open(Page::Album(album.id.clone())),
+                });
+            }
+            Row::Playlist(playlist) => {
+                let owner = playlist.owner_name();
+                out.push(SuggestionResult {
+                    uri: playlist.uri.clone(),
+                    title: playlist.name.clone(),
+                    subtitle: format!("{playlist_kind} · {owner}"),
+                    image: pick_image(&playlist.images, art_px).map(str::to_string),
+                    round: false,
+                    target: SuggestionTarget::Open(Page::Playlist(playlist.id.clone())),
+                });
+            }
+        }
+    }
+    out
+}
+
+/// Draws the macOS 27 Music search suggestions popover below `field_rect` when
+/// the toolbar search box is focused and non-empty.
+pub(crate) fn suggestions_popup(app: &mut App, ctx: &egui::Context, field_rect: Rect) {
+    let search_id = Id::new("global-search");
+    let focused = ctx.memory(|m| m.has_focus(search_id));
+    let query = app.search.query.trim().to_string();
+    let dismiss_id = Id::new("mcloud-search-popup-dismissed");
+    if query.is_empty() {
+        ctx.data_mut(|d| d.remove::<String>(dismiss_id));
+        return;
+    }
+    if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+        ctx.data_mut(|d| d.insert_temp(dismiss_id, query.clone()));
+        return;
+    }
+    let dismissed_for = ctx.data(|d| d.get_temp::<String>(dismiss_id));
+    if dismissed_for.as_deref() == Some(query.as_str()) {
+        return;
+    }
+    let pointer_in_popup_id = Id::new("mcloud-search-popup-hovered");
+    let was_hovered = ctx
+        .data(|d| d.get_temp::<bool>(pointer_in_popup_id))
+        .unwrap_or(false);
+    if !focused && !was_hovered {
+        return;
+    }
+
+    let loaded_results = app.search.results.get().cloned();
+    let loading = app.search.catalogue_pending && loaded_results.is_none();
+    let queries = collect_query_suggestions(
+        &query,
+        &app.settings.search_history,
+        loaded_results.as_ref(),
+    );
+    let art_px = app.art_px(46.0);
+    let results = loaded_results
+        .as_ref()
+        .map(|r| collect_result_suggestions(app.locale, art_px, r))
+        .unwrap_or_default();
+
+    if !loading && queries.is_empty() && results.is_empty() {
+        return;
+    }
+
+    let q_count = if loading { 3 } else { queries.len() };
+    let r_count = if loading { 3 } else { results.len() };
+    let sep_h = if q_count > 0 && r_count > 0 {
+        SEPARATOR_HEIGHT
+    } else {
+        0.0
+    };
+    let content_h = POPUP_PAD_Y * 2.0
+        + q_count as f32 * QUERY_ROW_HEIGHT
+        + sep_h
+        + r_count as f32 * RESULT_ROW_HEIGHT;
+    let popup_h = content_h.min(POPUP_MAX_HEIGHT);
+    let popup_rect = Rect::from_min_max(
+        pos2(
+            field_rect.left() + POPUP_INSET_X,
+            field_rect.bottom() + POPUP_TOP_GAP,
+        ),
+        pos2(
+            (field_rect.right() - POPUP_INSET_X).max(field_rect.left() + 180.0),
+            field_rect.bottom() + POPUP_TOP_GAP + popup_h,
+        ),
+    );
+
+    let area_resp = egui::Area::new(Id::new("mcloud-search-suggestions-popup"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(popup_rect.min)
+        .show(ctx, |ui| {
+            let (rect, _) = ui.allocate_exact_size(popup_rect.size(), Sense::hover());
+            let glass = super::glass::paint(ui, rect, app.settings.mcloud_glass);
+            // Glass brightness 44 + 0.044*L, saturation 1.14x
+            let fill = Color32::from_rgba_unmultiplied(46, 46, 49, if glass { 198 } else { 242 });
+            ui.painter()
+                .rect_filled(rect, CornerRadius::same(POPUP_RADIUS), fill);
+            ui.painter().rect_stroke(
+                rect,
+                CornerRadius::same(POPUP_RADIUS),
+                egui::Stroke::new(0.5, Color32::from_white_alpha(38)),
+                egui::StrokeKind::Inside,
+            );
+
+            let mut y = rect.top() + POPUP_PAD_Y;
+            if loading {
+                // 3 query skeletons + separator + 3 result skeletons
+                for _ in 0..3 {
+                    let row_rect = Rect::from_min_size(
+                        pos2(rect.left(), y),
+                        vec2(rect.width(), QUERY_ROW_HEIGHT),
+                    );
+                    let icon_rect = Rect::from_center_size(
+                        pos2(row_rect.left() + 17.5 + 6.25, row_rect.center().y),
+                        Vec2::splat(12.5),
+                    );
+                    theme::paint_icon(
+                        ui,
+                        Icon::Search,
+                        icon_rect,
+                        12.5,
+                        Color32::from_white_alpha(90),
+                    );
+                    let bar = Rect::from_min_size(
+                        pos2(row_rect.left() + 38.5, row_rect.center().y - 5.0),
+                        vec2((rect.width() * 0.42).clamp(80.0, 180.0), 10.0),
+                    );
+                    ui.painter().rect_filled(
+                        bar,
+                        CornerRadius::same(4),
+                        Color32::from_white_alpha(28),
+                    );
+                    y += QUERY_ROW_HEIGHT;
+                }
+                let sep_y = y + SEPARATOR_HEIGHT / 2.0;
+                ui.painter().hline(
+                    (rect.left() + 16.0)..=(rect.right() - 16.0),
+                    sep_y,
+                    egui::Stroke::new(1.0, Color32::from_white_alpha(77)),
+                );
+                y += SEPARATOR_HEIGHT;
+                for _ in 0..3 {
+                    let row_rect = Rect::from_min_size(
+                        pos2(rect.left(), y),
+                        vec2(rect.width(), RESULT_ROW_HEIGHT),
+                    );
+                    let cover = Rect::from_min_size(
+                        pos2(row_rect.left() + 17.0, row_rect.center().y - 23.0),
+                        Vec2::splat(46.0),
+                    );
+                    ui.painter().rect_filled(
+                        cover,
+                        CornerRadius::same(5),
+                        Color32::from_white_alpha(28),
+                    );
+                    let title_bar = Rect::from_min_size(
+                        pos2(cover.right() + 10.0, row_rect.center().y - 12.0),
+                        vec2((rect.width() * 0.48).clamp(90.0, 200.0), 10.0),
+                    );
+                    let sub_bar = Rect::from_min_size(
+                        pos2(cover.right() + 10.0, row_rect.center().y + 3.0),
+                        vec2((rect.width() * 0.32).clamp(60.0, 140.0), 8.0),
+                    );
+                    ui.painter().rect_filled(
+                        title_bar,
+                        CornerRadius::same(4),
+                        Color32::from_white_alpha(28),
+                    );
+                    ui.painter().rect_filled(
+                        sub_bar,
+                        CornerRadius::same(4),
+                        Color32::from_white_alpha(18),
+                    );
+                    y += RESULT_ROW_HEIGHT;
+                }
+                return;
+            }
+
+            let palette = app.palette;
+            let mut chosen_query = None;
+            for (idx, q) in queries.iter().enumerate() {
+                let row_rect =
+                    Rect::from_min_size(pos2(rect.left(), y), vec2(rect.width(), QUERY_ROW_HEIGHT));
+                let resp = ui.interact(
+                    row_rect,
+                    Id::new(("mcloud-search-sug-q", idx)),
+                    Sense::click(),
+                );
+                let selected = resp.hovered();
+                if selected {
+                    let sel_rect = Rect::from_min_max(
+                        pos2(rect.left() + 5.0, row_rect.top()),
+                        pos2(rect.right() - 5.0, row_rect.bottom()),
+                    );
+                    ui.painter()
+                        .rect_filled(sel_rect, CornerRadius::same(6), palette.accent);
+                }
+                let icon_rect = Rect::from_center_size(
+                    pos2(row_rect.left() + 17.5 + 6.25, row_rect.center().y),
+                    Vec2::splat(12.5),
+                );
+                theme::paint_icon(
+                    ui,
+                    Icon::Search,
+                    icon_rect,
+                    12.5,
+                    if selected {
+                        Color32::WHITE
+                    } else {
+                        Color32::from_white_alpha(160)
+                    },
+                );
+                let (prefix, suffix) = split_query_completion(&query, q);
+                let mut job = egui::text::LayoutJob::default();
+                job.append(
+                    prefix,
+                    0.0,
+                    egui::TextFormat {
+                        font_id: theme::regular(13.0),
+                        color: if selected {
+                            Color32::WHITE
+                        } else {
+                            Color32::from_white_alpha(217)
+                        },
+                        ..Default::default()
+                    },
+                );
+                if !suffix.is_empty() {
+                    job.append(
+                        suffix,
+                        0.0,
+                        egui::TextFormat {
+                            font_id: theme::regular(13.0),
+                            color: if selected {
+                                Color32::WHITE
+                            } else {
+                                Color32::from_white_alpha(140)
+                            },
+                            ..Default::default()
+                        },
+                    );
+                }
+                let galley = ui.painter().layout_job(job);
+                let text_pos = pos2(
+                    row_rect.left() + 38.5,
+                    row_rect.center().y - galley.size().y / 2.0,
+                );
+                ui.painter().galley(text_pos, galley, Color32::WHITE);
+                if resp.clicked() {
+                    chosen_query = Some(q.clone());
+                }
+                y += QUERY_ROW_HEIGHT;
+            }
+
+            if !queries.is_empty() && !results.is_empty() {
+                let sep_y = y + SEPARATOR_HEIGHT / 2.0;
+                ui.painter().hline(
+                    (rect.left() + 16.0)..=(rect.right() - 16.0),
+                    sep_y,
+                    egui::Stroke::new(1.0, Color32::from_white_alpha(77)),
+                );
+                y += SEPARATOR_HEIGHT;
+            }
+
+            let mut chosen_target = None;
+            for (idx, item) in results.iter().enumerate() {
+                let row_rect = Rect::from_min_size(
+                    pos2(rect.left(), y),
+                    vec2(rect.width(), RESULT_ROW_HEIGHT),
+                );
+                let resp = ui.interact(
+                    row_rect,
+                    Id::new(("mcloud-search-sug-r", idx, &item.uri)),
+                    Sense::click(),
+                );
+                let selected = resp.hovered();
+                if selected {
+                    let sel_rect = Rect::from_min_max(
+                        pos2(rect.left() + 5.0, row_rect.top()),
+                        pos2(rect.right() - 5.0, row_rect.bottom()),
+                    );
+                    ui.painter()
+                        .rect_filled(sel_rect, CornerRadius::same(6), palette.accent);
+                }
+                let cover_rect = Rect::from_min_size(
+                    pos2(row_rect.left() + 17.0, row_rect.center().y - 23.0),
+                    Vec2::splat(46.0),
+                );
+                let cover_radius = if item.round { 23.0 } else { 5.0 };
+                let placeholder = if item.round { Icon::User } else { Icon::Music };
+                widgets::paint_cover(
+                    ui,
+                    &palette,
+                    item.image.as_deref(),
+                    cover_rect,
+                    cover_radius,
+                    placeholder,
+                    Some(app.backend.art()),
+                );
+                let text_left = cover_rect.right() + 10.0;
+                let text_w = (rect.right() - 14.0 - text_left).max(40.0);
+                let title_col = if selected {
+                    Color32::WHITE
+                } else {
+                    palette.text
+                };
+                let sub_col = if selected {
+                    Color32::from_white_alpha(230)
+                } else {
+                    palette.secondary
+                };
+                let title_galley =
+                    widgets::ellipsized(ui, &item.title, theme::medium(13.0), title_col, text_w, 1);
+                let sub_galley = widgets::ellipsized(
+                    ui,
+                    &item.subtitle,
+                    theme::regular(11.0),
+                    sub_col,
+                    text_w,
+                    1,
+                );
+                let block_top =
+                    row_rect.center().y - (title_galley.size().y + 2.0 + sub_galley.size().y) / 2.0;
+                let title_h = title_galley.size().y;
+                ui.painter()
+                    .galley(pos2(text_left, block_top), title_galley, title_col);
+                ui.painter().galley(
+                    pos2(text_left, block_top + title_h + 2.0),
+                    sub_galley,
+                    sub_col,
+                );
+                if resp.clicked() {
+                    chosen_target = Some(item.target.clone());
+                }
+                y += RESULT_ROW_HEIGHT;
+            }
+
+            if let Some(q) = chosen_query {
+                app.search.query = q.clone();
+                app.actions.push(Action::Search(q.clone()));
+                app.actions.push(Action::Open(Page::Search));
+                ctx.data_mut(|d| d.insert_temp(dismiss_id, q));
+            } else if let Some(target) = chosen_target {
+                match target {
+                    SuggestionTarget::Open(page) => app.actions.push(Action::Open(page)),
+                    SuggestionTarget::PlayTrack(uri) => app.actions.push(Action::PlayUris {
+                        uris: vec![uri],
+                        index: 0,
+                    }),
+                }
+                ctx.data_mut(|d| d.insert_temp(dismiss_id, query.clone()));
+            }
+        });
+
+    let pointer_pos = ctx.input(|i| i.pointer.hover_pos());
+    let hovered_now = pointer_pos.is_some_and(|p| area_resp.response.rect.contains(p));
+    ctx.data_mut(|d| d.insert_temp(pointer_in_popup_id, hovered_now));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -471,5 +977,16 @@ mod tests {
             })
             .collect();
         assert_eq!(kinds.iter().collect::<String>(), "spsasa");
+    }
+
+    #[test]
+    fn query_suggestions_and_completion_split_match_prefix() {
+        let history = vec!["daft punk".into(), "radiohead".into(), "daft".into()];
+        let sug = collect_query_suggestions("daf", &history, None);
+        assert_eq!(sug, vec!["daf", "daft punk", "daft"]);
+        assert_eq!(
+            split_query_completion("daf", "daft punk"),
+            ("daf", "t punk")
+        );
     }
 }

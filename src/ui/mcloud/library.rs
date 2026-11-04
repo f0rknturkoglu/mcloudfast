@@ -52,7 +52,6 @@ pub(in crate::ui) fn show(
             egui::TextFormat {
                 font_id: theme::semibold(28.0),
                 color: palette.text,
-                extra_letter_spacing: -0.04 * 28.0,
                 ..Default::default()
             },
         ));
@@ -68,26 +67,68 @@ pub(in crate::ui) fn show(
         ui.add_space(7.0);
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 10.0;
+            let (frame, _) = ui.allocate_exact_size(vec2(240.0, 30.0), Sense::hover());
+            let filter_id = tools_id.with("filter");
+            let has_focus = ui.memory(|m| m.has_focus(filter_id));
+            ui.painter().rect(
+                frame,
+                CornerRadius::same(15),
+                Color32::from_white_alpha(if has_focus { 16 } else { 10 }),
+                egui::Stroke::new(
+                    1.0,
+                    if has_focus {
+                        palette.accent
+                    } else {
+                        Color32::from_white_alpha(20)
+                    },
+                ),
+                egui::StrokeKind::Inside,
+            );
+            let icon_rect = Rect::from_center_size(
+                pos2(frame.left() + 15.0, frame.center().y),
+                Vec2::splat(14.0),
+            );
+            theme::paint_icon(ui, Icon::Search, icon_rect, 14.0, palette.secondary);
+            let right_inset = if tools.filter.is_empty() { 10.0 } else { 26.0 };
+            let edit_rect = Rect::from_min_max(
+                pos2(frame.left() + 28.0, frame.top() + 1.0),
+                pos2(frame.right() - right_inset, frame.bottom() - 1.0),
+            );
             let field = egui::TextEdit::singleline(&mut tools.filter)
-                .id(tools_id.with("filter"))
+                .id(filter_id)
                 .hint_text(gettext(locale, "Filter").as_ref())
                 .font(theme::regular(13.0))
                 .frame(egui::Frame::NONE)
-                .margin(egui::Margin::symmetric(10, 0))
+                .margin(egui::Margin::ZERO)
                 .vertical_align(egui::Align::Center)
-                .desired_width(260.0 - 20.0);
-            let (frame, _) = ui.allocate_exact_size(vec2(260.0, 30.0), Sense::hover());
-            ui.painter().rect(
-                frame,
-                CornerRadius::same(8),
-                Color32::from_white_alpha(10),
-                egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
-                egui::StrokeKind::Inside,
-            );
-            ui.put(frame, field);
+                .desired_width(edit_rect.width());
+            ui.put(edit_rect, field);
+            if !tools.filter.is_empty() {
+                let clear_rect = Rect::from_center_size(
+                    pos2(frame.right() - 14.0, frame.center().y),
+                    Vec2::splat(16.0),
+                );
+                let clear_resp =
+                    ui.interact(clear_rect, tools_id.with("filter-clear"), Sense::click());
+                theme::paint_icon(
+                    ui,
+                    Icon::X,
+                    clear_rect,
+                    12.0,
+                    if clear_resp.hovered() {
+                        palette.text
+                    } else {
+                        palette.secondary
+                    },
+                );
+                if clear_resp.on_hover_text(gettext(locale, "Clear")).clicked() {
+                    tools.filter.clear();
+                }
+            }
 
             let labels = [gettext(locale, "Library order"), gettext(locale, "Name")];
-            let chosen = labels[usize::from(tools.by_name)].clone();
+            let selected_idx = usize::from(tools.by_name);
+            let chosen = labels[selected_idx].clone();
             let galley = crate::bidi::layout_line(
                 ui.painter(),
                 chosen.as_ref(),
@@ -98,35 +139,45 @@ pub(in crate::ui) fn show(
                 ui.allocate_exact_size(vec2(galley.size().x + 36.0, 30.0), Sense::click());
             ui.painter().rect(
                 sort,
-                CornerRadius::same(8),
+                CornerRadius::same(15),
                 Color32::from_rgb(0x2b, 0x2b, 0x2b),
                 egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
                 egui::StrokeKind::Inside,
             );
             ui.painter().galley(
-                pos2(sort.left() + 8.0, sort.center().y - galley.size().y / 2.0),
+                pos2(sort.left() + 12.0, sort.center().y - galley.size().y / 2.0),
                 galley,
                 palette.text,
             );
-            theme::paint_icon(
-                ui,
-                Icon::ChevronDown,
-                Rect::from_center_size(
-                    pos2(sort.right() - 14.0, sort.center().y),
-                    Vec2::splat(12.0),
-                ),
-                12.0,
-                palette.secondary,
-            );
+            // macOS pop-up button indicator: dual up/down chevrons.
+            let arrows_x = sort.right() - 13.0;
+            let cy = sort.center().y;
+            for (dy, tip) in [(-3.0_f32, -2.6_f32), (3.0_f32, 2.6_f32)] {
+                ui.painter().add(egui::Shape::convex_polygon(
+                    vec![
+                        pos2(arrows_x - 3.0, cy + dy),
+                        pos2(arrows_x + 3.0, cy + dy),
+                        pos2(arrows_x, cy + dy + tip),
+                    ],
+                    palette.secondary,
+                    egui::Stroke::NONE,
+                ));
+            }
             response.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, chosen.as_ref())
             });
             theme::focus_ring(ui, &response);
-            egui::Popup::menu(&response)
+            // Pop-up menu aligns the currently selected item over the button.
+            let popup_pos = pos2(
+                sort.left(),
+                (sort.top() - 6.0 - selected_idx as f32 * 28.0).max(8.0),
+            );
+            egui::Popup::from_toggle_button_response(&response)
+                .at_position(popup_pos)
                 .frame(widgets::menu_frame(&palette))
                 .show(|ui| {
                     for (index, label) in labels.iter().enumerate() {
-                        let picked = usize::from(tools.by_name) == index;
+                        let picked = selected_idx == index;
                         let check = picked.then_some(Icon::Check);
                         if widgets::menu_item(ui, &palette, check, label) {
                             tools.by_name = index == 1;

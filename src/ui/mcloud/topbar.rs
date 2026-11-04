@@ -255,6 +255,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     );
     let mut field_ui = ui.new_child(egui::UiBuilder::new().max_rect(field));
     crate::ui::topbar::search_box(app, &mut field_ui, search_width);
+    super::search::suggestions_popup(app, ui.ctx(), field);
 }
 
 /// A round toolbar button.

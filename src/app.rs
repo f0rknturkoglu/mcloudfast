@@ -11989,11 +11989,13 @@ impl App {
                 add_uris,
             } => {
                 self.playlist_busy = true;
-                self.dialog = Some(Dialog::CreatePlaylist {
-                    name: name.clone(),
-                    public,
-                    add_uris,
-                });
+                if self.dialog.is_some() || !add_uris.is_empty() {
+                    self.dialog = Some(Dialog::CreatePlaylist {
+                        name: name.clone(),
+                        public,
+                        add_uris,
+                    });
+                }
                 self.backend.api(ApiRequest::CreatePlaylist {
                     name,
                     public,
