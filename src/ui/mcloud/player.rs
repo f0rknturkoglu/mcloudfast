@@ -188,6 +188,10 @@ fn row_width(count: usize) -> f32 {
     count as f32 * BUTTON.x + (count as f32 - 1.0) * BUTTON_GAP
 }
 
+/// Below this capsule width, secondary controls hide so the central LCD
+/// retains room for song title, subtitle, and scrub bar.
+const NARROW_CAPSULE: f32 = 560.0;
+
 /// Shuffle, back, play, forward and repeat. Returns their right edge.
 fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>) -> f32 {
     let palette = app.palette;
@@ -196,24 +200,36 @@ fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlayi
     let loading = now.is_some_and(|now| now.loading) || app.any_play_pending();
     let shuffle = now.map_or_else(|| app.playing_context_shuffle(), |now| now.shuffle);
     let repeat = now.map(|now| now.repeat).unwrap_or_default();
-    let slots = row(rect.left() + PADDING_LEFT, rect.center().y, 5);
-
-    let color = if shuffle { palette.accent } else { DIM };
-    let response = button(
-        ui,
-        slots[0],
-        Icon::McloudShuffle,
-        DIM_ICON,
-        color,
-        &gettext(locale, "Shuffle"),
+    let narrow = rect.width() < NARROW_CAPSULE;
+    let slots = row(
+        rect.left() + PADDING_LEFT,
+        rect.center().y,
+        if narrow { 3 } else { 5 },
     );
-    if response.clicked() {
-        app.actions.push(Action::ToggleShuffle);
+    let (back_slot, play_slot, next_slot) = if narrow {
+        (slots[0], slots[1], slots[2])
+    } else {
+        (slots[1], slots[2], slots[3])
+    };
+
+    if !narrow {
+        let color = if shuffle { palette.accent } else { DIM };
+        let response = button(
+            ui,
+            slots[0],
+            Icon::McloudShuffle,
+            DIM_ICON,
+            color,
+            &gettext(locale, "Shuffle"),
+        );
+        if response.clicked() {
+            app.actions.push(Action::ToggleShuffle);
+        }
     }
 
     if button(
         ui,
-        slots[1],
+        back_slot,
         Icon::McloudBack,
         ICON,
         NORMAL,
@@ -227,7 +243,7 @@ fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlayi
     if loading {
         let mut cell = ui.new_child(
             UiBuilder::new()
-                .max_rect(slots[2])
+                .max_rect(play_slot)
                 .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
         );
         theme::spinner(&mut cell, 18.0, NORMAL);
@@ -237,14 +253,14 @@ fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlayi
         } else {
             (Icon::McloudPlay, gettext(locale, "Play"))
         };
-        if button(ui, slots[2], icon, PLAY_ICON, NORMAL, &label).clicked() {
+        if button(ui, play_slot, icon, PLAY_ICON, NORMAL, &label).clicked() {
             app.actions.push(Action::TogglePlay);
         }
     }
 
     if button(
         ui,
-        slots[3],
+        next_slot,
         Icon::McloudNext,
         ICON,
         NORMAL,
@@ -255,19 +271,23 @@ fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlayi
         app.actions.push(Action::Next);
     }
 
-    let (icon, color, label) = match repeat {
-        RepeatMode::Off => (Icon::McloudRepeat, DIM, gettext(locale, "Repeat")),
-        RepeatMode::Context => (
-            Icon::McloudRepeat,
-            palette.accent,
-            gettext(locale, "Repeat one"),
-        ),
-        RepeatMode::Track => (Icon::Repeat1, palette.accent, gettext(locale, "Repeat off")),
-    };
-    if button(ui, slots[4], icon, DIM_ICON, color, &label).clicked() {
-        app.actions.push(Action::CycleRepeat);
+    if !narrow {
+        let (icon, color, label) = match repeat {
+            RepeatMode::Off => (Icon::McloudRepeat, DIM, gettext(locale, "Repeat")),
+            RepeatMode::Context => (
+                Icon::McloudRepeat,
+                palette.accent,
+                gettext(locale, "Repeat one"),
+            ),
+            RepeatMode::Track => (Icon::Repeat1, palette.accent, gettext(locale, "Repeat off")),
+        };
+        if button(ui, slots[4], icon, DIM_ICON, color, &label).clicked() {
+            app.actions.push(Action::CycleRepeat);
+        }
+        slots[4].right()
+    } else {
+        next_slot.right()
     }
-    slots[4].right()
 }
 
 /// Mini player, lyrics, devices, queue and volume, from the capsule's
@@ -275,9 +295,11 @@ fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlayi
 fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>) -> f32 {
     let palette = app.palette;
     let locale = app.locale;
-    let left = rect.right() - PADDING_RIGHT - row_width(5);
-    let slots = row(left, rect.center().y, 5);
-    let speaker = slots[4];
+    let narrow = rect.width() < NARROW_CAPSULE;
+    let count = if narrow { 3 } else { 5 };
+    let left = rect.right() - PADDING_RIGHT - row_width(count);
+    let slots = row(left, rect.center().y, count);
+    let speaker = slots[count - 1];
 
     let volume = now
         .map(|now| now.volume_percent)
@@ -308,23 +330,44 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
     let faded = |color: Color32| color.gamma_multiply(1.0 - reveal);
     if reveal < 1.0 {
         let enabled = !open;
-        let mini = app.settings.winamp_window;
-        let response = button(
-            ui,
-            slots[0],
-            Icon::McloudPopup,
-            ICON,
-            faded(if mini { palette.accent } else { NORMAL }),
-            &gettext(locale, "Mini player"),
-        );
-        if response.clicked() && enabled {
-            app.actions.push(Action::ToggleWinampWindow);
-        }
+        let (lyrics_slot, queue_slot) = if narrow {
+            (slots[0], slots[1])
+        } else {
+            let mini = app.settings.winamp_window;
+            let response = button(
+                ui,
+                slots[0],
+                Icon::McloudPopup,
+                ICON,
+                faded(if mini { palette.accent } else { NORMAL }),
+                &gettext(locale, "Mini player"),
+            );
+            if response.clicked() && enabled {
+                app.actions.push(Action::ToggleWinampWindow);
+            }
+
+            let remote = now.is_some_and(|now| !now.local) && !app.targets_own_soloist();
+            let response = button(
+                ui,
+                slots[2],
+                Icon::McloudDevices,
+                ICON,
+                faded(if remote { palette.accent } else { NORMAL }),
+                &gettext(locale, "Connect to a device"),
+            );
+            ui.ctx().data_mut(|data| {
+                data.insert_temp(Id::new(crate::ui::devices::BUTTON_RECT_ID), response.rect)
+            });
+            if response.clicked() && enabled {
+                app.actions.push(Action::ToggleDevicesPopup);
+            }
+            (slots[1], slots[3])
+        };
 
         let lyrics_open = app.show_lyrics_panel || app.lyrics_fullscreen.is_some();
         let response = button(
             ui,
-            slots[1],
+            lyrics_slot,
             Icon::McloudLyrics,
             ICON,
             faded(if lyrics_open { palette.accent } else { NORMAL }),
@@ -334,26 +377,10 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
             app.actions.push(Action::ToggleLyricsPanel);
         }
 
-        let remote = now.is_some_and(|now| !now.local) && !app.targets_own_soloist();
-        let response = button(
-            ui,
-            slots[2],
-            Icon::McloudDevices,
-            ICON,
-            faded(if remote { palette.accent } else { NORMAL }),
-            &gettext(locale, "Connect to a device"),
-        );
-        ui.ctx().data_mut(|data| {
-            data.insert_temp(Id::new(crate::ui::devices::BUTTON_RECT_ID), response.rect)
-        });
-        if response.clicked() && enabled {
-            app.actions.push(Action::ToggleDevicesPopup);
-        }
-
         let queue_open = app.show_queue_panel || matches!(app.page(), Page::Queue);
         let response = button(
             ui,
-            slots[3],
+            queue_slot,
             Icon::McloudQueue,
             ICON,
             faded(if queue_open { palette.accent } else { NORMAL }),

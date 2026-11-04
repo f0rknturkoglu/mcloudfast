@@ -723,18 +723,96 @@ pub struct ArtworkColours {
     /// The most common colour (theme.js `sheetColor`), for a sheet over
     /// the picture.
     pub common: [u8; 3],
+    /// Normalised content bounds `[left, top, right, bottom]` in `0..=255`
+    /// after trimming solid black letterbox or pillarbox bars (`r, g, b < 20`).
+    pub trim: [u8; 4],
 }
 
-/// mcloud's colours for a picture.
+impl ArtworkColours {
+    /// Normalised `[left, top, right, bottom]` UV bounds in `0.0..=1.0`.
+    pub fn trim_rect(self) -> [f32; 4] {
+        let [l, t, r, b] = self.trim.map(|v| f32::from(v) / 255.0);
+        if r > l + 0.1 && b > t + 0.1 {
+            [l, t, r, b]
+        } else {
+            [0.0, 0.0, 1.0, 1.0]
+        }
+    }
+}
+
+/// mcloud's colours and letterbox trim for a picture.
 pub fn artwork_colours(bytes: &[u8]) -> Option<ArtworkColours> {
     let decoded = image::load_from_memory(bytes).ok()?;
-    let small = decoded
+    let scan = decoded
+        .resize_exact(
+            decoded.width().clamp(1, 280),
+            decoded.height().clamp(1, 120),
+            image::imageops::FilterType::Triangle,
+        )
+        .to_rgb8();
+    let trim = trim_black_bars(&scan);
+    let [l, t, r, b] = trim.map(|v| f32::from(v) / 255.0);
+    let cropped = if l > 0.0 || t > 0.0 || r < 1.0 || b < 1.0 {
+        let w = decoded.width().max(1);
+        let h = decoded.height().max(1);
+        let x0 = ((w as f32 * l).round() as u32).min(w - 1);
+        let y0 = ((h as f32 * t).round() as u32).min(h - 1);
+        let cw = ((w as f32 * (r - l)).round() as u32)
+            .max(1)
+            .min(w.saturating_sub(x0));
+        let ch = ((h as f32 * (b - t)).round() as u32)
+            .max(1)
+            .min(h.saturating_sub(y0));
+        decoded.crop_imm(x0, y0, cw, ch)
+    } else {
+        decoded
+    };
+    let small = cropped
         .resize_exact(32, 32, image::imageops::FilterType::Triangle)
         .to_rgb8();
     Some(ArtworkColours {
         page: artwork_colour_of(small.pixels().map(|pixel| pixel.0)),
         common: common_colour_of(small.pixels().map(|pixel| pixel.0)),
+        trim,
     })
+}
+
+/// Scans inward from all four edges of `img` while every pixel on the edge has
+/// `r < 20 && g < 20 && b < 20`, capping each trimmed margin at 25% of the
+/// axis so dark artwork is never over-cropped.
+fn trim_black_bars(img: &image::RgbImage) -> [u8; 4] {
+    let (w, h) = (img.width(), img.height());
+    if w < 4 || h < 4 {
+        return [0, 0, 255, 255];
+    }
+    let is_black = |x: u32, y: u32| {
+        let [r, g, b] = img.get_pixel(x, y).0;
+        r < 20 && g < 20 && b < 20
+    };
+    let max_x = w / 4;
+    let max_y = h / 4;
+    let mut top = 0;
+    while top < max_y && (0..w).all(|x| is_black(x, top)) {
+        top += 1;
+    }
+    let mut bottom = h;
+    while h - bottom < max_y && bottom > top + 1 && (0..w).all(|x| is_black(x, bottom - 1)) {
+        bottom -= 1;
+    }
+    let mut left = 0;
+    while left < max_x && (top..bottom).all(|y| is_black(left, y)) {
+        left += 1;
+    }
+    let mut right = w;
+    while w - right < max_x && right > left + 1 && (top..bottom).all(|y| is_black(right - 1, y)) {
+        right -= 1;
+    }
+    [
+        ((left as f32 / w as f32) * 255.0).round() as u8,
+        ((top as f32 / h as f32) * 255.0).round() as u8,
+        ((right as f32 / w as f32) * 255.0).round() as u8,
+        ((bottom as f32 / h as f32) * 255.0).round() as u8,
+    ]
 }
 
 /// The average of the most common colour, in steps of 24 per channel.
@@ -1391,6 +1469,30 @@ mod tests {
             .chain(std::iter::repeat_n([100, 100, 100], 4))
             .chain([[101, 101, 101]]);
         assert_eq!(super::common_colour_of(pixels), [100, 100, 100]);
+    }
+
+    #[test]
+    fn black_letterbox_and_pillarbox_bars_are_trimmed() {
+        let mut img = image::RgbImage::from_pixel(100, 100, image::Rgb([180, 90, 60]));
+        for y in 0..10 {
+            for x in 0..100 {
+                img.put_pixel(x, y, image::Rgb([5, 5, 5]));
+            }
+        }
+        for y in 0..100 {
+            for x in 0..15 {
+                img.put_pixel(x, y, image::Rgb([0, 0, 0]));
+            }
+            for x in 85..100 {
+                img.put_pixel(x, y, image::Rgb([10, 10, 10]));
+            }
+        }
+        let trim = super::trim_black_bars(&img);
+        let [l, t, r, b] = trim.map(|v| f32::from(v) / 255.0);
+        assert!((l - 0.15).abs() < 0.02, "left pillarbox trimmed: {l}");
+        assert!((t - 0.10).abs() < 0.02, "top letterbox trimmed: {t}");
+        assert!((r - 0.85).abs() < 0.02, "right pillarbox trimmed: {r}");
+        assert!((b - 1.00).abs() < 0.02, "bottom untouched: {b}");
     }
 
     use super::*;

@@ -28,6 +28,8 @@ const ARTIST_CARD: f32 = 150.0;
 const CARD_GAP: f32 = 18.0;
 const SONG_COLUMN: f32 = 310.0;
 const SONG_ROWS: usize = 3;
+const SONG_ROWS_NARROW: usize = 5;
+const NARROW_WIDTH: f32 = 680.0;
 const LATEST_ART: f32 = 150.0;
 const WHITE_60: Color32 = Color32::from_rgba_premultiplied(153, 153, 153, 153);
 const NAME: f32 = 40.0;
@@ -48,9 +50,8 @@ pub(in crate::ui) fn page_colours(app: &mut App, id: &str) -> (Color32, Color32)
         .and_then(|page| page.artist.get())
         .or_else(|| app.known_artist(id));
     let url = artist.and_then(|artist| {
-        app.artist_headers
-            .get(&artist.uri)
-            .cloned()
+        app.artist_header_for(&artist.uri, 1344)
+            .map(str::to_owned)
             .or_else(|| pick_image(&artist.images, 64).map(str::to_string))
     });
     match app.artwork_colours(url.as_deref()) {
@@ -126,22 +127,60 @@ pub(in crate::ui) fn loaded(
     about_sheet(app, ui.ctx(), artist);
     ui.add_space(10.0);
 
+    let content_width = ui.max_rect().width() + 2.0 * PAGE_PADDING;
+    let usable = (content_width - 2.0 * INSET).max(200.0);
+    let narrow = content_width < NARROW_WIDTH;
     let latest = latest_release(page);
-    // The latest release and the top songs share the first row.
-    ui.horizontal_top(|ui| {
-        ui.add_space(INSET - PAGE_PADDING);
+    if narrow {
+        // Below 680pt, the latest release spans the full width above a
+        // single-column list of five top songs.
         if let Some(album) = latest {
-            ui.allocate_ui_with_layout(
-                vec2(300.0, 0.0),
-                Layout::top_down(egui::Align::Min),
-                |ui| latest_card(app, ui, album),
-            );
-            ui.add_space(SHELF_GAP);
+            ui.horizontal_top(|ui| {
+                ui.add_space(INSET - PAGE_PADDING);
+                ui.allocate_ui_with_layout(
+                    vec2(usable, 0.0),
+                    Layout::top_down(egui::Align::Min),
+                    |ui| latest_card(app, ui, album, usable),
+                );
+            });
+            ui.add_space(24.0);
         }
-        ui.vertical(|ui| top_songs(app, ui, page, artist));
-    });
+        ui.horizontal_top(|ui| {
+            ui.add_space(INSET - PAGE_PADDING);
+            ui.allocate_ui_with_layout(
+                vec2(usable, 0.0),
+                Layout::top_down(egui::Align::Min),
+                |ui| top_songs(app, ui, page, artist, usable, true),
+            );
+        });
+    } else {
+        // In wide layouts, the latest release and top songs share the first row.
+        let latest_w = (usable * 0.30).clamp(280.0, 300.0);
+        let songs_w = if latest.is_some() {
+            (usable - latest_w - SHELF_GAP).max(220.0)
+        } else {
+            usable
+        };
+        ui.horizontal_top(|ui| {
+            ui.add_space(INSET - PAGE_PADDING);
+            if let Some(album) = latest {
+                ui.allocate_ui_with_layout(
+                    vec2(latest_w, 0.0),
+                    Layout::top_down(egui::Align::Min),
+                    |ui| latest_card(app, ui, album, latest_w),
+                );
+                ui.add_space(SHELF_GAP);
+            }
+            ui.allocate_ui_with_layout(
+                vec2(songs_w, 0.0),
+                Layout::top_down(egui::Align::Min),
+                |ui| top_songs(app, ui, page, artist, songs_w, false),
+            );
+        });
+    }
     ui.add_space(SHELF_GAP);
 
+    let card_side = shelf_card_width(content_width);
     let all = page
         .albums
         .get(DiscographyFilter::All.groups())
@@ -162,6 +201,7 @@ pub(in crate::ui) fn loaded(
             "artist-albums",
             &gettext(app.locale, "Albums"),
             &albums,
+            card_side,
         );
         album_shelf(
             app,
@@ -169,6 +209,7 @@ pub(in crate::ui) fn loaded(
             "artist-singles",
             &gettext(app.locale, "Singles & EPs"),
             &singles,
+            card_side,
         );
         if list.can_load_more() && !list.loading {
             ui.horizontal(|ui| {
@@ -197,6 +238,7 @@ pub(in crate::ui) fn loaded(
             "artist-appears",
             &gettext(app.locale, "Appears On"),
             &appears,
+            card_side,
         );
     }
     if let Loadable::Loaded(related) = &page.related
@@ -370,9 +412,9 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
         ui,
         info,
         "mcloud-artist-info",
-        Icon::McloudInfo,
-        20.0,
+        (Icon::McloudInfo, 20.0),
         about,
+        (false, 1.0),
     );
     response
         .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, about, label.as_ref()));
@@ -381,6 +423,31 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
     }
 
     let following = app.is_saved(&artist.uri).unwrap_or(false);
+    let bounce_id = Id::new(("mcloud-follow-bounce", &artist.uri));
+    let state_id = Id::new(("mcloud-follow-state", &artist.uri));
+    let now_s = ui.input(|i| i.time);
+    let prev_state = ui.ctx().data(|d| d.get_temp::<bool>(state_id));
+    if prev_state != Some(following) {
+        ui.ctx().data_mut(|d| {
+            d.insert_temp(state_id, following);
+            if prev_state.is_some() {
+                d.insert_temp(bounce_id, now_s);
+            }
+        });
+    }
+    let bounce_start = ui.ctx().data(|d| d.get_temp::<f64>(bounce_id));
+    let bounce_scale = match bounce_start {
+        Some(start) if !crate::motion::reduced(ui.ctx()) => {
+            let elapsed = (now_s - start) as f32;
+            if elapsed < 0.30 {
+                ui.ctx().request_repaint();
+                follow_bounce_scale(elapsed)
+            } else {
+                1.0
+            }
+        }
+        _ => 1.0,
+    };
     let follow = Rect::from_center_size(
         pos2(play.right() + 24.0 + SIDE_BUTTON / 2.0, actions_y),
         Vec2::splat(SIDE_BUTTON),
@@ -394,18 +461,34 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
         ui,
         follow,
         "mcloud-artist-follow",
-        Icon::McloudStar,
-        20.5,
+        (Icon::McloudStar, 20.5),
         true,
+        (following, bounce_scale),
     );
     response.widget_info(|| {
         egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, following, label.as_ref())
     });
     if response.on_hover_text(label.as_ref()).clicked() {
+        ui.ctx().data_mut(|d| d.insert_temp(bounce_id, now_s));
         app.actions.push(Action::ToggleSaved(artist.uri.clone()));
     }
 
     floating_buttons(app, ui, full, artist, top_tint);
+}
+
+/// 300ms spring bounce curve (`1.0 -> 1.24 -> 0.94 -> 1.0`) when Follow is toggled.
+fn follow_bounce_scale(elapsed: f32) -> f32 {
+    let t = (elapsed / 0.30).clamp(0.0, 1.0);
+    if t < 0.45 {
+        let p = t / 0.45;
+        1.0 + 0.24 * (1.0 - (1.0 - p) * (1.0 - p))
+    } else if t < 0.78 {
+        let p = (t - 0.45) / 0.33;
+        1.24 - 0.30 * p
+    } else {
+        let p = (t - 0.78) / 0.22;
+        0.94 + 0.06 * p
+    }
 }
 
 /// ⓘ and Follow: a faint glass disc with a hairline inside its edge.
@@ -413,33 +496,32 @@ fn side_button(
     ui: &mut egui::Ui,
     rect: Rect,
     id: &str,
-    icon: Icon,
-    size: f32,
+    (icon, size): (Icon, f32),
     enabled: bool,
+    (active, scale): (bool, f32),
 ) -> egui::Response {
     let response = ui.interact(rect, Id::new(id), Sense::click());
     let painter = ui.painter();
-    let fill = if enabled && response.hovered() {
+    let fill = if active {
+        if response.hovered() { 64 } else { 50 }
+    } else if enabled && response.hovered() {
         36
     } else {
         20
     };
-    painter.circle_filled(
-        rect.center(),
-        rect.width() / 2.0,
-        Color32::from_white_alpha(fill),
-    );
+    let radius = rect.width() / 2.0 * scale;
+    painter.circle_filled(rect.center(), radius, Color32::from_white_alpha(fill));
     painter.circle_stroke(
         rect.center(),
-        rect.width() / 2.0 - 0.5,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(13)),
+        radius - 0.5,
+        egui::Stroke::new(1.0, Color32::from_white_alpha(if active { 42 } else { 13 })),
     );
     let color = if enabled {
         Color32::WHITE
     } else {
         Color32::from_white_alpha(110)
     };
-    theme::paint_icon(ui, icon, rect, size, color);
+    theme::paint_icon(ui, icon, rect, size * scale, color);
     theme::focus_ring(ui, &response);
     response
 }
@@ -678,7 +760,7 @@ fn about_body(
             about.biography.clone(),
             egui::TextFormat {
                 font_id: theme::regular(13.0),
-                color: lighter(0xb0),
+                color: Color32::PLACEHOLDER,
                 line_height: Some(18.0),
                 ..Default::default()
             },
@@ -686,7 +768,34 @@ fn about_body(
         job.wrap.max_width = width;
         let galley = ui.painter().layout_job(job);
         let (rect, _) = ui.allocate_exact_size(vec2(width, galley.size().y), Sense::hover());
-        ui.painter().galley(rect.min, galley, background);
+        // The biography starts at +187 (0xbb) and softens to +157 (0x9d)
+        // over its first 150pt.
+        let bands = [
+            (0.0, 38.0, 0xbb),
+            (38.0, 75.0, 0xb3),
+            (75.0, 112.0, 0xab),
+            (112.0, 150.0, 0xa4),
+            (150.0, galley.size().y.max(151.0), 0x9d),
+        ];
+        let base_clip = ui.clip_rect();
+        for (y0, y1, add) in bands {
+            if y0 >= galley.size().y {
+                break;
+            }
+            let band = Rect::from_min_max(
+                pos2(rect.left(), rect.top() + y0),
+                pos2(rect.right(), rect.top() + y1),
+            )
+            .intersect(base_clip);
+            if band.is_positive() {
+                ui.painter().with_clip_rect(band).galley(
+                    rect.min,
+                    Arc::clone(&galley),
+                    lighter(add),
+                );
+            }
+        }
+        let _ = background;
     }
 }
 
@@ -774,51 +883,77 @@ fn about_photo(texture: egui::load::SizedTexture, card: Rect, scrolled: f32) -> 
     mesh
 }
 
-/// The header picture: 53% of the width in height, fading out from 38% of
-/// its height down into the colour behind it.
-fn header_picture(app: &App, ui: &egui::Ui, url: &str, rect: Rect) {
+/// The header picture: W × W/2, reflected vertically down to 0.646W, fading
+/// out from 0.245W to 0.646W and progressively softened below 0.38W.
+fn header_picture(app: &mut App, ui: &egui::Ui, url: &str, rect: Rect) {
     let width = rect.width();
-    let media = Rect::from_min_size(rect.min, vec2(width, width * 0.53));
-    let Some(texture) = picture(app, ui, url, media.size()) else {
+    let photo_h = width * 0.5;
+    let fade_end = width * 0.646;
+    let media = Rect::from_min_size(rect.min, vec2(width, fade_end));
+    let trim = app
+        .artwork_colours(Some(url))
+        .map(|c| c.trim_rect())
+        .unwrap_or([0.0, 0.0, 1.0, 1.0]);
+    let Some(texture) = picture(app, ui, url, vec2(width, photo_h)) else {
         return;
     };
-    let uv = crop(texture.size, media.size(), 0.22);
+    let uv = crop_trimmed(texture.size, vec2(width, photo_h), 0.22, trim);
     let painter = ui.painter().with_clip_rect(media.intersect(ui.clip_rect()));
-    let solid = media.top() + media.height() * 0.379;
-    let v_at = |y: f32| uv.top() + (y - media.top()) / media.height() * uv.height();
+    let solid = media.top() + width * 0.245;
+    let v_at = |y: f32| {
+        let offset = (y - media.top()).max(0.0);
+        let photo_y = if offset > photo_h {
+            (2.0 * photo_h - offset).max(0.0)
+        } else {
+            offset
+        };
+        uv.top() + (photo_y / photo_h.max(1.0)).clamp(0.0, 1.0) * uv.height()
+    };
     painter.image(
         texture.id,
         Rect::from_min_max(media.min, pos2(media.right(), solid)),
         Rect::from_min_max(uv.min, pos2(uv.right(), v_at(solid))),
         Color32::WHITE,
     );
-    // The fade: a strip of quads whose alpha falls smoothly to nothing.
-    let mut mesh = egui::Mesh::with_texture(texture.id);
-    let steps = 16;
-    for step in 0..=steps {
-        let t = step as f32 / steps as f32;
-        let y = solid + (media.bottom() - solid) * t;
-        let alpha = 1.0 - t;
-        let color = Color32::WHITE.gamma_multiply(alpha * alpha * (3.0 - 2.0 * alpha));
-        for x in [media.left(), media.right()] {
-            let u = if x == media.left() {
-                uv.left()
+    // The fade + reflection: a strip of quads from 0.245W to 0.646W, with a
+    // softened multi-tap pass below 0.38W.
+    let steps = 20;
+    for tap in [-1.0f32, 0.0, 1.0] {
+        let mut mesh = egui::Mesh::with_texture(texture.id);
+        for step in 0..=steps {
+            let t = step as f32 / steps as f32;
+            let y = solid + (media.bottom() - solid) * t;
+            let offset = y - media.top();
+            let blur_t = ((offset - width * 0.38) / (width * 0.266)).clamp(0.0, 1.0);
+            let tap_weight = if tap == 0.0 {
+                1.0 - 0.5 * blur_t
             } else {
-                uv.right()
+                0.25 * blur_t
             };
-            mesh.vertices.push(egui::epaint::Vertex {
-                pos: pos2(x, y),
-                uv: pos2(u, v_at(y)),
-                color,
-            });
+            let alpha = (1.0 - t).clamp(0.0, 1.0);
+            let smooth = alpha * alpha * (3.0 - 2.0 * alpha) * tap_weight;
+            let color = Color32::WHITE.gamma_multiply(smooth);
+            let du = tap * blur_t * 0.008 * uv.width();
+            for x in [media.left(), media.right()] {
+                let u = if x == media.left() {
+                    (uv.left() + du).clamp(uv.left(), uv.right())
+                } else {
+                    (uv.right() + du).clamp(uv.left(), uv.right())
+                };
+                mesh.vertices.push(egui::epaint::Vertex {
+                    pos: pos2(x, y),
+                    uv: pos2(u, v_at(y)),
+                    color,
+                });
+            }
+            if step > 0 {
+                let i = (step as u32) * 2;
+                mesh.add_triangle(i - 2, i - 1, i);
+                mesh.add_triangle(i - 1, i + 1, i);
+            }
         }
-        if step > 0 {
-            let i = (step as u32) * 2;
-            mesh.add_triangle(i - 2, i - 1, i);
-            mesh.add_triangle(i - 1, i + 1, i);
-        }
+        painter.add(egui::Shape::mesh(mesh));
     }
-    painter.add(egui::Shape::mesh(mesh));
 }
 
 /// Back on the left, and Share and "…" sharing one capsule on the right,
@@ -903,15 +1038,41 @@ fn picture(app: &App, ui: &egui::Ui, url: &str, size: Vec2) -> Option<egui::load
 /// The part of a picture `image` in size that fills `target` without
 /// stretching, as texture coordinates, its vertical centre at `focus`.
 fn crop(image: Vec2, target: Vec2, focus: f32) -> Rect {
-    let image_aspect = image.x / image.y.max(1.0);
+    crop_trimmed(image, target, focus, [0.0, 0.0, 1.0, 1.0])
+}
+
+/// Crops `image` inside the normalised content bounds `trim` (`[l, t, r, b]`)
+/// so letterbox or pillarbox black bars are excluded before fitting `target`.
+fn crop_trimmed(image: Vec2, target: Vec2, focus: f32, trim: [f32; 4]) -> Rect {
+    let [l, t, r, b] = trim;
+    let u_span = (r - l).clamp(0.1, 1.0);
+    let v_span = (b - t).clamp(0.1, 1.0);
+    let trimmed_size = vec2(image.x * u_span, image.y * v_span);
+    let image_aspect = trimmed_size.x / trimmed_size.y.max(1.0);
     let target_aspect = target.x / target.y.max(1.0);
-    if image_aspect > target_aspect {
+    let local = if image_aspect > target_aspect {
         let width = target_aspect / image_aspect;
         Rect::from_min_max(pos2(0.5 - width / 2.0, 0.0), pos2(0.5 + width / 2.0, 1.0))
     } else {
         let height = image_aspect / target_aspect;
         let top = (focus - height / 2.0).clamp(0.0, 1.0 - height);
         Rect::from_min_max(pos2(0.0, top), pos2(1.0, top + height))
+    };
+    Rect::from_min_max(
+        pos2(l + local.min.x * u_span, t + local.min.y * v_span),
+        pos2(l + local.max.x * u_span, t + local.max.y * v_span),
+    )
+}
+
+/// Responsive album card width: 2-up (`200..275pt`) when `< 680pt`, or
+/// multi-column (`135..160pt`) when `>= 680pt`.
+fn shelf_card_width(content_width: f32) -> f32 {
+    let usable = (content_width - 2.0 * INSET).max(200.0);
+    if content_width < NARROW_WIDTH {
+        ((usable - CARD_GAP) / 2.0).clamp(200.0, 275.0)
+    } else {
+        let cols = ((usable + CARD_GAP) / (148.0 + CARD_GAP)).floor().max(3.0);
+        ((usable - (cols - 1.0) * CARD_GAP) / cols).clamp(135.0, CARD)
     }
 }
 
@@ -951,15 +1112,22 @@ fn shelf(ui: &mut egui::Ui, id: &str, label: &str, add_contents: impl FnOnce(&mu
     ui.add_space(SHELF_GAP);
 }
 
-fn album_shelf(app: &mut App, ui: &mut egui::Ui, id: &str, label: &str, albums: &[&Album]) {
+fn album_shelf(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    id: &str,
+    label: &str,
+    albums: &[&Album],
+    card_side: f32,
+) {
     if albums.is_empty() {
         return;
     }
     shelf(ui, id, label, |ui| {
         for album in albums {
-            let image = pick_image(&album.images, app.art_px(CARD));
+            let image = pick_image(&album.images, app.art_px(card_side));
             let year = album.year().unwrap_or("").to_string();
-            let response = card(app, ui, image, &album.name, Some(&year), CARD, false);
+            let response = card(app, ui, image, &album.name, Some(&year), card_side, false);
             if response.clicked() {
                 app.actions
                     .push(Action::Open(Page::Album(album.id.clone())));
@@ -1042,9 +1210,9 @@ pub(crate) fn card(
 
 /// The latest release: its artwork beside the date, the name, the number
 /// of songs and a "+" that saves it.
-fn latest_card(app: &mut App, ui: &mut egui::Ui, album: &Album) {
+fn latest_card(app: &mut App, ui: &mut egui::Ui, album: &Album, card_width: f32) {
     title(ui, &gettext(app.locale, "Latest release"));
-    let (row, response) = ui.allocate_exact_size(vec2(300.0, LATEST_ART), Sense::click());
+    let (row, response) = ui.allocate_exact_size(vec2(card_width, LATEST_ART), Sense::click());
     let art = Rect::from_min_size(row.min, Vec2::splat(LATEST_ART));
     widgets::paint_cover(
         ui,
@@ -1056,7 +1224,7 @@ fn latest_card(app: &mut App, ui: &mut egui::Ui, album: &Album) {
         Some(app.backend.art()),
     );
     let left = art.right() + 16.0;
-    let width = row.right() - left;
+    let width = (row.right() - left).max(40.0);
     let date = album
         .release_date
         .as_deref()
@@ -1134,13 +1302,71 @@ fn release_date(date: &str) -> String {
     format!("{month} {}, {year}", day.trim_start_matches('0'))
 }
 
-/// The top songs in three rows that scroll sideways, a hairline under all
-/// but each column's last.
-fn top_songs(app: &mut App, ui: &mut egui::Ui, page: &ArtistPage, artist: &Artist) {
+/// Column width for wide Top Songs so the next column peeks by ~24pt on the
+/// right edge whenever more columns exist.
+fn top_songs_column_width(avail_width: f32, total_columns: usize) -> f32 {
+    let gap = 30.0;
+    let peek = 24.0;
+    if total_columns <= 1 {
+        return avail_width.clamp(220.0, SONG_COLUMN);
+    }
+    let two_col = (avail_width - gap - peek) / 2.0;
+    if two_col >= 220.0 {
+        two_col.min(SONG_COLUMN)
+    } else {
+        (avail_width - peek).clamp(200.0, SONG_COLUMN)
+    }
+}
+
+/// Subtitle for narrow Top Songs rows: `"Album · Year"` when the album and
+/// release year are known, falling back to `"Album"` or artist names.
+fn narrow_song_subtitle(page: &ArtistPage, track: &crate::api::models::Track) -> String {
+    if let Some(album) = &track.album
+        && !album.name.is_empty()
+    {
+        let year = album.year().or_else(|| {
+            page.albums
+                .values()
+                .flat_map(|list| list.items.iter())
+                .find(|candidate| {
+                    (!album.id.is_empty() && candidate.id == album.id)
+                        || candidate.name.eq_ignore_ascii_case(&album.name)
+                })
+                .and_then(Album::year)
+        });
+        return match year {
+            Some(y) if !y.is_empty() => format!("{} · {y}", album.name),
+            _ => album.name.clone(),
+        };
+    }
+    track
+        .artists
+        .iter()
+        .map(|artist| artist.name.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// The top songs: a single 5-row column in narrow mode (`< 680pt`), or
+/// three-row columns that scroll sideways with a right-edge peek and hover
+/// chevron pagination in wide mode.
+fn top_songs(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    page: &ArtistPage,
+    artist: &Artist,
+    avail_width: f32,
+    narrow: bool,
+) {
     let locale = app.locale;
     title(ui, &gettext(locale, "Top Songs"));
     let Loadable::Loaded(tracks) = &page.top_tracks else {
-        widgets::skeleton_rows(ui, &app.palette, locale, SONG_ROWS);
+        widgets::skeleton_rows(
+            ui,
+            &app.palette,
+            locale,
+            if narrow { SONG_ROWS_NARROW } else { SONG_ROWS },
+        );
         return;
     };
     let uris: Arc<[String]> = tracks
@@ -1149,41 +1375,144 @@ fn top_songs(app: &mut App, ui: &mut egui::Ui, page: &ArtistPage, artist: &Artis
         .collect::<Vec<_>>()
         .into();
     let playing = app.current_track_uri();
-    egui::ScrollArea::horizontal()
-        .id_salt(("artist-top-songs", &artist.id))
-        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-        .show(ui, |ui| {
-            ui.horizontal_top(|ui| {
-                ui.spacing_mut().item_spacing.x = 30.0;
-                for (column, chunk) in tracks.chunks(SONG_ROWS).enumerate() {
-                    ui.vertical(|ui| {
-                        ui.spacing_mut().item_spacing.y = 0.0;
-                        for (row, track) in chunk.iter().enumerate() {
-                            let here = playing.as_deref() == Some(track.uri.as_str());
-                            if song_row(app, ui, track, here, row + 1 < chunk.len()) {
-                                app.actions.push(Action::PlayFromRow {
-                                    context: RowContext::Uris(Arc::clone(&uris)),
-                                    uri: track.uri.clone(),
-                                    index: (column * SONG_ROWS + row) as u32,
-                                });
-                            }
-                        }
+
+    if narrow {
+        let take = tracks.len().min(SONG_ROWS_NARROW);
+        ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+            for (row, track) in tracks.iter().take(take).enumerate() {
+                let here = playing.as_deref() == Some(track.uri.as_str());
+                let subtitle = narrow_song_subtitle(page, track);
+                if song_row(app, ui, track, &subtitle, avail_width, here, row + 1 < take) {
+                    app.actions.push(Action::PlayFromRow {
+                        context: RowContext::Uris(Arc::clone(&uris)),
+                        uri: track.uri.clone(),
+                        index: row as u32,
                     });
                 }
-            });
+            }
         });
+        return;
+    }
+
+    let total_cols = tracks.len().div_ceil(SONG_ROWS);
+    let col_w = top_songs_column_width(avail_width, total_cols);
+    let step_x = col_w + 30.0;
+    let target_id = Id::new(("artist-top-songs-target", &artist.id));
+    let pending_offset = ui.ctx().data_mut(|d| {
+        let v = d.get_temp::<f32>(target_id);
+        d.remove::<f32>(target_id);
+        v
+    });
+
+    let mut area = egui::ScrollArea::horizontal()
+        .id_salt(("artist-top-songs", &artist.id))
+        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden);
+    if let Some(offset) = pending_offset {
+        area = area.horizontal_scroll_offset(offset);
+    }
+    let output = area.show(ui, |ui| {
+        ui.horizontal_top(|ui| {
+            ui.spacing_mut().item_spacing.x = 30.0;
+            for (column, chunk) in tracks.chunks(SONG_ROWS).enumerate() {
+                ui.vertical(|ui| {
+                    ui.spacing_mut().item_spacing.y = 0.0;
+                    for (row, track) in chunk.iter().enumerate() {
+                        let here = playing.as_deref() == Some(track.uri.as_str());
+                        let subtitle = track
+                            .artists
+                            .iter()
+                            .map(|artist| artist.name.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        if song_row(
+                            app,
+                            ui,
+                            track,
+                            &subtitle,
+                            col_w,
+                            here,
+                            row + 1 < chunk.len(),
+                        ) {
+                            app.actions.push(Action::PlayFromRow {
+                                context: RowContext::Uris(Arc::clone(&uris)),
+                                uri: track.uri.clone(),
+                                index: (column * SONG_ROWS + row) as u32,
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    let viewport = output.inner_rect;
+    let content_w = output.content_size.x;
+    let offset_x = output.state.offset.x;
+    let max_scroll = (content_w - viewport.width()).max(0.0);
+    let hovered = ui
+        .input(|i| i.pointer.hover_pos())
+        .is_some_and(|pos| viewport.expand(6.0).contains(pos));
+    if hovered && max_scroll > 4.0 {
+        if offset_x < max_scroll - 4.0 {
+            let next_btn = Rect::from_center_size(
+                pos2(viewport.right() - 16.0, viewport.center().y),
+                Vec2::splat(30.0),
+            );
+            let resp = ui.interact(
+                next_btn,
+                Id::new(("artist-top-songs-next", &artist.id)),
+                Sense::click(),
+            );
+            ui.painter().circle_filled(
+                next_btn.center(),
+                15.0,
+                Color32::from_black_alpha(if resp.hovered() { 190 } else { 150 }),
+            );
+            theme::paint_icon(ui, Icon::ChevronRight, next_btn, 16.0, Color32::WHITE);
+            if resp.clicked() {
+                let next_offset = ((offset_x / step_x).floor() + 1.0) * step_x;
+                ui.ctx()
+                    .data_mut(|d| d.insert_temp(target_id, next_offset.min(max_scroll)));
+            }
+        }
+        if offset_x > 4.0 {
+            let prev_btn = Rect::from_center_size(
+                pos2(viewport.left() + 16.0, viewport.center().y),
+                Vec2::splat(30.0),
+            );
+            let resp = ui.interact(
+                prev_btn,
+                Id::new(("artist-top-songs-prev", &artist.id)),
+                Sense::click(),
+            );
+            ui.painter().circle_filled(
+                prev_btn.center(),
+                15.0,
+                Color32::from_black_alpha(if resp.hovered() { 190 } else { 150 }),
+            );
+            theme::paint_icon(ui, Icon::ChevronLeft, prev_btn, 16.0, Color32::WHITE);
+            if resp.clicked() {
+                let prev_offset = ((offset_x / step_x).ceil() - 1.0) * step_x;
+                ui.ctx()
+                    .data_mut(|d| d.insert_temp(target_id, prev_offset.max(0.0)));
+            }
+        }
+    }
 }
 
-/// One of the top songs: artwork, name and artists, and "…". Returns
+/// One of the top songs: artwork, name, subtitle, and "…". Returns
 /// whether the row was clicked to play.
 fn song_row(
     app: &mut App,
     ui: &mut egui::Ui,
     track: &crate::api::models::Track,
+    subtitle: &str,
+    row_width: f32,
     here: bool,
     divider: bool,
 ) -> bool {
-    let (rect, response) = ui.allocate_exact_size(vec2(SONG_COLUMN, 54.0), Sense::click());
+    let (rect, response) = ui.allocate_exact_size(vec2(row_width, 54.0), Sense::click());
     if divider {
         ui.painter().hline(
             rect.x_range(),
@@ -1210,22 +1539,16 @@ fn song_row(
         Color32::WHITE
     };
     let text_left = art.right() + 12.0;
-    let width = rect.right() - 34.0 - text_left;
+    let width = (rect.right() - 34.0 - text_left).max(40.0);
     let name = widgets::ellipsized(ui, &track.name, theme::regular(13.0), color, width, 1);
-    let artists = track
-        .artists
-        .iter()
-        .map(|artist| artist.name.as_str())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let artists = widgets::ellipsized(ui, &artists, theme::regular(13.0), WHITE_60, width, 1);
+    let sub = widgets::ellipsized(ui, subtitle, theme::regular(13.0), WHITE_60, width, 1);
     ui.painter().galley(
         pos2(text_left, rect.center().y - name.size().y),
         name,
         color,
     );
     ui.painter()
-        .galley(pos2(text_left, rect.center().y), artists, WHITE_60);
+        .galley(pos2(text_left, rect.center().y), sub, WHITE_60);
     let more = Rect::from_center_size(
         pos2(rect.right() - 14.0, rect.center().y),
         Vec2::splat(28.0),
@@ -1314,5 +1637,34 @@ mod tests {
         assert_eq!(release_date("2026-10-23"), "Oct 23, 2026");
         assert_eq!(release_date("1984-11-09"), "Nov 9, 1984");
         assert_eq!(release_date("1984"), "1984");
+    }
+
+    #[test]
+    fn responsive_artist_layout_scales_shelves_and_top_songs() {
+        let narrow_card = shelf_card_width(540.0);
+        assert!(
+            (200.0..=275.0).contains(&narrow_card),
+            "narrow card: {narrow_card}"
+        );
+        let wide_card = shelf_card_width(920.0);
+        assert!(
+            (135.0..=160.0).contains(&wide_card),
+            "wide card: {wide_card}"
+        );
+
+        let col_w = top_songs_column_width(580.0, 4);
+        assert!((220.0..=310.0).contains(&col_w), "col_w: {col_w}");
+        assert!(
+            2.0 * col_w + 30.0 < 580.0,
+            "leaves room for next column peek"
+        );
+    }
+
+    #[test]
+    fn follow_star_bounce_peaks_and_settles_within_300ms() {
+        assert!((follow_bounce_scale(0.0) - 1.0).abs() < 1e-4);
+        assert!(follow_bounce_scale(0.13) > 1.20);
+        assert!(follow_bounce_scale(0.23) < 0.96);
+        assert!((follow_bounce_scale(0.30) - 1.0).abs() < 1e-4);
     }
 }

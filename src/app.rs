@@ -7008,8 +7008,19 @@ impl App {
                 self.artwork_colours(Some(url));
             }
             if !extras.header_sources.is_empty() {
+                if let Some(hero) = crate::session_reads::hero_source(&extras.header_sources, 1344)
+                {
+                    self.artwork_colours(Some(hero));
+                }
                 self.artist_header_sources
                     .insert(uri.clone(), extras.header_sources.clone());
+            }
+            if let Some(photo) = extras
+                .about
+                .as_ref()
+                .and_then(|about| about.photo.as_deref())
+            {
+                self.artwork_colours(Some(photo));
             }
         }
         let result = result.map(|mut extras| {
@@ -8474,7 +8485,10 @@ impl App {
                             (_, true) => gettext(self.locale, "Saved to Your Library"),
                             (_, false) => gettext(self.locale, "Removed from Your Library"),
                         };
-                        if !current_uris.is_empty() {
+                        if !current_uris.is_empty()
+                            && self.toasts.last().map(|t| t.message.as_str())
+                                != Some(message.as_ref())
+                        {
                             self.toast(message);
                         }
                     }
@@ -11293,6 +11307,14 @@ impl App {
         }
         self.set_saved_state(uri.clone(), saved);
         self.saved_writes.insert(uri.clone(), saved);
+        if util::uri_kind(&uri) == Some("artist") {
+            let message = if saved {
+                gettext(self.locale, "Following artist")
+            } else {
+                gettext(self.locale, "Unfollowed artist")
+            };
+            self.toast(message);
+        }
         if self.change_liked_song(&uri, saved) {
             self.sync_liked_songs();
             self.ensure_liked_songs();

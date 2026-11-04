@@ -64,7 +64,7 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
 
 ## B. Sanatçı sayfası
 
-6. **Düzen pencere genişliğine göre değişsin.** *Yok.* Apple Music'te
+6. **Düzen pencere genişliğine göre değişsin.** *Tamamlandı.* Apple Music'te
    ölçüldü (Nirvana, pencere 980–1386pt):
    - **Dar** (içerik ~600–700pt altı):
      - Top Songs alt alta 5 satır. Başlığın altında "Albüm · Yıl" yazıyor.
@@ -76,12 +76,11 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
      - Fareyle üstüne gelince ">" sayfa oku çıkıyor.
      - Albüm kapakları 135–160pt.
    - Dar pencerede player daha az buton göstersin.
-7. **Başlık görselindeki siyah bantları kırp.** *Yok* (`crop()` sadece
-   odağa göre kırpıyor). Bazı görsellerde siyah bant var: Doja Cat'te sağda
-   ve solda, Sade'de üstte. Görsel 280×120 boyutta örneklenir. Her kanalı
-   20'nin altında kalan satır ve sütunlar bant sayılır ve kırpılır. Kırpma
-   değeri görsel başına saklanır.
-8. **Başlıktaki blur ve geçiş.** *Kontrol.* W, sidebar'ın sağındaki genişlik.
+7. **Başlık görselindeki siyah bantları kırp.** *Tamamlandı.* Bazı görsellerde
+   siyah bant var: Doja Cat'te sağda ve solda, Sade'de üstte. Görsel 280×120
+   boyutta örneklenir. Her kanalı 20'nin altında kalan satır ve sütunlar bant
+   sayılır ve kırpılır. Kırpma değeri görsel başına saklanır.
+8. **Başlıktaki blur ve geçiş.** *Tamamlandı.* W, sidebar'ın sağındaki genişlik.
    - Görsel W×W/2 boyutunda.
    - Renge geçiş (α) 0.245W'den 0.646W'ye kadar doğrusal.
    - Blur (σ) 0.38W'ye kadar 0. Sonra 3/6/10/15/20pt
@@ -89,13 +88,13 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
    - Görselin altında bulanık hali devam ediyor (yansıma).
    - Play üçgeninin köşeleri yuvarlak. Üçgen, genişliğinin 1/18'i kadar
      sağda duruyor.
-9. **Sanatçı rengi.** *Kontrol.*
+9. **Sanatçı rengi.** *Tamamlandı.*
    - Gri kapağı olan sanatçının sayfası gri kalsın.
    - Sidebar bu sayfalarda sayfa renginin %34'ünü #161616 ile karıştırır,
      %85 opaklıkla.
    - Kenar parıltısı burada kapalı. Tek renkli sayfayı turuncuya
      çeviriyordu.
-10. **ⓘ Hakkında kartında kaydırma.** *Kontrol.*
+10. **ⓘ Hakkında kartında kaydırma.** *Tamamlandı.*
     - Kaydırınca fotoğraf kaydırma miktarının 0.4 katı kadar kayıyor.
     - 181pt'den (0.257W) başlayarak 200pt boyunca doğrusal olarak bulanıklaşıp
       renge geçiyor. Sonunda σ 36pt.
@@ -106,7 +105,7 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
       +187'den +157'ye.
     - Renk sayfa yüklenirken hesaplanmalı. Kart açıldıktan sonra renk
       değişirse titreme olur.
-11. **Takip yıldızı.** *Kontrol.* Tıklanınca hemen dolsun, 300 ms küçük bir
+11. **Takip yıldızı.** *Tamamlandı.* Tıklanınca hemen dolsun, 300 ms küçük bir
     sıçrama yapsın (hareketi azalt ayarı açıksa yapmasın). Toast çıksın:
     "… takip ediliyor" / "… takipten çıkarıldı". İstek başarısız olursa
     yıldız eski haline dönsün.
