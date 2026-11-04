@@ -18,12 +18,17 @@
 //! cannot compile the shaders falls back to the same solid surface.
 
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use eframe::egui_glow;
 use eframe::glow::{self, HasContext as _};
 use egui::{Id, Rect};
 
 use crate::settings::GlassEffect;
+
+/// How long the system's Reduce Transparency answer is cached before asking
+/// the OS again.
+const TRANSPARENCY_RECHECK: Duration = Duration::from_secs(1);
 
 /// The halo's blur, in points: the shader mixes a min with it in at 70%.
 const HALO_BLUR: f32 = 13.5;
@@ -55,11 +60,20 @@ struct Quality {
 }
 
 impl Quality {
+    #[cfg(test)]
     fn of(effect: GlassEffect) -> Option<Self> {
+        Self::for_surface(effect, false)
+    }
+
+    fn for_surface(effect: GlassEffect, over_lyrics: bool) -> Option<Self> {
         match effect {
             GlassEffect::Full => Some(Self {
                 downscale: 2,
                 iterations: 4,
+            }),
+            GlassEffect::Balanced if over_lyrics => Some(Self {
+                downscale: 4,
+                iterations: 0,
             }),
             GlassEffect::Balanced => Some(Self {
                 downscale: 4,
@@ -78,6 +92,9 @@ impl Quality {
     /// reach its blur over all the passes. The nine-tap kernel's standard
     /// deviation is 1.64 steps.
     fn spread(self, pixels_per_point: f32) -> f32 {
+        if self.iterations == 0 {
+            return 0.0;
+        }
         self.sigma_px(pixels_per_point)
             / (self.downscale as f32 * 1.64 * (self.iterations as f32).sqrt())
     }
@@ -85,15 +102,54 @@ impl Quality {
     /// How far outside the surface, in screen pixels, the halo reads the
     /// page: three standard deviations. The bend only reads inside it.
     fn reach_px(self, pixels_per_point: f32) -> i32 {
+        if self.iterations == 0 {
+            return 4;
+        }
         (3.0 * self.sigma_px(pixels_per_point)).ceil() as i32 + 2
     }
 }
 
+/// Whether the desktop asks for reduced transparency, checked at most once a
+/// second so drawing glass never queries the OS on every frame.
+fn reduced_transparency(ctx: &egui::Context) -> bool {
+    let id = Id::new("mcloud-reduced-transparency");
+    let now = Instant::now();
+    if let Some((checked, reduced)) = ctx.data(|data| data.get_temp::<(Instant, bool)>(id))
+        && now.saturating_duration_since(checked) < TRANSPARENCY_RECHECK
+    {
+        return reduced;
+    }
+    let reduced = system_reduced_transparency();
+    ctx.data_mut(|data| data.insert_temp(id, (now, reduced)));
+    reduced
+}
+
+#[cfg(target_os = "macos")]
+fn system_reduced_transparency() -> bool {
+    objc2_app_kit::NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceTransparency()
+}
+
+#[cfg(not(target_os = "macos"))]
+fn system_reduced_transparency() -> bool {
+    false
+}
+
 /// Paints glass in the capsule `rect` under whatever the caller draws next.
-/// Returns `false` when it drew nothing: the effect is Eco or the GPU could
-/// not run it, and the caller's surface should be solid.
+/// Returns `false` when it drew nothing: the effect is Eco, the desktop asks
+/// for reduced transparency, or the GPU could not run it, and the caller's
+/// surface should be solid.
 pub fn paint(ui: &egui::Ui, rect: Rect, effect: GlassEffect) -> bool {
-    let Some(quality) = Quality::of(effect) else {
+    paint_surface(ui, rect, effect, false)
+}
+
+/// Like [`paint`], with `over_lyrics` letting `Balanced` skip the multi-pass
+/// halo FBO over full-window lyrics while keeping the rim lens, tone curve
+/// and specular highlight.
+pub fn paint_surface(ui: &egui::Ui, rect: Rect, effect: GlassEffect, over_lyrics: bool) -> bool {
+    if reduced_transparency(ui.ctx()) {
+        return false;
+    }
+    let Some(quality) = Quality::for_surface(effect, over_lyrics) else {
         return false;
     };
     let renderer = ui.ctx().data_mut(|data| {
@@ -296,6 +352,14 @@ void main() {
     vec2 at = gl_FragCoord.xy + normal * shift;
     vec2 uv = (at - u_capture.xy) / u_capture.zw;
     vec3 core = texture2D(u_tex, uv).rgb;
+    if (edge < 3.0) {
+        vec2 rim_step = normal * (0.65 / u_capture.zw);
+        vec3 filtered = 0.5 * (
+            texture2D(u_tex, uv + rim_step).rgb +
+            texture2D(u_tex, uv - rim_step).rgb
+        );
+        core = mix(core, filtered, clamp((3.0 - edge) / 3.0, 0.0, 1.0) * 0.5);
+    }
     vec3 halo = texture2D(u_halo, uv).rgb;
 
     // Bright detail darkens toward its surroundings; dark detail stays.
@@ -314,6 +378,11 @@ void main() {
     // The hairline: the outermost pixel takes the page's own colour.
     vec3 page = texture2D(u_halo, (gl_FragCoord.xy - u_capture.xy) / u_capture.zw).rgb;
     colour = mix(colour, page, 0.8 * clamp(1.0 - edge, 0.0, 1.0));
+
+    // Sub-LSB interleaved gradient noise prevents 8-bit banding across the
+    // tone curve and halo gradient.
+    float dither = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5;
+    colour += dither / 255.0;
 
     gl_FragColor = vec4(clamp(colour, 0.0, 1.0) * alpha, alpha);
 }
@@ -416,43 +485,49 @@ impl Resources {
             gl.bind_texture(glow::TEXTURE_2D, Some(self.capture.texture));
             gl.copy_tex_sub_image_2d(glow::TEXTURE_2D, 0, 0, 0, x0, y0, capture[0], capture[1]);
 
-            // The halo.
-            self.resize(gl, Which::Ping, blurred);
-            self.resize(gl, Which::Pong, blurred);
-            gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.framebuffer));
-            gl.viewport(0, 0, blurred[0], blurred[1]);
-            gl.use_program(Some(self.blur));
-            gl.uniform_1_i32(self.blur_tex.as_ref(), 0);
             gl.bind_vertex_array(Some(self.vertex_array));
-            // A tap's step in the source's texture coordinates: `spread`
-            // blurred texels, which in the capture are `downscale` pixels.
-            let step =
-                |size: [i32; 2], texels: f32| [texels / size[0] as f32, texels / size[1] as f32];
-            let mut source = (
-                self.capture.texture,
-                step(capture, spread * quality.downscale as f32),
-            );
-            for _ in 0..quality.iterations {
-                for (into, horizontal) in [(Which::Ping, true), (Which::Pong, false)] {
-                    let into = self.target(into).texture;
-                    gl.framebuffer_texture_2d(
-                        glow::FRAMEBUFFER,
-                        glow::COLOR_ATTACHMENT0,
-                        glow::TEXTURE_2D,
-                        Some(into),
-                        0,
-                    );
-                    gl.bind_texture(glow::TEXTURE_2D, Some(source.0));
-                    let [dx, dy] = source.1;
-                    if horizontal {
-                        gl.uniform_2_f32(self.blur_dir.as_ref(), dx, 0.0);
-                    } else {
-                        gl.uniform_2_f32(self.blur_dir.as_ref(), 0.0, dy);
+            let halo_texture = if quality.iterations > 0 {
+                // The halo.
+                self.resize(gl, Which::Ping, blurred);
+                self.resize(gl, Which::Pong, blurred);
+                gl.bind_framebuffer(glow::FRAMEBUFFER, Some(self.framebuffer));
+                gl.viewport(0, 0, blurred[0], blurred[1]);
+                gl.use_program(Some(self.blur));
+                gl.uniform_1_i32(self.blur_tex.as_ref(), 0);
+                // A tap's step in the source's texture coordinates: `spread`
+                // blurred texels, which in the capture are `downscale` pixels.
+                let step = |size: [i32; 2], texels: f32| {
+                    [texels / size[0] as f32, texels / size[1] as f32]
+                };
+                let mut source = (
+                    self.capture.texture,
+                    step(capture, spread * quality.downscale as f32),
+                );
+                for _ in 0..quality.iterations {
+                    for (into, horizontal) in [(Which::Ping, true), (Which::Pong, false)] {
+                        let into = self.target(into).texture;
+                        gl.framebuffer_texture_2d(
+                            glow::FRAMEBUFFER,
+                            glow::COLOR_ATTACHMENT0,
+                            glow::TEXTURE_2D,
+                            Some(into),
+                            0,
+                        );
+                        gl.bind_texture(glow::TEXTURE_2D, Some(source.0));
+                        let [dx, dy] = source.1;
+                        if horizontal {
+                            gl.uniform_2_f32(self.blur_dir.as_ref(), dx, 0.0);
+                        } else {
+                            gl.uniform_2_f32(self.blur_dir.as_ref(), 0.0, dy);
+                        }
+                        gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
+                        source = (into, step(blurred, spread));
                     }
-                    gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
-                    source = (into, step(blurred, spread));
                 }
-            }
+                self.pong.texture
+            } else {
+                self.capture.texture
+            };
 
             // Back into the window, inside the glass and egui's clip.
             gl.bind_framebuffer(glow::FRAMEBUFFER, painter.intermediate_fbo());
@@ -473,7 +548,7 @@ impl Resources {
             gl.use_program(Some(self.composite));
             let uniforms = &self.uniforms;
             gl.active_texture(glow::TEXTURE1);
-            gl.bind_texture(glow::TEXTURE_2D, Some(self.pong.texture));
+            gl.bind_texture(glow::TEXTURE_2D, Some(halo_texture));
             gl.uniform_1_i32(uniforms.halo.as_ref(), 1);
             gl.active_texture(glow::TEXTURE0);
             gl.bind_texture(glow::TEXTURE_2D, Some(self.capture.texture));
@@ -622,6 +697,12 @@ mod tests {
             assert!((sigma - HALO_BLUR * 2.0).abs() < 1e-3);
             assert!(quality.reach_px(2.0) as f32 >= 3.0 * HALO_BLUR * 2.0);
         }
+        // Over full-window lyrics, Balanced uses single-pass glass without
+        // the multi-pass blur FBO, while Full keeps its full halo.
+        let lyrics_balanced = Quality::for_surface(GlassEffect::Balanced, true).unwrap();
+        assert_eq!(lyrics_balanced.iterations, 0);
+        assert_eq!(lyrics_balanced.reach_px(2.0), 4);
+        assert_eq!(Quality::for_surface(GlassEffect::Full, true), Some(full));
     }
 
     #[test]

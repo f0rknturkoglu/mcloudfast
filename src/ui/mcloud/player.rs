@@ -61,7 +61,12 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, content: Rect) {
             // stay on it rather than reaching the page beneath.
             ui.allocate_exact_size(rect.size(), Sense::click());
             let palette = app.palette;
-            surface(ui, rect, app.settings.mcloud_glass);
+            surface(
+                ui,
+                rect,
+                app.settings.mcloud_glass,
+                app.lyrics_fullscreen.is_some(),
+            );
             let now = app.now_playing();
             let transport_right = transport(app, ui, rect, now.as_ref());
             let extras_left = extras(app, ui, rect, now.as_ref());
@@ -86,11 +91,18 @@ fn capsule(content: Rect) -> Rect {
 /// The capsule itself. The liquid glass carries its own lens, tone and
 /// highlight, so nothing is drawn over it; Eco, or a GPU without the glass,
 /// gets mcloud's solid surface.
-fn surface(ui: &egui::Ui, rect: Rect, effect: crate::settings::GlassEffect) {
-    if super::glass::paint(ui, rect, effect) {
+fn surface(ui: &egui::Ui, rect: Rect, effect: crate::settings::GlassEffect, over_lyrics: bool) {
+    if super::glass::paint_surface(ui, rect, effect, over_lyrics) {
         return;
     }
-    let corner = CornerRadius::same((HEIGHT / 2.0) as u8);
+    solid_capsule(ui, rect);
+}
+
+/// mcloud's solid capsule surface when Eco glass or reduced transparency is
+/// active, or the GPU cannot run the glass shaders.
+pub(in crate::ui) fn solid_capsule(ui: &egui::Ui, rect: Rect) {
+    let half = rect.height() / 2.0;
+    let corner = CornerRadius::same(half.min(255.0) as u8);
     let painter = ui.painter();
     painter.add(
         egui::epaint::Shadow {
@@ -105,7 +117,7 @@ fn surface(ui: &egui::Ui, rect: Rect, effect: crate::settings::GlassEffect) {
     painter.rect_filled(rect, corner, Color32::from_rgb(0x33, 0x33, 0x35));
     widgets::paint_vertical_gradient(
         ui,
-        rect.shrink2(vec2(HEIGHT / 2.0, 0.0)),
+        rect.shrink2(vec2(half, 0.0)),
         Color32::from_rgb(0x3b, 0x3b, 0x3d),
         Color32::from_rgb(0x2b, 0x2b, 0x2d),
     );
@@ -116,7 +128,7 @@ fn surface(ui: &egui::Ui, rect: Rect, effect: crate::settings::GlassEffect) {
         StrokeKind::Inside,
     );
     painter.hline(
-        (rect.left() + HEIGHT / 2.0)..=(rect.right() - HEIGHT / 2.0),
+        (rect.left() + half)..=(rect.right() - half),
         rect.top() + 1.0,
         Stroke::new(1.0, Color32::from_white_alpha(38)),
     );
@@ -728,7 +740,8 @@ fn marquee(ui: &egui::Ui, text: &str, rect: Rect, color: Color32, moving: bool) 
         pos2(rect.left(), rect.center().y - galley.size().y / 2.0)
     };
     let start_id = Id::new("mcloud-marquee-start");
-    if full.size().x <= rect.width() || !moving {
+    let active = ui.input(|input| input.focused && !input.viewport().minimized.unwrap_or(false));
+    if full.size().x <= rect.width() || !moving || !active {
         let galley = widgets::ellipsized(ui, text, font, color, rect.width(), 1);
         shadowed(ui, left(&galley), galley, color);
         ui.ctx().data_mut(|data| data.remove::<f64>(start_id));
@@ -738,14 +751,27 @@ fn marquee(ui: &egui::Ui, text: &str, rect: Rect, color: Color32, moving: bool) 
     let start = ui
         .ctx()
         .data_mut(|data| *data.get_temp_mut_or_insert_with(start_id, || now));
-    let elapsed = (now - start - PAUSE).max(0.0) as f32;
+    let since_start = (now - start).max(0.0);
+    if since_start < PAUSE {
+        let painter = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
+        painter.galley(left(&full), full, color);
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_secs_f64(
+                (PAUSE - since_start).max(0.016),
+            ));
+        return;
+    }
+    let elapsed = (since_start - PAUSE) as f32;
     let cycle = full.size().x + GAP;
-    let offset = (elapsed * SPEED) % cycle;
+    let ppp = ui.ctx().pixels_per_point().max(1.0);
+    let offset = (((elapsed * SPEED) % cycle) * ppp).round() / ppp;
     let painter = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
     let origin = left(&full) - vec2(offset, 0.0);
     painter.galley(origin, full.clone(), color);
     painter.galley(origin + vec2(cycle, 0.0), full, color);
-    ui.ctx().request_repaint();
+    let step_s = (1.0 / (ppp * SPEED)).clamp(0.016, 0.05);
+    ui.ctx()
+        .request_repaint_after(std::time::Duration::from_secs_f32(step_s));
 }
 
 /// The hairline along the LCD's bottom: 3 points, 9 while scrubbing, and a
@@ -785,8 +811,9 @@ fn scrubber(
     let corner = CornerRadius::same((height / 2.0).round() as u8);
     let painter = ui.painter();
     painter.rect_filled(track, corner, Color32::from_white_alpha(51));
+    let ppp = ui.ctx().pixels_per_point().max(1.0);
     let mut filled = track;
-    filled.set_right(track.left() + track.width() * fraction);
+    filled.set_right(track.left() + (track.width() * fraction * ppp).round() / ppp);
     painter.rect_filled(filled, corner, Color32::from_rgb(0xe9, 0xe9, 0xe9));
     response.widget_info(|| {
         egui::WidgetInfo::slider(

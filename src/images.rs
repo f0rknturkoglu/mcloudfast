@@ -27,7 +27,7 @@ use crate::http::Http;
 /// encoded bytes of covers still waiting to be painted. A card's cover is
 /// scaled to the 192 or so pixels it covers and holds about 200 KB, so a page
 /// of cards stays well inside it.
-const HELD_BYTES: usize = 64 * 1024 * 1024;
+const HELD_BYTES: usize = 96 * 1024 * 1024;
 const MAX_ART_BYTES: usize = 8 * 1024 * 1024;
 
 /// How long another copy of the same artwork goes on being painted without
@@ -237,7 +237,11 @@ impl ArtLoader {
                         retained,
                         ..
                     } => {
-                        held.push((url.clone(), *last_used, *retained + scaled));
+                        let used = textures
+                            .get(url)
+                            .and_then(|copies| copies.values().map(|copy| copy.painted).max())
+                            .map_or(*last_used, |painted| (*last_used).max(painted));
+                        held.push((url.clone(), used, *retained + scaled));
                     }
                     Entry::Pending => {}
                 }

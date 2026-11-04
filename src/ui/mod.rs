@@ -769,6 +769,67 @@ fn toasts(app: &mut App, ctx: &egui::Context, bottom_offset: f32) {
         return;
     }
     let palette = app.palette;
+    if app.settings.interface == crate::settings::Interface::Mcloud {
+        let bottom = if bottom_offset > 30.0 {
+            84.0
+        } else {
+            bottom_offset
+        };
+        let effect = app.settings.mcloud_glass;
+        let over_lyrics = app.lyrics_fullscreen.is_some();
+        egui::Area::new(egui::Id::new("toasts"))
+            .anchor(Align2::CENTER_BOTTOM, vec2(0.0, -bottom))
+            .order(egui::Order::Tooltip)
+            .interactable(false)
+            .show(ctx, |ui| {
+                ui.spacing_mut().item_spacing.y = 8.0;
+                for toast in &app.toasts {
+                    let age = toast.created.elapsed().as_secs_f32();
+                    let alpha = if age < 0.15 {
+                        age / 0.15
+                    } else if age > 2.8 {
+                        ((3.2 - age) / 0.4).clamp(0.0, 1.0)
+                    } else {
+                        1.0
+                    };
+                    ui.set_opacity(alpha);
+                    let (icon, icon_color) = match toast.kind {
+                        ToastKind::Info => (Icon::CircleCheck, palette.accent),
+                        ToastKind::Error => (Icon::CircleAlert, palette.danger),
+                    };
+                    let text_color = Color32::from_rgb(0xe8, 0xe8, 0xe8);
+                    let galley = ui.painter().layout(
+                        toast.message.clone(),
+                        theme::medium(13.0),
+                        text_color,
+                        320.0,
+                    );
+                    let width = ((16.0 + 15.0 + 8.0 + galley.size().x + 16.0) / 2.0).ceil() * 2.0;
+                    let height = (galley.size().y + 18.0).max(36.0).round();
+                    let (rect, _) =
+                        ui.allocate_exact_size(vec2(width, height), egui::Sense::hover());
+                    if !mcloud::glass::paint_surface(ui, rect, effect, over_lyrics) {
+                        mcloud::player::solid_capsule(ui, rect);
+                    }
+                    let icon_rect = Rect::from_center_size(
+                        egui::pos2(rect.left() + 16.0 + 7.5, rect.center().y),
+                        vec2(15.0, 15.0),
+                    );
+                    theme::paint_icon(ui, icon, icon_rect, 15.0, icon_color);
+                    let text_pos = egui::pos2(
+                        icon_rect.right() + 8.0,
+                        rect.center().y - galley.size().y / 2.0,
+                    );
+                    ui.painter().galley(
+                        text_pos + vec2(0.0, 1.0),
+                        galley.clone(),
+                        Color32::from_black_alpha(64),
+                    );
+                    ui.painter().galley(text_pos, galley, text_color);
+                }
+            });
+        return;
+    }
     egui::Area::new(egui::Id::new("toasts"))
         .anchor(Align2::RIGHT_BOTTOM, vec2(-20.0, -bottom_offset))
         .order(egui::Order::Tooltip)

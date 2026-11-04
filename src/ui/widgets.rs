@@ -1353,6 +1353,50 @@ pub struct TrackRow<'a> {
     pub position: Option<u32>,
 }
 
+/// Warms an artist's page, overview and artwork after the pointer rests on
+/// an artist link or card for 80 ms, matching mcloud's hover prefetch.
+pub(crate) fn prefetch_artist_on_hover(
+    ctx: &egui::Context,
+    response: &egui::Response,
+    artist_id: &str,
+    actions: &mut Vec<Action>,
+) {
+    const DELAY: std::time::Duration = std::time::Duration::from_millis(80);
+    if artist_id.is_empty() {
+        return;
+    }
+    let slot = egui::Id::new("artist-hover-prefetch");
+    if !response.hovered() {
+        let clear = ctx
+            .data(|data| data.get_temp::<(egui::Id, std::time::Instant, bool)>(slot))
+            .is_some_and(|(id, _, _)| id == response.id);
+        if clear {
+            ctx.data_mut(|data| {
+                data.remove::<(egui::Id, std::time::Instant, bool)>(slot);
+            });
+        }
+        return;
+    }
+    let now = std::time::Instant::now();
+    let state = ctx.data(|data| data.get_temp::<(egui::Id, std::time::Instant, bool)>(slot));
+    match state {
+        Some((id, _, true)) if id == response.id => {}
+        Some((id, since, false)) if id == response.id => {
+            let elapsed = now.saturating_duration_since(since);
+            if elapsed >= DELAY {
+                ctx.data_mut(|data| data.insert_temp(slot, (response.id, since, true)));
+                actions.push(Action::PrefetchArtist(artist_id.to_owned()));
+            } else {
+                ctx.request_repaint_after(DELAY.saturating_sub(elapsed));
+            }
+        }
+        _ => {
+            ctx.data_mut(|data| data.insert_temp(slot, (response.id, now, false)));
+            ctx.request_repaint_after(DELAY);
+        }
+    }
+}
+
 /// Draw each credited artist separately so its Spotify id remains clickable.
 pub(crate) fn artist_links(
     ui: &mut Ui,
@@ -1375,7 +1419,9 @@ pub(crate) fn artist_links(
             ui.spacing_mut().item_spacing = spacing;
         }
         if let Some(id) = &artist.id {
-            if theme::link(ui, &artist.name, font.clone(), color).clicked() {
+            let response = theme::link(ui, &artist.name, font.clone(), color);
+            prefetch_artist_on_hover(ui.ctx(), &response, id, &mut app.actions);
+            if response.clicked() {
                 app.actions.push(Action::Open(Page::Artist(id.clone())));
                 clicked = true;
             }

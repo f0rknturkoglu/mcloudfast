@@ -207,6 +207,12 @@ pub(in crate::ui) fn loaded(
             for artist in related {
                 let image = pick_image(&artist.images, app.art_px(ARTIST_CARD));
                 let response = card(app, ui, image, &artist.name, None, ARTIST_CARD, true);
+                widgets::prefetch_artist_on_hover(
+                    ui.ctx(),
+                    &response,
+                    &artist.id,
+                    &mut app.actions,
+                );
                 if response.clicked() {
                     app.actions
                         .push(Action::Open(Page::Artist(artist.id.clone())));
@@ -235,7 +241,10 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
         pos2(page.right() + PAGE_PADDING, page.bottom()),
     );
     let width = full.width();
-    let header = app.artist_headers.get(&artist.uri).cloned();
+    let need_px = (width * 1.17 * ui.ctx().pixels_per_point()).ceil() as u32;
+    let header = app
+        .artist_header_for(&artist.uri, need_px)
+        .map(str::to_owned);
     let height = if header.is_some() {
         (width * 0.41 + 68.0).max(380.0)
     } else {
@@ -879,7 +888,12 @@ fn picture(app: &App, ui: &egui::Ui, url: &str, size: Vec2) -> Option<egui::load
         .show_loading_spinner(false);
     match image.load_for_size(ui.ctx(), size) {
         Ok(egui::load::TexturePoll::Ready { texture }) => {
-            crate::images::forget_decoded(ui.ctx(), url);
+            let width = texture.size.x.max(0.0) as usize;
+            let height = texture.size.y.max(0.0) as usize;
+            if app.backend.art().note_texture(url, url, width, height) {
+                app.backend.art().release_bytes(url);
+                crate::images::forget_decoded(ui.ctx(), url);
+            }
             Some(texture)
         }
         _ => None,

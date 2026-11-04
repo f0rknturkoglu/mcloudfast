@@ -59,7 +59,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                 )
             }
             Page::AllPlaylists => (
-                app.library.playlists_loading_since.is_some(),
+                app.library.playlists_loading_since.is_some()
+                    && app.library.playlists.get().is_none(),
                 None,
                 false,
                 Icon::ListMusic,
@@ -68,7 +69,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                 let list = &app.library.albums;
                 let loading = list.loading
                     || (page == Page::RecentlyAdded
-                        && app.library.playlists_loading_since.is_some());
+                        && app.library.playlists_loading_since.is_some()
+                        && app.library.playlists.get().is_none());
                 (
                     list.loading || loading,
                     list.error.clone(),
@@ -159,7 +161,9 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                     .show(|ui| widgets::context_menu_items(ui, app, &item.uri, &item.name, None));
             });
             let list = &app.library.albums;
-            let loading = list.loading || app.library.playlists_loading_since.is_some();
+            let loading = list.loading
+                || (app.library.playlists_loading_since.is_some()
+                    && app.library.playlists.get().is_none());
             let empty = items.is_empty() && list.loaded_once;
             footer(
                 app,
@@ -222,7 +226,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                         );
                     });
             });
-            let loading = app.library.playlists_loading_since.is_some();
+            let loading = app.library.playlists_loading_since.is_some()
+                && app.library.playlists.get().is_none();
             let empty = playlists.is_empty() && !loading;
             footer(
                 app,
@@ -314,6 +319,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                     &artist_label,
                     widgets::CardCover::portrait(playing_here),
                 );
+                widgets::prefetch_artist_on_hover(ui.ctx(), &card.response, &id, &mut app.actions);
                 if card.play {
                     if context_here {
                         app.actions.push(Action::TogglePlay);

@@ -972,6 +972,7 @@ pub struct ArtistPage {
     pub related: Loadable<Vec<Artist>>,
     pub filter: DiscographyFilter,
     pub show_all_top: bool,
+    pub loaded_at: Option<Instant>,
 }
 
 /// A radio page: the songs Spotify mixed for its seed, which are the songs
@@ -1139,6 +1140,9 @@ pub enum Action {
     },
     /// Extracts a page's tint while its library row is hovered.
     PrepareTint(String),
+    /// Warms an artist's page, overview and artwork while an artist link or
+    /// card is hovered for 80 ms.
+    PrefetchArtist(String),
     OpenUri(String),
     /// A Spotify link from outside the app: its page opens and the window
     /// comes forward, once the account is signed in.

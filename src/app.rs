@@ -63,6 +63,12 @@ const PLAYLISTS_RETRY: Duration = Duration::from_secs(60);
 const BACKGROUND_QUIET: Duration = Duration::from_secs(1);
 /// How often coming back to the window reads the playlist tree again.
 const ROOTLIST_REFRESH: Duration = Duration::from_secs(5);
+/// How long an artist page is considered fresh before a visit refreshes it in
+/// the background (stale-while-revalidate).
+const ARTIST_FRESH: Duration = Duration::from_secs(120);
+/// How long an unused artist page stays in memory before a visit loads it
+/// afresh.
+const ARTIST_STALE: Duration = Duration::from_secs(1800);
 /// How far into a song Previous restarts it rather than stepping back,
 /// matching what librespot does during playback.
 const RESTART_BEFORE_PREVIOUS: u32 = 3_000;
@@ -732,6 +738,8 @@ pub struct App {
     /// Artists' wide header pictures by artist URI, read with their play
     /// counts.
     pub artist_headers: HashMap<String, String>,
+    /// All sources of each artist's wide header picture by artist URI.
+    pub artist_header_sources: HashMap<String, Vec<crate::api::models::Image>>,
     /// Each artist's About sheet, by artist URI.
     pub artist_about: HashMap<String, crate::session_reads::ArtistAbout>,
     /// Albums and artists whose play counts were asked for, by URI.
@@ -1307,6 +1315,7 @@ impl App {
             user_names: HashMap::new(),
             play_counts: HashMap::new(),
             artist_headers: HashMap::new(),
+            artist_header_sources: HashMap::new(),
             artist_about: HashMap::new(),
             play_count_reads: HashMap::new(),
             user_names_revision: 0,
@@ -3333,6 +3342,9 @@ impl App {
         self.hidden_songs_requested = false;
         self.prerelease_request = None;
         self.artist_pages.clear();
+        self.artist_headers.clear();
+        self.artist_header_sources.clear();
+        self.artist_about.clear();
         self.show_pages.clear();
         self.album_types_requested.clear();
         self.audiobook_shows.clear();
@@ -5536,13 +5548,46 @@ impl App {
                 }
             }
             Page::Artist(id) => {
+                let uri = format!("spotify:artist:{id}");
                 let page = self.artist_pages.entry(id.clone()).or_default();
+                if page
+                    .loaded_at
+                    .is_some_and(|at| at.elapsed() >= ARTIST_STALE)
+                {
+                    let filter = page.filter;
+                    let show_all_top = page.show_all_top;
+                    *page = ArtistPage {
+                        filter,
+                        show_all_top,
+                        ..ArtistPage::default()
+                    };
+                    self.play_count_reads.remove(&uri);
+                }
+                let stale_refresh = self.network_reachable
+                    && page.artist.get().is_some()
+                    && page
+                        .loaded_at
+                        .is_some_and(|at| at.elapsed() >= ARTIST_FRESH);
                 if self.network_reachable {
+                    let filter = page.filter;
                     if page.artist.needs_load() {
                         page.artist = Loadable::Loading;
                         self.backend.api(ApiRequest::Artist { id: id.clone() });
+                    } else if stale_refresh {
+                        page.loaded_at = Some(Instant::now());
+                        self.backend.api(ApiRequest::Artist { id: id.clone() });
+                        self.backend
+                            .api(ApiRequest::ArtistTopTracks { id: id.clone() });
+                        self.backend
+                            .api(ApiRequest::RelatedArtists { id: id.clone() });
+                        self.backend.api(ApiRequest::ArtistAlbums {
+                            id: id.clone(),
+                            groups: filter.groups().to_string(),
+                            offset: 0,
+                        });
+                        self.play_count_reads.remove(&uri);
+                        self.request_play_counts(&uri);
                     }
-                    let filter = page.filter;
                     self.load_artist_albums(&id, filter);
                     if page_related_needs_load(&self.artist_pages, &id) {
                         if let Some(page) = self.artist_pages.get_mut(&id) {
@@ -5551,7 +5596,7 @@ impl App {
                         self.backend
                             .api(ApiRequest::RelatedArtists { id: id.clone() });
                     }
-                    self.request_contains(vec![format!("spotify:artist:{id}")]);
+                    self.request_contains(vec![uri]);
                 }
             }
             Page::Show(id) => {
@@ -5590,6 +5635,31 @@ impl App {
                 groups: filter.groups().to_string(),
                 offset: 0,
             });
+        }
+    }
+
+    fn prefetch_artist(&mut self, ctx: &egui::Context, id: String) {
+        if id.is_empty() || !self.network_reachable {
+            return;
+        }
+        let page = Page::Artist(id.clone());
+        self.touch_page(&page);
+        self.ensure_loaded(page);
+        self.evict_stale_pages();
+        let uri = format!("spotify:artist:{id}");
+        self.request_play_counts(&uri);
+        let need_px = (1200.0 * ctx.pixels_per_point()).ceil() as u32;
+        let header_url = self.artist_header_for(&uri, need_px).map(str::to_owned);
+        let portrait_url = self
+            .artist_pages
+            .get(&id)
+            .and_then(|page| page.artist.get())
+            .or_else(|| self.known_artist(&id))
+            .and_then(|artist| pick_image(&artist.images, 300))
+            .map(str::to_owned);
+        for url in [header_url, portrait_url].into_iter().flatten() {
+            self.backend.art().prefetch(ctx, &url);
+            self.artwork_colours(Some(&url));
         }
     }
 
@@ -6268,6 +6338,28 @@ impl App {
                 self.album_pages.remove(id);
             }
             Page::Artist(id) => {
+                if self.network_reachable
+                    && let Some(page) = self.artist_pages.get_mut(id)
+                    && page.artist.get().is_some()
+                {
+                    page.loaded_at = Some(Instant::now());
+                    let groups = page.filter.groups().to_string();
+                    self.backend.api(ApiRequest::Artist { id: id.clone() });
+                    self.backend
+                        .api(ApiRequest::ArtistTopTracks { id: id.clone() });
+                    self.backend
+                        .api(ApiRequest::RelatedArtists { id: id.clone() });
+                    self.backend.api(ApiRequest::ArtistAlbums {
+                        id: id.clone(),
+                        groups,
+                        offset: 0,
+                    });
+                    let uri = format!("spotify:artist:{id}");
+                    self.play_count_reads.remove(&uri);
+                    self.request_play_counts(&uri);
+                    self.request_contains(vec![uri]);
+                    return;
+                }
                 self.artist_pages.remove(id);
             }
             Page::Show(id) => {
@@ -6896,15 +6988,29 @@ impl App {
         self.play_count_reads.get(uri) == Some(&PlayCountRead::Answered)
     }
 
+    /// The smallest 7:3 artist header rendition that covers `need_px` pixels
+    /// across the hero, or the fallback URL in `artist_headers`.
+    pub fn artist_header_for(&self, uri: &str, need_px: u32) -> Option<&str> {
+        self.artist_header_sources
+            .get(uri)
+            .and_then(|sources| crate::session_reads::hero_source(sources, need_px))
+            .or_else(|| self.artist_headers.get(uri).map(String::as_str))
+    }
+
     fn receive_play_counts(
         &mut self,
         uri: String,
         result: Result<crate::session_reads::PageExtras, String>,
     ) {
-        if let Ok(extras) = &result
-            && let Some(url) = &extras.header_image
-        {
-            self.artist_headers.insert(uri.clone(), url.clone());
+        if let Ok(extras) = &result {
+            if let Some(url) = &extras.header_image {
+                self.artist_headers.insert(uri.clone(), url.clone());
+                self.artwork_colours(Some(url));
+            }
+            if !extras.header_sources.is_empty() {
+                self.artist_header_sources
+                    .insert(uri.clone(), extras.header_sources.clone());
+            }
         }
         let result = result.map(|mut extras| {
             if let Some(about) = extras.about.take() {
@@ -8505,10 +8611,11 @@ impl App {
                     }
                 }
                 if let Some(page) = self.artist_pages.get_mut(&id) {
-                    page.artist = match result {
-                        Ok(artist) => Loadable::Loaded(artist),
-                        Err(error) => Loadable::Failed(friendly_api_error(self.locale, &error)),
-                    };
+                    if result.is_ok() {
+                        page.loaded_at = Some(Instant::now());
+                    }
+                    page.artist
+                        .refresh(result.map_err(|error| friendly_api_error(self.locale, &error)));
                 }
             }
             ApiResponse::ArtistTopTracks { id, result } => {
@@ -8517,10 +8624,8 @@ impl App {
                     self.request_contains(uris);
                 }
                 if let Some(page) = self.artist_pages.get_mut(&id) {
-                    page.top_tracks = match result {
-                        Ok(tracks) => Loadable::Loaded(tracks),
-                        Err(error) => Loadable::Failed(friendly_api_error(self.locale, &error)),
-                    };
+                    page.top_tracks
+                        .refresh(result.map_err(|error| friendly_api_error(self.locale, &error)));
                 }
             }
             ApiResponse::ArtistAlbums {
@@ -8542,10 +8647,8 @@ impl App {
             }
             ApiResponse::RelatedArtists { id, result } => {
                 if let Some(page) = self.artist_pages.get_mut(&id) {
-                    page.related = match result {
-                        Ok(artists) => Loadable::Loaded(artists),
-                        Err(error) => Loadable::Failed(friendly_api_error(self.locale, &error)),
-                    };
+                    page.related
+                        .refresh(result.map_err(|error| friendly_api_error(self.locale, &error)));
                 }
             }
             ApiResponse::Album { id, result } => {
@@ -9053,7 +9156,7 @@ impl App {
     fn evict_stale_pages(&mut self) {
         const MAX_PLAYLIST_PAGES: usize = 12;
         const MAX_ALBUM_PAGES: usize = 16;
-        const MAX_ARTIST_PAGES: usize = 10;
+        const MAX_ARTIST_PAGES: usize = 60;
         const MAX_SHOW_PAGES: usize = 8;
         const MAX_RADIO_PAGES: usize = 6;
         const MAX_TRACK_CACHE: usize = 800;
@@ -11305,6 +11408,7 @@ impl App {
                     self.tint_for(Some(&url));
                 }
             }
+            Action::PrefetchArtist(id) => self.prefetch_artist(ctx, id),
             Action::OpenUri(uri) => {
                 if let Some(page) = Page::from_uri(&uri) {
                     self.open(page);
@@ -25966,6 +26070,7 @@ mod tests {
             Ok(crate::session_reads::PageExtras {
                 counts: HashMap::from([("spotify:track:t".to_string(), 5)]),
                 header_image: None,
+                header_sources: Vec::new(),
                 about: None,
             }),
         );

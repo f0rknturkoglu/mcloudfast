@@ -140,7 +140,17 @@ pub(in crate::ui) fn show(
         ui.add_space(8.0);
     }
 
-    let shown = visible(entries, &tools);
+    let visit_id = Id::new("mcloud-library-visit");
+    let page_key = page.encode();
+    let held_order = ui
+        .data(|data| data.get_temp::<(String, Vec<String>)>(visit_id))
+        .filter(|(held_page, _)| *held_page == page_key)
+        .map(|(_, uris)| uris);
+    let order = stabilize_visit_order(entries, held_order.as_deref());
+    let next_uris: Vec<String> = order.iter().map(|&i| entries[i].uri.clone()).collect();
+    ui.data_mut(|data| data.insert_temp(visit_id, (page_key, next_uris)));
+
+    let shown = visible_ordered(entries, &order, &tools);
     let status = items(locale, entries.len());
     let status = if tools.filter.trim().is_empty() {
         status
@@ -165,10 +175,42 @@ fn items(locale: crate::i18n::Locale, count: usize) -> String {
         .replace("{count}", &crate::util::format_count(count as u64))
 }
 
+/// Holds the current visit's library order steady if a background refresh
+/// only reorders the same set of URIs, while applying additions or removals
+/// at once.
+fn stabilize_visit_order(entries: &[Entry], held: Option<&[String]>) -> Vec<usize> {
+    if let Some(held) = held
+        && held.len() == entries.len()
+    {
+        let mut by_uri = std::collections::HashMap::with_capacity(entries.len());
+        for (index, entry) in entries.iter().enumerate() {
+            by_uri.insert(entry.uri.as_str(), index);
+        }
+        if by_uri.len() == entries.len() {
+            let mapped: Vec<usize> = held
+                .iter()
+                .filter_map(|uri| by_uri.get(uri.as_str()).copied())
+                .collect();
+            if mapped.len() == entries.len() {
+                return mapped;
+            }
+        }
+    }
+    (0..entries.len()).collect()
+}
+
 /// The entries the filter lets through, in the order chosen.
+#[cfg(test)]
 fn visible(entries: &[Entry], tools: &Tools) -> Vec<usize> {
+    let order: Vec<usize> = (0..entries.len()).collect();
+    visible_ordered(entries, &order, tools)
+}
+
+fn visible_ordered(entries: &[Entry], order: &[usize], tools: &Tools) -> Vec<usize> {
     let query = tools.filter.trim().to_lowercase();
-    let mut shown: Vec<usize> = (0..entries.len())
+    let mut shown: Vec<usize> = order
+        .iter()
+        .copied()
         .filter(|&index| query.is_empty() || entries[index].name.to_lowercase().contains(&query))
         .collect();
     if tools.by_name {
@@ -209,6 +251,9 @@ fn cover_card(app: &mut App, ui: &mut egui::Ui, entry: &Entry, cell: Rect, side:
         Id::new(("mcloud-library-card", &entry.uri)),
         Sense::click(),
     );
+    if let Page::Artist(id) = &entry.page {
+        widgets::prefetch_artist_on_hover(ui.ctx(), &response, id, &mut app.actions);
+    }
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &entry.name));
     let art = Rect::from_min_size(cell.min, Vec2::splat(side));
     let radius = if entry.round { side / 2.0 } else { 8.0 };
@@ -308,5 +353,21 @@ mod tests {
         assert_eq!(visible(&entries, &tools), [1, 2, 0]);
         tools.filter = "AN".into();
         assert_eq!(visible(&entries, &tools), [2]);
+    }
+
+    #[test]
+    fn visit_order_holds_through_pure_reorder_and_updates_on_addition() {
+        let entries = [entry("Portishead"), entry("Air"), entry("Massive Attack")];
+        let held = vec![
+            "spotify:album:Air".to_string(),
+            "spotify:album:Portishead".to_string(),
+            "spotify:album:Massive Attack".to_string(),
+        ];
+        assert_eq!(stabilize_visit_order(&entries, Some(&held)), vec![1, 0, 2]);
+        let shorter = vec!["spotify:album:Air".to_string()];
+        assert_eq!(
+            stabilize_visit_order(&entries, Some(&shorter)),
+            vec![0, 1, 2]
+        );
     }
 }

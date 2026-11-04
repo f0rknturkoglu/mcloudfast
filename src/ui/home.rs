@@ -272,6 +272,9 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) -> bool {
                 };
                 let (rect, response) =
                     ui.allocate_exact_size(vec2(tile_width, tile_height), Sense::click());
+                if let Page::Artist(id) = page {
+                    widgets::prefetch_artist_on_hover(ui.ctx(), &response, id, &mut app.actions);
+                }
                 if ui.is_rect_visible(rect) {
                     let hovered = ui.rect_contains_pointer(rect);
                     let fill = match (mcloud, hovered) {
@@ -868,6 +871,12 @@ fn top_artists(app: &mut App, ui: &mut egui::Ui) {
                     &artist.name,
                     &gettext(app.locale, "Artist"),
                     widgets::CardCover::portrait(playing_here),
+                );
+                widgets::prefetch_artist_on_hover(
+                    ui.ctx(),
+                    &card.response,
+                    &artist.id,
+                    &mut app.actions,
                 );
                 if card.play {
                     if context_here {

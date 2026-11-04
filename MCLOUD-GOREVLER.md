@@ -33,7 +33,7 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
 
 ## A. Hız ve akıcılık
 
-1. **Sanatçı sayfası önbelleği ve ön yükleme.** *Yok.*
+1. **Sanatçı sayfası önbelleği ve ön yükleme.** *Tamamlandı.*
    mcloud: sayfa verisi oturum boyunca önbellekte tutuluyor. 2 dakika taze
    sayılıyor. 30 dakikaya kadar eski veri gösterilip arkada yenileniyor.
    En fazla 60 kayıt tutuluyor. Bağlantının üstünde 80 ms durunca veri ve
@@ -41,21 +41,21 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
    kendi sayfası 116–165 ms.
    Yapılacak: aynı önbellek ve hover ile ön yükleme. Soğuk ve sıcak açılış
    süresini ölç.
-2. **Başlık görselinin boyutu.** *Kontrol.* Her zaman 2660px'lik görsel
+2. **Başlık görselinin boyutu.** *Tamamlandı.* Her zaman 2660px'lik görsel
    gelmesin. Başlığı cihazın piksel oranında kaplayan en küçük 7:3 kaynak
    seçilsin.
-3. **Geri/ileri geçişinde titreme olmasın.** *Kontrol.*
+3. **Geri/ileri geçişinde titreme olmasın.** *Tamamlandı.*
    mcloud'da her geçişte tek bir kare değişiyor (10 sayfa çifti ölçüldü).
    - Görünümler oturum boyunca önbellekte. Arkada yenileniyor, sadece sıra
      değiştiyse yeni hali bir sonraki ziyarette geliyor.
    - "Yükleniyor…" ekranı yanıp sönmüyor.
    - Daha önce yüklenen kapaklar hemen çiziliyor. Son 200 doku bellekte
      tutuluyor.
-4. **Gereksiz yeniden çizim olmasın.** *Kontrol.* Pencere gizliyken iş
+4. **Gereksiz yeniden çizim olmasın.** *Tamamlandı.* Pencere gizliyken iş
    yapılmasın. Marquee ve scrubber cihaz pikseli adımlarıyla ilerlesin.
    Sadece değer değişince yeniden çizilsin. mcloud'da müzik çalarken boşta
    CPU %27'den %1–5'e indi.
-5. **Lyrics sayfasında cam maliyeti.** *Kontrol.* Arka plan her kare
+5. **Lyrics sayfasında cam maliyeti.** *Tamamlandı.* Arka plan her kare
    değişince camın altındaki blur da her kare yeniden hesaplanıyor. mcloud'un
    Balanced modu bu sayfada hafif cam kullanıyor: tek örneklemeli bükme, ton
    ve vurgu var; halo ve ince çizgiler yok. GPU kullanımı %98'den %71'e indi.
@@ -251,12 +251,12 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
       titriyordu.
     - Paneller arasında geçerken Now Playing bir an görünmez.
     - Friends butonu tıklandığı anda basılı görünür.
-33. **Toast.** *Kontrol.* Player'ın üstünde çıkar, player gibi Liquid Glass.
+33. **Toast.** *Tamamlandı.* Player'ın üstünde çıkar, player gibi Liquid Glass.
     Arkasında bir sayfa açık olsa da görünür.
 
 ## H. Cam (native'in avantajı olan yerler)
 
-34. **Kenar yapışması ve sol uçtaki pikselleşme.** *Kontrol.* Chromium'un
+34. **Kenar yapışması ve sol uçtaki pikselleşme.** *Tamamlandı.* Chromium'un
     displacement filtresi örnekleri filtrelemiyor. Bu yüzden kenarın en dış
     ~3 cihaz pikseli yazıların üstünde kırık görünüyordu. Apple filtreliyor.
     mcloud bunu ucuza çözemedi. mcloudfast'ın shader'ında bilinear ya da
@@ -265,9 +265,9 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
 35. **Toolbar camının davranışı.** *Kontrol.* Her bölümün kendi hover ışığı
     var. Basınca cam yay (spring) hareketiyle büyür. İmlecin etrafında
     parıltı var.
-36. **Cam modları ve sistem ayarı.** *Kontrol.* Full / Balanced / Eco zaten
+36. **Cam modları ve sistem ayarı.** *Tamamlandı.* Full / Balanced / Eco zaten
     var. macOS ve Windows'un "Saydamlığı azalt" ayarı açıksa Eco'ya geçilsin.
-37. **Renk bantlaşması.** *Kontrol.* mcloud'da koyu renk geçişlerinde camın
+37. **Renk bantlaşması.** *Tamamlandı.* mcloud'da koyu renk geçişlerinde camın
     arkasında 2–4 seviyelik adımlar görünüyordu. Sebep 8 bitlik ara
     sonuçlardı. Shader'da hassasiyeti ve dithering'i kontrol et.
 

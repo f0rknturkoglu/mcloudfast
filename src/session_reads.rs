@@ -390,6 +390,9 @@ pub struct PageExtras {
     /// An artist's wide header picture, as Spotify's own artist page shows
     /// it across the top; the Web API has only the square portrait.
     pub header_image: Option<String>,
+    /// All sources of the artist's header picture so the view can pick the
+    /// smallest 7:3 source that covers the hero's pixel width.
+    pub header_sources: Vec<Image>,
     /// What an artist's About sheet shows.
     pub about: Option<ArtistAbout>,
 }
@@ -421,6 +424,7 @@ pub async fn play_counts(
     let client_token = session.spclient().client_token().await?;
     let mut counts = HashMap::new();
     let mut header_image = None;
+    let mut header_sources = Vec::new();
     let mut about = None;
     match crate::util::uri_kind(uri) {
         Some("album") => {
@@ -467,7 +471,8 @@ pub async fn play_counts(
                 .pointer("/data/artistUnion/discography/topTracks")
                 .ok_or_else(|| anyhow::anyhow!("Spotify answered without the popular songs"))?;
             play_counts_from(top, &mut counts);
-            header_image = header_image_from(&body);
+            header_sources = header_sources_from(&body);
+            header_image = hero_source(&header_sources, u32::MAX).map(str::to_string);
             about = about_from(&body);
         }
         _ => anyhow::bail!("Spotify counts plays only for album and artist songs"),
@@ -475,13 +480,74 @@ pub async fn play_counts(
     Ok(PageExtras {
         counts,
         header_image,
+        header_sources,
         about,
     })
 }
 
-/// The widest source of an artist overview's header image.
+/// All sources of an artist overview's header image. Spotify moved the
+/// header from `visuals.headerImage` (`width`/`height`) to `headerImage.data`
+/// (`maxWidth`/`maxHeight`), so both locations and field names are read.
+fn header_sources_from(body: &serde_json::Value) -> Vec<Image> {
+    let Some(sources) = body
+        .pointer("/data/artistUnion/headerImage/data/sources")
+        .or_else(|| body.pointer("/data/artistUnion/visuals/headerImage/sources"))
+        .and_then(|sources| sources.as_array())
+    else {
+        return Vec::new();
+    };
+    sources
+        .iter()
+        .filter_map(|source| {
+            let url = source.get("url")?.as_str()?.to_string();
+            if url.is_empty() {
+                return None;
+            }
+            let dim = |a, b| {
+                source
+                    .get(a)
+                    .or_else(|| source.get(b))
+                    .and_then(|v| v.as_u64())
+                    .and_then(|v| u32::try_from(v).ok())
+            };
+            Some(Image {
+                url,
+                width: dim("width", "maxWidth"),
+                height: dim("height", "maxHeight"),
+            })
+        })
+        .collect()
+}
+
+/// Picks the smallest 7:3 banner source that covers `need_px` (or the widest
+/// 7:3 source when the display is wider than every rendition), skipping
+/// Spotify's 16:9 crops when 7:3 renditions exist, matching mcloud's
+/// `pickHeroSource`.
+pub fn hero_source(sources: &[Image], need_px: u32) -> Option<&str> {
+    if sources.is_empty() {
+        return None;
+    }
+    let is_seven_three = |img: &Image| match (img.width, img.height) {
+        (Some(w), Some(h)) if w > 0 && h > 0 => {
+            ((f64::from(w) / f64::from(h)) - (7.0 / 3.0)).abs() < 0.1
+        }
+        _ => false,
+    };
+    let has_wide = sources.iter().any(is_seven_three);
+    let pool = sources
+        .iter()
+        .filter(|img| !has_wide || is_seven_three(img));
+    pool.clone()
+        .filter(|img| img.width.unwrap_or(0) >= need_px)
+        .min_by_key(|img| img.width.unwrap_or(0))
+        .or_else(|| pool.max_by_key(|img| img.width.unwrap_or(0)))
+        .map(|img| img.url.as_str())
+}
+
+/// The widest 7:3 source of an artist overview's header image.
+#[cfg(test)]
 fn header_image_from(body: &serde_json::Value) -> Option<String> {
-    widest_source(body.pointer("/data/artistUnion/visuals/headerImage")?)
+    hero_source(&header_sources_from(body), u32::MAX).map(str::to_string)
 }
 
 /// The URL of the widest of an image's `sources`.
@@ -2098,6 +2164,33 @@ mod tests {
             Some("https://i.scdn.co/large")
         );
         assert_eq!(super::header_image_from(&serde_json::json!({})), None);
+    }
+
+    /// `hero_source` reads the new `headerImage.data` location with
+    /// `maxWidth`/`maxHeight`, skips 16:9 crops in favour of 7:3 banners, and
+    /// picks the smallest 7:3 source that covers `need_px`.
+    #[test]
+    fn hero_source_picks_smallest_seven_by_three_covering_viewport() {
+        let body = serde_json::json!({"data": {"artistUnion": {"headerImage": {"data": {
+            "sources": [
+                {"url": "https://i.scdn.co/crop16x9", "maxWidth": 1920, "maxHeight": 1080},
+                {"url": "https://i.scdn.co/banner1400", "maxWidth": 1400, "maxHeight": 600},
+                {"url": "https://i.scdn.co/banner2660", "maxWidth": 2660, "maxHeight": 1140}
+            ]
+        }}}}});
+        let sources = super::header_sources_from(&body);
+        assert_eq!(
+            super::hero_source(&sources, 1200),
+            Some("https://i.scdn.co/banner1400")
+        );
+        assert_eq!(
+            super::hero_source(&sources, 1800),
+            Some("https://i.scdn.co/banner2660")
+        );
+        assert_eq!(
+            super::hero_source(&sources, 4000),
+            Some("https://i.scdn.co/banner2660")
+        );
     }
 
     /// The About sheet reads the overview's counts, cities and biography,
