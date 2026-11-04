@@ -302,5 +302,9 @@ Her kaydı yukarıdaki gruplara görev olarak taşı (Apple Music ölçüleriyle
 sonra buradan sil. "tema dosyası yok" yazan kayıtlar (CI, kurulum, Pages)
 çoğunlukla mcloudfast'ı ilgilendirmez.
 
-<!-- mcloud-sync:start since=2026-11-03T12:07:00Z -->
+<!-- mcloud-sync:start since=2026-11-04T19:21:02Z -->
+- 2026-11-04 · [PR #112](https://github.com/mcloudHQ/mcloud/pull/112): Playlist filters: By You, By Spotify, Mixed, By Others (#108)
+- 2026-11-04 · [Issue #108](https://github.com/mcloudHQ/mcloud/issues/108): \[Feature Request\] Re-implement sorting for playlists
+- 2026-11-04 · [PR #113](https://github.com/mcloudHQ/mcloud/pull/113): Spotify's hashed class names, Now Playing slide, library cards (#109, #110, #111) (STATUS.md değişti)
+- 2026-11-04 · [Issue #109](https://github.com/mcloudHQ/mcloud/issues/109): Some newly added features are not showing up
 <!-- mcloud-sync:end -->
