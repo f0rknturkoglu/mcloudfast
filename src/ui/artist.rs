@@ -176,18 +176,15 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
                                 app.actions
                                     .push(Action::Open(Page::Album(album.id.clone())));
                             }
-                            egui::Popup::context_menu(&card.response)
-                                .id(ui.make_persistent_id(("discography-menu", &album.uri)))
-                                .frame(widgets::menu_frame(&palette))
-                                .show(|ui| {
-                                    widgets::context_menu_items(
-                                        ui,
-                                        app,
-                                        &album.uri,
-                                        &album.name,
-                                        None,
-                                    )
-                                });
+                            widgets::card_context_menu(
+                                ui,
+                                &card,
+                                ui.make_persistent_id(("discography-menu", &album.uri)),
+                                &palette,
+                            )
+                            .show(|ui| {
+                                widgets::context_menu_items(ui, app, &album.uri, &album.name, None)
+                            });
                         }
                     });
                     if list.loading {
@@ -254,18 +251,15 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
                             app.actions
                                 .push(Action::Open(Page::Artist(artist.id.clone())));
                         }
-                        egui::Popup::context_menu(&card.response)
-                            .id(ui.make_persistent_id(("related-artist-menu", &artist.uri)))
-                            .frame(widgets::menu_frame(&palette))
-                            .show(|ui| {
-                                widgets::context_menu_items(
-                                    ui,
-                                    app,
-                                    &artist.uri,
-                                    &artist.name,
-                                    None,
-                                )
-                            });
+                        widgets::card_context_menu(
+                            ui,
+                            &card,
+                            ui.make_persistent_id(("related-artist-menu", &artist.uri)),
+                            &palette,
+                        )
+                        .show(|ui| {
+                            widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None)
+                        });
                     }
                 });
             }

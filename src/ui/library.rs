@@ -155,10 +155,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                 if card.clicked {
                     app.actions.push(Action::Open(item.page.clone()));
                 }
-                egui::Popup::context_menu(&card.response)
-                    .id(ui.make_persistent_id(("library-recent-menu", &item.uri)))
-                    .frame(widgets::menu_frame(&palette))
-                    .show(|ui| widgets::context_menu_items(ui, app, &item.uri, &item.name, None));
+                widgets::card_context_menu(
+                    ui,
+                    &card,
+                    ui.make_persistent_id(("library-recent-menu", &item.uri)),
+                    &palette,
+                )
+                .show(|ui| widgets::context_menu_items(ui, app, &item.uri, &item.name, None));
             });
             let list = &app.library.albums;
             let loading = list.loading
@@ -212,19 +215,22 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                 if card.clicked {
                     app.actions.push(Action::Open(Page::Playlist(id)));
                 }
-                egui::Popup::context_menu(&card.response)
-                    .id(ui.make_persistent_id(("library-playlist-menu", &playlist.uri)))
-                    .frame(widgets::menu_frame(&palette))
-                    .show(|ui| {
-                        let owned = app.user_id().is_some_and(|id| playlist.owned_by(id));
-                        widgets::context_menu_items(
-                            ui,
-                            app,
-                            &playlist.uri,
-                            &playlist.name,
-                            owned.then_some(playlist),
-                        );
-                    });
+                widgets::card_context_menu(
+                    ui,
+                    &card,
+                    ui.make_persistent_id(("library-playlist-menu", &playlist.uri)),
+                    &palette,
+                )
+                .show(|ui| {
+                    let owned = app.user_id().is_some_and(|id| playlist.owned_by(id));
+                    widgets::context_menu_items(
+                        ui,
+                        app,
+                        &playlist.uri,
+                        &playlist.name,
+                        owned.then_some(playlist),
+                    );
+                });
             });
             let loading = app.library.playlists_loading_since.is_some()
                 && app.library.playlists.get().is_none();
@@ -275,10 +281,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                 if card.clicked {
                     app.actions.push(Action::Open(Page::Album(id)));
                 }
-                egui::Popup::context_menu(&card.response)
-                    .id(ui.make_persistent_id(("library-album-menu", &album.uri)))
-                    .frame(widgets::menu_frame(&palette))
-                    .show(|ui| widgets::context_menu_items(ui, app, &album.uri, &album.name, None));
+                widgets::card_context_menu(
+                    ui,
+                    &card,
+                    ui.make_persistent_id(("library-album-menu", &album.uri)),
+                    &palette,
+                )
+                .show(|ui| widgets::context_menu_items(ui, app, &album.uri, &album.name, None));
             });
             let list = &app.library.albums;
             let (loading, error, can_load, empty) = (
@@ -334,12 +343,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                 if card.clicked {
                     app.actions.push(Action::Open(Page::Artist(id)));
                 }
-                egui::Popup::context_menu(&card.response)
-                    .id(ui.make_persistent_id(("library-artist-menu", &artist.uri)))
-                    .frame(widgets::menu_frame(&palette))
-                    .show(|ui| {
-                        widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None)
-                    });
+                widgets::card_context_menu(
+                    ui,
+                    &card,
+                    ui.make_persistent_id(("library-artist-menu", &artist.uri)),
+                    &palette,
+                )
+                .show(|ui| widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None));
             });
             let list = &app.library.artists;
             let (loading, error, can_load, empty) = (
@@ -379,10 +389,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                 if card.clicked {
                     app.actions.push(Action::Open(Page::Show(id)));
                 }
-                egui::Popup::context_menu(&card.response)
-                    .id(ui.make_persistent_id(("library-show-menu", &show.uri)))
-                    .frame(widgets::menu_frame(&palette))
-                    .show(|ui| widgets::context_menu_items(ui, app, &show.uri, &show.name, None));
+                widgets::card_context_menu(
+                    ui,
+                    &card,
+                    ui.make_persistent_id(("library-show-menu", &show.uri)),
+                    &palette,
+                )
+                .show(|ui| widgets::context_menu_items(ui, app, &show.uri, &show.name, None));
             });
             let list = &app.library.shows;
             let (loading, error, can_load, empty) = (

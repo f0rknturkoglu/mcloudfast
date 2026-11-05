@@ -698,8 +698,10 @@ pub fn menu_separator(ui: &mut Ui, palette: &Palette) {
 
 /// The frame every popup menu uses.
 pub fn menu_frame(palette: &Palette) -> egui::Frame {
-    let mcloud_palette =
-        palette.window == Palette::mcloud().window && palette.overlay == Palette::mcloud().overlay;
+    let mcloud_palette = (palette.window == Palette::mcloud().window
+        && palette.overlay == Palette::mcloud().overlay)
+        || (palette.window == Palette::mcloud_light().window
+            && palette.overlay == Palette::mcloud_light().overlay);
     if mcloud_palette {
         egui::Frame::new()
             .fill(Color32::TRANSPARENT)
@@ -727,6 +729,22 @@ pub fn menu_frame(palette: &Palette) -> egui::Frame {
                 color: palette.shadow,
             })
     }
+}
+
+/// Builds the context menu for a card, opening it when right-clicked or when
+/// the card's "…" button is clicked.
+pub fn card_context_menu<'a>(
+    ui: &'a Ui,
+    card: &CardResponse,
+    id: egui::Id,
+    palette: &Palette,
+) -> egui::Popup<'a> {
+    if card.more {
+        egui::Popup::open_id(ui.ctx(), id);
+    }
+    egui::Popup::context_menu(&card.response)
+        .id(id)
+        .frame(menu_frame(palette))
 }
 
 /// Context menu for actions on selected tracks.
@@ -2778,6 +2796,7 @@ pub struct CardResponse {
     pub response: egui::Response,
     pub clicked: bool,
     pub play: bool,
+    pub more: bool,
 }
 
 /// The cover a [`card`] shows: its shape and what its play control does.
@@ -2849,7 +2868,22 @@ pub fn card(
     const BOTTOM_PAD: f32 = 8.0;
     let image_size = CARD_ART;
     let text_width = image_size;
-    let title_font = theme::semibold(14.0);
+    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
+    let (mix_photo, is_station) = if mcloud && app.settings.mcloud_mix_covers {
+        image
+            .and_then(crate::ui::mcloud::mix_cover_photo)
+            .map(|(p, s)| (Some(p), s))
+            .unwrap_or((None, false))
+    } else {
+        (None, false)
+    };
+    let effective_circular = circular || is_station;
+    let effective_image = mix_photo.as_deref().or(image);
+    let title_font = if mcloud {
+        theme::medium(13.0)
+    } else {
+        theme::semibold(14.0)
+    };
     let subtitle_font = theme::regular(12.5);
     // Every card reserves the title row and two subtitle rows, whatever its
     // own subtitle needs: a two-line subtitle then sits inside the hover
@@ -2875,9 +2909,7 @@ pub fn card(
         response.scroll_to_me(None);
     }
     let mut play = false;
-    // mcloud, as Apple Music, darkens the cover under the pointer instead
-    // of lighting the card, and plays from a smaller button in its corner.
-    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
+    let mut more = false;
     if ui.is_rect_visible(rect) {
         let hovered = ui.rect_contains_pointer(rect);
         if hovered && !mcloud {
@@ -2890,17 +2922,46 @@ pub fn card(
             );
         }
         let image_rect = Rect::from_min_size(rect.min + vec2(PAD, PAD), Vec2::splat(image_size));
-        let radius = if circular { image_size / 2.0 } else { 6.0 };
+        let radius = if effective_circular {
+            image_size / 2.0
+        } else {
+            6.0
+        };
         paint_shadow(ui, &palette, image_rect, radius);
         paint_cover(
             ui,
             &palette,
-            image,
+            effective_image,
             image_rect,
             radius,
-            if circular { Icon::User } else { Icon::Music },
+            if effective_circular {
+                Icon::User
+            } else {
+                Icon::Music
+            },
             Some(app.backend.art()),
         );
+        if mix_photo.is_some() && !is_station {
+            let band_h = (image_rect.height() * 0.26).round();
+            let band_rect = Rect::from_min_size(image_rect.min, vec2(image_rect.width(), band_h));
+            ui.painter().rect_filled(
+                band_rect,
+                CornerRadius {
+                    nw: radius.min(127.0) as u8,
+                    ne: radius.min(127.0) as u8,
+                    sw: 0,
+                    se: 0,
+                },
+                Color32::from_black_alpha(100),
+            );
+            let galley =
+                crate::bidi::layout_line(ui.painter(), title, theme::medium(11.0), Color32::WHITE);
+            let text_pos = pos2(
+                band_rect.left() + 8.0,
+                band_rect.center().y - galley.size().y / 2.0,
+            );
+            ui.painter().galley(text_pos, galley, Color32::WHITE);
+        }
         if mcloud && hovered {
             ui.painter().rect_filled(
                 image_rect,
@@ -2940,6 +3001,29 @@ pub fn card(
         ui.painter()
             .galley(subtitle_pos, subtitle_galley, palette.secondary);
 
+        if hovered && mcloud {
+            let more_center = pos2(image_rect.right() - 24.0, image_rect.bottom() - 24.0);
+            let more_rect = Rect::from_center_size(more_center, Vec2::splat(32.0));
+            let mut more_child = ui.new_child(
+                UiBuilder::new()
+                    .max_rect(more_rect)
+                    .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
+            );
+            more = theme::circle_button(
+                &mut more_child,
+                Icon::Ellipsis,
+                32.0,
+                palette.surface_hover,
+                palette.surface_active,
+                palette.text,
+                &gettext(app.locale, "More options"),
+            )
+            .clicked();
+            if more {
+                egui::Popup::open_id(ui.ctx(), egui::Popup::default_response_id(&response));
+            }
+        }
+
         if playable && hovered {
             let (center, size) = if mcloud {
                 (
@@ -2977,9 +3061,10 @@ pub fn card(
     crate::autoscroll::row(ui, &response);
     theme::focus_ring(ui, &response);
     CardResponse {
-        clicked: response.clicked() && !play,
+        clicked: response.clicked() && !play && !more,
         response,
         play,
+        more,
     }
 }
 
@@ -3026,17 +3111,61 @@ pub(crate) fn shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut 
     let card_space = if is_mcloud { 8.0 } else { 4.0 };
     let bottom_space = if is_mcloud { 16.0 } else { 12.0 };
     ui.add_space(card_space);
-    crate::autoscroll::show(
-        ui,
-        egui::ScrollArea::horizontal().id_salt(id),
-        egui::Vec2b::new(true, false),
-        |ui| {
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = CARD_GAP / 2.0;
-                add_contents(ui);
+
+    let snap_target_id = ui.make_persistent_id(("shelf-snap-target", id));
+    let card_pitch = CARD_WIDTH + CARD_GAP / 2.0;
+
+    let mut area = egui::ScrollArea::horizontal().id_salt(id);
+    if is_mcloud {
+        area = area.scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden);
+        let pending = ui.ctx().data_mut(|d| d.get_temp::<f32>(snap_target_id));
+        if let Some(target) = pending {
+            area = area.horizontal_scroll_offset(target);
+        }
+    }
+
+    let output = crate::autoscroll::show(ui, area, egui::Vec2b::new(true, false), |ui| {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = CARD_GAP / 2.0;
+            add_contents(ui);
+        });
+    });
+
+    if is_mcloud {
+        let pointer_in_shelf = ui.rect_contains_pointer(output.inner_rect);
+        let curr_x = output.state.offset.x;
+
+        if pointer_in_shelf {
+            let (shift, dy, dx) = ui.input(|i| {
+                (
+                    i.modifiers.shift,
+                    i.smooth_scroll_delta.y,
+                    i.smooth_scroll_delta.x,
+                )
             });
-        },
-    );
+            if shift && dy.abs() > 0.0 && dx == 0.0 {
+                let target = (curr_x - dy).max(0.0);
+                ui.ctx().data_mut(|d| d.insert_temp(snap_target_id, target));
+                ui.ctx().request_repaint();
+            }
+        }
+
+        let scrolling = ui.input(|i| {
+            i.smooth_scroll_delta.x != 0.0 || (i.modifiers.shift && i.smooth_scroll_delta.y != 0.0)
+        });
+        if !scrolling {
+            let nearest = (curr_x / card_pitch).round() * card_pitch;
+            let diff = nearest - curr_x;
+            if diff.abs() > 0.5 && diff.abs() < 40.0 {
+                let step = curr_x + diff * 0.25;
+                ui.ctx().data_mut(|d| d.insert_temp(snap_target_id, step));
+                ui.ctx().request_repaint();
+            } else if diff.abs() <= 0.5 {
+                ui.ctx().data_mut(|d| d.remove::<f32>(snap_target_id));
+            }
+        }
+    }
+
     ui.add_space(bottom_space);
 }
 

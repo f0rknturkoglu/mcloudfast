@@ -82,6 +82,73 @@ pub enum McloudPageTint {
     Full,
 }
 
+/// Apple Music accent colors supported in mcloud.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum McloudAccent {
+    #[default]
+    Red,
+    Pink,
+    Orange,
+    Yellow,
+    Green,
+    Blue,
+    Purple,
+    Graphite,
+}
+
+impl McloudAccent {
+    pub const ALL: [Self; 8] = [
+        Self::Red,
+        Self::Pink,
+        Self::Orange,
+        Self::Yellow,
+        Self::Green,
+        Self::Blue,
+        Self::Purple,
+        Self::Graphite,
+    ];
+
+    pub fn color(self, dark: bool) -> egui::Color32 {
+        if dark {
+            match self {
+                Self::Red => egui::Color32::from_rgb(0xfa, 0x2d, 0x48),
+                Self::Pink => egui::Color32::from_rgb(0xff, 0x37, 0x5f),
+                Self::Orange => egui::Color32::from_rgb(0xff, 0x9f, 0x0a),
+                Self::Yellow => egui::Color32::from_rgb(0xff, 0xd6, 0x0a),
+                Self::Green => egui::Color32::from_rgb(0x30, 0xd1, 0x58),
+                Self::Blue => egui::Color32::from_rgb(0x0a, 0x84, 0xff),
+                Self::Purple => egui::Color32::from_rgb(0xbf, 0x5a, 0xf2),
+                Self::Graphite => egui::Color32::from_rgb(0x98, 0x98, 0x9d),
+            }
+        } else {
+            match self {
+                Self::Red => egui::Color32::from_rgb(0xfa, 0x23, 0x3b),
+                Self::Pink => egui::Color32::from_rgb(0xff, 0x2d, 0x55),
+                Self::Orange => egui::Color32::from_rgb(0xff, 0x8d, 0x28),
+                Self::Yellow => egui::Color32::from_rgb(0xff, 0xcc, 0x00),
+                Self::Green => egui::Color32::from_rgb(0x34, 0xc7, 0x59),
+                Self::Blue => egui::Color32::from_rgb(0x00, 0x88, 0xff),
+                Self::Purple => egui::Color32::from_rgb(0xcb, 0x30, 0xe0),
+                Self::Graphite => egui::Color32::from_rgb(0x8e, 0x8e, 0x93),
+            }
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Red => "Red",
+            Self::Pink => "Pink",
+            Self::Orange => "Orange",
+            Self::Yellow => "Yellow",
+            Self::Green => "Green",
+            Self::Blue => "Blue",
+            Self::Purple => "Purple",
+            Self::Graphite => "Graphite",
+        }
+    }
+}
+
 /// How the tray icon is drawn on Linux and Windows: in colour, or white or
 /// black to match the panel. The macOS menu bar always gets the template
 /// image, which it draws black or white to match itself.
@@ -341,6 +408,12 @@ pub struct Settings {
     pub mcloud_album_clean: bool,
     /// Album and playlist page tint mode in mcloud (`albumTint`).
     pub mcloud_page_tint: McloudPageTint,
+    /// Apple Music accent colour in mcloud (`accent`).
+    #[serde(default)]
+    pub mcloud_accent: Option<McloudAccent>,
+    /// Mix covers drawn in Apple Music style in mcloud (`mixCovers`).
+    #[serde(default = "default_true")]
+    pub mcloud_mix_covers: bool,
     /// The interface language; older files without it follow the system.
     pub language: LanguageChoice,
     /// Filename selected from the local themes directory.
@@ -558,6 +631,8 @@ impl Default for Settings {
             mcloud_tracklist_header: true,
             mcloud_album_clean: true,
             mcloud_page_tint: McloudPageTint::Off,
+            mcloud_accent: None,
+            mcloud_mix_covers: true,
             language: LanguageChoice::System,
             custom_theme: None,
             custom_theme_cache: None,
@@ -637,6 +712,10 @@ impl Default for Settings {
 
 fn default_buffer_ms() -> u32 {
     crate::sink::DEFAULT_BUFFER_MS
+}
+
+const fn default_true() -> bool {
+    true
 }
 
 impl Settings {

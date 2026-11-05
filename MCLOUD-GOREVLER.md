@@ -268,22 +268,31 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
 
 ## I. Ana sayfa ve diğerleri
 
-38. **Ana sayfa rafları sidebar'ın altından kaysın.** *Kontrol.* mcloud'da
-    yapılamadı, native'de kolay.
+38. **Ana sayfa rafları sidebar'ın altından kaysın.** *Tamamlandı.*
     - Shift + tekerlek rafları yatay kaydırır, hafif yapışma (proximity
       snap) ile.
-    - Düz dikey tekerleği yataya çevirme. mcloud'da iki kez denendi; sayfa
-      ve raflar sürekli birbirinin elinden kaydırmayı alıyordu.
-39. **Mix kapakları ve ana sayfa kartları (mcloud #84).** *Kontrol.*
+    - Düz dikey tekerleği yataya çevirme korunur: dikey kaydırma sayfayı,
+      Shift + tekerlek rafları kaydırır.
+39. **Mix kapakları ve ana sayfa kartları (mcloud #84).** *Tamamlandı.*
     - Daily Mix ve benzerlerine, görselin kaynak fotoğrafından Apple tarzı
-      kapak.
-    - Kartlar Apple stilinde. Üstüne gelinen kartta "…" butonu çıkar.
-40. **Light mode.** *Kontrol.* `Palette::mcloud()` şu an tek bir palet.
-    mcloud'un light mode düzeltmeleri (B2, gölgeler #80) mcloudfast'ta
-    karşılığı olmayan bir iş.
-41. **Now Playing paneli (mcloud #73).** *Kontrol.* Sağ paneldeki lyrics
-    var. Panelin kendisini mcloud ile karşılaştır: kapak, başlık, arka plan
-    seçenekleri, kart düzeni.
+      kapak (Essentials band ve station dairesel kapak).
+    - Kartlar Apple stilinde. Üstüne gelinen kartta "…" butonu çıkar ve
+      menüyü açar.
+40. **Light mode ve renk paletleri.** *Tamamlandı.*
+    - `Palette::mcloud_light()` ve `Palette::mcloud_for_darkness()` eklendi.
+    - Açık mod Apple Music macOS Aqua ölçüleriyle eşlendi (#fff pencere,
+      #f6f6f6 panel/sidebar, #1d1d1f metin, #808080 ikincil, #fa233b KeyColor).
+    - Apple Music accent renk paleti (Kırmızı, Pembe, Turuncu, Sarı,
+      Yeşil, Mavi, Mor, Grafit) ayarlar bölümünde seçilebilir.
+41. **Now Playing paneli (mcloud #73).** *Tamamlandı.*
+    - Sağ paneldeki Now Playing cam yaprakta açılır, 1px sınır çizgisiyle.
+    - Çalan parçanın kapağı, başlığı ve sanatçı bilgisi Apple Music kart
+      düzeniyle şarkı sözlerinin üzerinde yer alır.
+42. **Playlist filtreleri (mcloud PR #112 / #108).** *Tamamlandı.*
+    - Tüm Listeler görünümünde kimin hazırladığına göre filtreleme: Tüm
+      Listeler, Senin Listelerin, Spotify’ın Listeleri, Mix’li Listeler,
+      Başkalarının Listeleri.
+    - Öğe sayısı "filtrelenen / toplam" olarak gösterilir.
 
 ## Gelen kutusu
 
@@ -298,8 +307,4 @@ sonra buradan sil. "tema dosyası yok" yazan kayıtlar (CI, kurulum, Pages)
 çoğunlukla mcloudfast'ı ilgilendirmez.
 
 <!-- mcloud-sync:start since=2026-11-04T19:21:02Z -->
-- 2026-11-04 · [PR #112](https://github.com/mcloudHQ/mcloud/pull/112): Playlist filters: By You, By Spotify, Mixed, By Others (#108)
-- 2026-11-04 · [Issue #108](https://github.com/mcloudHQ/mcloud/issues/108): \[Feature Request\] Re-implement sorting for playlists
-- 2026-11-04 · [PR #113](https://github.com/mcloudHQ/mcloud/pull/113): Spotify's hashed class names, Now Playing slide, library cards (#109, #110, #111) (STATUS.md değişti)
-- 2026-11-04 · [Issue #109](https://github.com/mcloudHQ/mcloud/issues/109): Some newly added features are not showing up
 <!-- mcloud-sync:end -->

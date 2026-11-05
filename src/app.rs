@@ -4628,15 +4628,30 @@ impl App {
     /// brings its own, whatever the theme.
     fn custom_palette(&self, dark: bool) -> Option<Palette> {
         if self.settings.interface == crate::settings::Interface::Mcloud {
-            return Some(Palette::mcloud());
+            let mut pal = Palette::mcloud_for_darkness(dark);
+            if let Some(accent) = self.settings.mcloud_accent {
+                pal.accent = accent.color(dark);
+                pal.accent_hover = pal.accent.lerp_to_gamma(
+                    if dark {
+                        egui::Color32::WHITE
+                    } else {
+                        egui::Color32::BLACK
+                    },
+                    0.15,
+                );
+            }
+            return Some(pal);
         }
         self.settings.cached_palette(dark)
     }
 
     fn theme_preference(&self) -> egui::ThemePreference {
-        // mcloud is dark only, as its palette is.
         if self.settings.interface == crate::settings::Interface::Mcloud {
-            return egui::ThemePreference::Dark;
+            return match self.settings.theme {
+                ThemeChoice::Dark => egui::ThemePreference::Dark,
+                ThemeChoice::Light => egui::ThemePreference::Light,
+                ThemeChoice::System => egui::ThemePreference::System,
+            };
         }
         // One palette fixes light or dark; Follow system's light and dark
         // palettes keep following the system.

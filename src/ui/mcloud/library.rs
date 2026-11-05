@@ -28,10 +28,21 @@ pub(in crate::ui) struct Entry {
     pub round: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum PlaylistFilter {
+    #[default]
+    All,
+    ByYou,
+    BySpotify,
+    Mixed,
+    ByOthers,
+}
+
 #[derive(Clone, Default)]
 struct Tools {
     filter: String,
     by_name: bool,
+    playlist_filter: PlaylistFilter,
 }
 
 /// The page above the footer: the title, the tools and the grid.
@@ -185,6 +196,96 @@ pub(in crate::ui) fn show(
                         }
                     }
                 });
+
+            if matches!(page, Page::AllPlaylists) {
+                let filter_labels = [
+                    gettext(locale, "All Playlists"),
+                    gettext(locale, "By You"),
+                    gettext(locale, "By Spotify"),
+                    gettext(locale, "Mixed"),
+                    gettext(locale, "By Others"),
+                ];
+                let filter_idx = match tools.playlist_filter {
+                    PlaylistFilter::All => 0,
+                    PlaylistFilter::ByYou => 1,
+                    PlaylistFilter::BySpotify => 2,
+                    PlaylistFilter::Mixed => 3,
+                    PlaylistFilter::ByOthers => 4,
+                };
+                let filter_chosen = filter_labels[filter_idx].clone();
+                let is_filtered = tools.playlist_filter != PlaylistFilter::All;
+                let text_color = if is_filtered {
+                    palette.accent
+                } else {
+                    palette.text
+                };
+                let f_galley = crate::bidi::layout_line(
+                    ui.painter(),
+                    filter_chosen.as_ref(),
+                    theme::regular(13.0),
+                    text_color,
+                );
+                let (f_btn, f_resp) =
+                    ui.allocate_exact_size(vec2(f_galley.size().x + 36.0, 30.0), Sense::click());
+                ui.painter().rect(
+                    f_btn,
+                    CornerRadius::same(15),
+                    Color32::from_rgb(0x2b, 0x2b, 0x2b),
+                    egui::Stroke::new(
+                        1.0,
+                        if is_filtered {
+                            palette.accent
+                        } else {
+                            Color32::from_white_alpha(20)
+                        },
+                    ),
+                    egui::StrokeKind::Inside,
+                );
+                ui.painter().galley(
+                    pos2(
+                        f_btn.left() + 12.0,
+                        f_btn.center().y - f_galley.size().y / 2.0,
+                    ),
+                    f_galley,
+                    text_color,
+                );
+                let f_arrows_x = f_btn.right() - 13.0;
+                let f_cy = f_btn.center().y;
+                for (dy, tip) in [(-3.0_f32, -2.6_f32), (3.0_f32, 2.6_f32)] {
+                    ui.painter().add(egui::Shape::convex_polygon(
+                        vec![
+                            pos2(f_arrows_x - 3.0, f_cy + dy),
+                            pos2(f_arrows_x + 3.0, f_cy + dy),
+                            pos2(f_arrows_x, f_cy + dy + tip),
+                        ],
+                        palette.secondary,
+                        egui::Stroke::NONE,
+                    ));
+                }
+                let f_popup_pos = pos2(
+                    f_btn.left(),
+                    (f_btn.top() - 6.0 - filter_idx as f32 * 28.0).max(8.0),
+                );
+                egui::Popup::from_toggle_button_response(&f_resp)
+                    .at_position(f_popup_pos)
+                    .frame(widgets::menu_frame(&palette))
+                    .show(|ui| {
+                        for (idx, flabel) in filter_labels.iter().enumerate() {
+                            let picked = filter_idx == idx;
+                            let check = picked.then_some(Icon::Check);
+                            if widgets::menu_item(ui, &palette, check, flabel) {
+                                tools.playlist_filter = match idx {
+                                    1 => PlaylistFilter::ByYou,
+                                    2 => PlaylistFilter::BySpotify,
+                                    3 => PlaylistFilter::Mixed,
+                                    4 => PlaylistFilter::ByOthers,
+                                    _ => PlaylistFilter::All,
+                                };
+                                ui.close();
+                            }
+                        }
+                    });
+            }
         });
         ui.add_space(4.0);
     } else {
@@ -201,9 +302,15 @@ pub(in crate::ui) fn show(
     let next_uris: Vec<String> = order.iter().map(|&i| entries[i].uri.clone()).collect();
     ui.data_mut(|data| data.insert_temp(visit_id, (page_key, next_uris)));
 
-    let shown = visible_ordered(entries, &order, &tools);
+    let shown = visible_ordered(
+        entries,
+        &order,
+        &tools,
+        matches!(page, Page::AllPlaylists),
+        app.user_id(),
+    );
     let status = items(locale, entries.len());
-    let status = if tools.filter.trim().is_empty() {
+    let status = if tools.filter.trim().is_empty() && tools.playlist_filter == PlaylistFilter::All {
         status
     } else if shown.is_empty() {
         gettext(locale, "No matches.").into_owned()
@@ -254,15 +361,55 @@ fn stabilize_visit_order(entries: &[Entry], held: Option<&[String]>) -> Vec<usiz
 #[cfg(test)]
 fn visible(entries: &[Entry], tools: &Tools) -> Vec<usize> {
     let order: Vec<usize> = (0..entries.len()).collect();
-    visible_ordered(entries, &order, tools)
+    visible_ordered(entries, &order, tools, false, None)
 }
 
-fn visible_ordered(entries: &[Entry], order: &[usize], tools: &Tools) -> Vec<usize> {
+fn visible_ordered(
+    entries: &[Entry],
+    order: &[usize],
+    tools: &Tools,
+    is_playlists: bool,
+    user_id: Option<&str>,
+) -> Vec<usize> {
     let query = tools.filter.trim().to_lowercase();
     let mut shown: Vec<usize> = order
         .iter()
         .copied()
-        .filter(|&index| query.is_empty() || entries[index].name.to_lowercase().contains(&query))
+        .filter(|&index| {
+            let entry = &entries[index];
+            if !query.is_empty() && !entry.name.to_lowercase().contains(&query) {
+                return false;
+            }
+            if is_playlists {
+                match tools.playlist_filter {
+                    PlaylistFilter::All => true,
+                    PlaylistFilter::ByYou => {
+                        if let Some(uid) = user_id {
+                            entry.subtitle.eq_ignore_ascii_case(uid)
+                                || entry.subtitle.eq_ignore_ascii_case("You")
+                        } else {
+                            !entry.subtitle.eq_ignore_ascii_case("Spotify")
+                        }
+                    }
+                    PlaylistFilter::BySpotify => entry.subtitle.eq_ignore_ascii_case("Spotify"),
+                    PlaylistFilter::Mixed => {
+                        entry.name.to_lowercase().contains("mix")
+                            || entry.subtitle.to_lowercase().contains("mix")
+                            || entry.name.to_lowercase().contains("blend")
+                    }
+                    PlaylistFilter::ByOthers => {
+                        let is_spotify = entry.subtitle.eq_ignore_ascii_case("Spotify");
+                        let is_user = user_id.is_some_and(|uid| {
+                            entry.subtitle.eq_ignore_ascii_case(uid)
+                                || entry.subtitle.eq_ignore_ascii_case("You")
+                        });
+                        !is_spotify && !is_user
+                    }
+                }
+            } else {
+                true
+            }
+        })
         .collect();
     if tools.by_name {
         shown.sort_by_cached_key(|&index| entries[index].name.to_lowercase());

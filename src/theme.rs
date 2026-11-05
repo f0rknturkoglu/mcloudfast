@@ -88,6 +88,11 @@ impl Palette {
     /// mcloud's palette, after Apple Music's dark appearance on macOS: the
     /// neutral greys of its `color.ini` and Apple Music's red.
     pub fn mcloud() -> Self {
+        Self::mcloud_dark()
+    }
+
+    /// mcloud's dark appearance palette on macOS.
+    pub fn mcloud_dark() -> Self {
         Self {
             dark: true,
             window: Color32::from_rgb(0x1e, 0x1e, 0x1e),
@@ -107,6 +112,41 @@ impl Palette {
             overlay: Color32::from_rgb(0x2c, 0x2c, 0x2e),
             shadow: Color32::from_black_alpha(140),
             tint: Color32::TRANSPARENT,
+        }
+    }
+
+    /// mcloud's light appearance palette, after Apple Music on macOS:
+    /// window #ffffff, sidebar/panel #f6f6f6, surface #eeeef0, text #1d1d1f,
+    /// secondary #808080, and Apple Music's KeyColor red #fa233b.
+    pub fn mcloud_light() -> Self {
+        Self {
+            dark: false,
+            window: Color32::from_rgb(0xff, 0xff, 0xff),
+            panel: Color32::from_rgb(0xf6, 0xf6, 0xf6),
+            surface: Color32::from_rgb(0xee, 0xee, 0xf0),
+            surface_hover: Color32::from_rgb(0xe2, 0xe2, 0xe2),
+            surface_active: Color32::from_rgb(0xd5, 0xd5, 0xd7),
+            outline: Color32::from_rgba_premultiplied(0, 0, 0, 25),
+            text: Color32::from_rgb(0x1d, 0x1d, 0x1f),
+            secondary: Color32::from_rgb(0x80, 0x80, 0x80),
+            dim: Color32::from_rgb(0xa1, 0xa1, 0xa6),
+            accent: Color32::from_rgb(0xfa, 0x23, 0x3b),
+            accent_hover: Color32::from_rgb(0xe0, 0x1e, 0x34),
+            on_accent: Color32::WHITE,
+            danger: Color32::from_rgb(0xd6, 0x3b, 0x4c),
+            warning: Color32::from_rgb(0xb8, 0x7a, 0x14),
+            overlay: Color32::from_rgb(0xff, 0xff, 0xff),
+            shadow: Color32::from_black_alpha(25),
+            tint: Color32::TRANSPARENT,
+        }
+    }
+
+    /// mcloud's palette resolved for the requested darkness.
+    pub fn mcloud_for_darkness(dark: bool) -> Self {
+        if dark {
+            Self::mcloud_dark()
+        } else {
+            Self::mcloud_light()
         }
     }
 

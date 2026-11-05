@@ -1,6 +1,6 @@
 //! The Settings page.
 
-use egui::{Align, CornerRadius, Frame, Layout, Margin, Stroke, Vec2};
+use egui::{Align, CornerRadius, Frame, Layout, Margin, Sense, Stroke, Vec2};
 
 use crate::api::models::pick_image;
 use crate::app::App;
@@ -1316,12 +1316,28 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             ),
         )
         .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Accent colour"),
+            gettext(
+                locale,
+                "Apple Music accent colour for buttons, icons and highlights.",
+            ),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Apple Music mix covers"),
+            gettext(
+                locale,
+                "Draw Daily Mix and radio covers in Apple Music's Essentials and station style.",
+            ),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
     ];
     for index in [8, 9, 10] {
         appearance_rows[index].available &= visualizers;
     }
-    // mcloud brings its own palette, so the theme pickers would change nothing.
-    for index in [0, 11, 12] {
+    // Theme pair pickers are only for Spotifast.
+    for index in [11, 12] {
         appearance_rows[index].available &=
             app.settings.interface == crate::settings::Interface::Spotifast;
     }
@@ -1411,6 +1427,65 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                         });
                     },
                 );
+                let swatch_size = 20.0;
+                let swatches_width =
+                    crate::settings::McloudAccent::ALL.len() as f32 * (swatch_size + 8.0);
+                filtered_row_sized(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[15],
+                    swatches_width,
+                    |ui| {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 8.0;
+                            for accent in crate::settings::McloudAccent::ALL {
+                                let (rect, resp) = ui
+                                    .allocate_exact_size(Vec2::splat(swatch_size), Sense::click());
+                                let current = app
+                                    .settings
+                                    .mcloud_accent
+                                    .unwrap_or(crate::settings::McloudAccent::Red);
+                                let selected = current == accent;
+                                let color = accent.color(palette.dark);
+                                ui.painter()
+                                    .circle_filled(rect.center(), swatch_size / 2.0, color);
+                                if selected {
+                                    ui.painter().circle_stroke(
+                                        rect.center(),
+                                        swatch_size / 2.0 + 2.0,
+                                        Stroke::new(2.0, palette.text),
+                                    );
+                                }
+                                if resp.on_hover_text(accent.label()).clicked() && current != accent
+                                {
+                                    app.settings.mcloud_accent = Some(accent);
+                                    changed = true;
+                                }
+                            }
+                        });
+                    },
+                );
+                filtered_row(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[16],
+                    |ui| {
+                        if widgets::switch(
+                            ui,
+                            &palette,
+                            &appearance_rows[16].title,
+                            &mut app.settings.mcloud_mix_covers,
+                        )
+                        .changed()
+                        {
+                            changed = true;
+                        }
+                    },
+                );
             }
             // Wide enough for the theme's two buttons side by side.
             let theme_buttons_width = theme::soft_button_width(ui, &theme_guide)
@@ -1447,20 +1522,23 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                                         app.actions.push(Action::SetTheme(choice));
                                     }
                                 }
-                                if app.custom_themes.picker_themes().next().is_some() {
-                                    ui.separator();
-                                }
-                                for theme in app.custom_themes.picker_themes() {
-                                    if ui
-                                        .selectable_label(
-                                            app.settings.custom_theme.as_deref()
-                                                == Some(theme.filename.as_str()),
-                                            fastframe_theme::display_name(&theme.filename),
-                                        )
-                                        .clicked()
-                                    {
-                                        app.actions
-                                            .push(Action::SetCustomTheme(theme.filename.clone()));
+                                if app.settings.interface != crate::settings::Interface::Mcloud {
+                                    if app.custom_themes.picker_themes().next().is_some() {
+                                        ui.separator();
+                                    }
+                                    for theme in app.custom_themes.picker_themes() {
+                                        if ui
+                                            .selectable_label(
+                                                app.settings.custom_theme.as_deref()
+                                                    == Some(theme.filename.as_str()),
+                                                fastframe_theme::display_name(&theme.filename),
+                                            )
+                                            .clicked()
+                                        {
+                                            app.actions.push(Action::SetCustomTheme(
+                                                theme.filename.clone(),
+                                            ));
+                                        }
                                     }
                                 }
                             });
@@ -1473,39 +1551,41 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                             info.current_text_value = Some(selected.to_string());
                             info
                         });
-                        // The guide to writing a theme sits beside the folder
-                        // it goes in, and above it when both do not fit.
-                        let (guide, folder) = (&theme_guide, &themes_folder);
-                        let gap = 6.0;
-                        let mut buttons = |ui: &mut egui::Ui| {
-                            if theme::soft_button(ui, &palette, Some(Icon::Globe), guide, false)
+                        if app.settings.interface != crate::settings::Interface::Mcloud {
+                            // The guide to writing a theme sits beside the folder
+                            // it goes in, and above it when both do not fit.
+                            let (guide, folder) = (&theme_guide, &themes_folder);
+                            let gap = 6.0;
+                            let mut buttons = |ui: &mut egui::Ui| {
+                                if theme::soft_button(ui, &palette, Some(Icon::Globe), guide, false)
+                                    .clicked()
+                                {
+                                    app.actions.push(Action::OpenUrl(THEMES_GUIDE_URL.into()));
+                                }
+                                if theme::soft_button(
+                                    ui,
+                                    &palette,
+                                    Some(Icon::ExternalLink),
+                                    folder,
+                                    false,
+                                )
                                 .clicked()
-                            {
-                                app.actions.push(Action::OpenUrl(THEMES_GUIDE_URL.into()));
-                            }
-                            if theme::soft_button(
-                                ui,
-                                &palette,
-                                Some(Icon::ExternalLink),
-                                folder,
-                                false,
-                            )
-                            .clicked()
-                            {
-                                app.actions.push(Action::OpenThemesFolder);
-                            }
-                        };
-                        let both = theme::soft_button_width(ui, guide)
-                            + theme::soft_button_width(ui, folder)
-                            + gap;
-                        if ui.available_width() >= both {
-                            ui.horizontal(|ui| {
-                                ui.spacing_mut().item_spacing.x = gap;
+                                {
+                                    app.actions.push(Action::OpenThemesFolder);
+                                }
+                            };
+                            let both = theme::soft_button_width(ui, guide)
+                                + theme::soft_button_width(ui, folder)
+                                + gap;
+                            if ui.available_width() >= both {
+                                ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = gap;
+                                    buttons(ui);
+                                });
+                            } else {
+                                ui.spacing_mut().item_spacing.y = gap;
                                 buttons(ui);
-                            });
-                        } else {
-                            ui.spacing_mut().item_spacing.y = gap;
-                            buttons(ui);
+                            }
                         }
                     });
                 },
