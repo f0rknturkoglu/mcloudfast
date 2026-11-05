@@ -306,5 +306,19 @@ Her kaydı yukarıdaki gruplara görev olarak taşı (Apple Music ölçüleriyle
 sonra buradan sil. "tema dosyası yok" yazan kayıtlar (CI, kurulum, Pages)
 çoğunlukla mcloudfast'ı ilgilendirmez.
 
-<!-- mcloud-sync:start since=2026-11-04T19:21:02Z -->
+<!-- mcloud-sync:start since=2026-11-05T12:18:42Z -->
+- 2026-11-04 · [PR #113](https://github.com/mcloudHQ/mcloud/pull/113): Spotify's hashed class names, Now Playing slide, library cards (#109, #110, #111) (STATUS.md değişti)
+- 2026-11-04 · [Issue #109](https://github.com/mcloudHQ/mcloud/issues/109): Some newly added features are not showing up
+- 2026-11-04 · [Issue #110](https://github.com/mcloudHQ/mcloud/issues/110): Add opening and closing animations to the sidebar player
+- 2026-11-04 · [Issue #111](https://github.com/mcloudHQ/mcloud/issues/111): Improve draggable album
+- 2026-11-04 · [PR #115](https://github.com/mcloudHQ/mcloud/pull/115): Repair Spicetify 2.46.2's skipped cold-start bindings (player, album list, artist pages, Locale) (STATUS.md değişti)
+- 2026-11-04 · [PR #114](https://github.com/mcloudHQ/mcloud/pull/114): Carousel arrows in the search results' frosted material; known mix covers drawn with the shelf
+- 2026-11-05 · [PR #117](https://github.com/mcloudHQ/mcloud/pull/117): Mix cards keep their title from the first frame (Home no longer re-laid out per cover)
+- 2026-11-05 · [PR #116](https://github.com/mcloudHQ/mcloud/pull/116): Eco keeps the toolbar's Liquid Glass shapes, solid
+- 2026-11-05 · [PR #118](https://github.com/mcloudHQ/mcloud/pull/118): Keep the save star a star while Spotify's save animation plays (STATUS.md değişti)
+- 2026-11-05 · [PR #122](https://github.com/mcloudHQ/mcloud/pull/122): Keep the Now Playing pane on Spicy Lyrics' page, without lyrics (STATUS.md değişti)
+- 2026-11-05 · [Issue #120](https://github.com/mcloudHQ/mcloud/issues/120): Fix now playing sidebar behavior on spicy lyrics page
+- 2026-11-05 · [PR #123](https://github.com/mcloudHQ/mcloud/pull/123): Draw "more releases" as a pop-up button (#121); close stuck search results
+- 2026-11-05 · [Issue #121](https://github.com/mcloudHQ/mcloud/issues/121): Redesign the "# more releases" button
+- 2026-11-05 · [PR #124](https://github.com/mcloudHQ/mcloud/pull/124): Smoke: don't check the order of the mix-cover lookups (tema dosyası yok)
 <!-- mcloud-sync:end -->
