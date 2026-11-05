@@ -220,6 +220,11 @@ pub enum ApiRequest {
         offset: u32,
         generation: u64,
     },
+    PlaylistQueueItems {
+        id: String,
+        offset: u32,
+        request: u64,
+    },
     /// A slice of a playlist read only for who added its songs; the rows
     /// on screen stay untouched.
     PlaylistSample {
@@ -485,6 +490,11 @@ pub enum ApiResponse {
         id: String,
         offset: u32,
         generation: u64,
+        result: ApiResult<Page<PlaylistItem>>,
+    },
+    PlaylistQueueItems {
+        offset: u32,
+        request: u64,
         result: ApiResult<Page<PlaylistItem>>,
     },
     PlaylistSample {
@@ -5014,6 +5024,7 @@ fn operation_for(api: &ApiGateway, request: &ApiRequest) -> Operation {
         ApiRequest::PlaySearch { .. } => Operation::CatalogSearch,
         ApiRequest::Playlist { id, .. } => Operation::PlaylistMetadata(api.playlist_access(id)),
         ApiRequest::PlaylistItems { id, .. }
+        | ApiRequest::PlaylistQueueItems { id, .. }
         | ApiRequest::PlaylistSample { id, .. }
         | ApiRequest::CheckPlaylistDuplicates {
             playlist_id: id, ..
@@ -5588,6 +5599,15 @@ async fn handle(
             offset,
             generation,
         },
+        ApiRequest::PlaylistQueueItems {
+            id,
+            offset,
+            request,
+        } => ApiResponse::PlaylistQueueItems {
+            result: routed!(playlist_items(&id, offset, PLAYLIST_PAGE_SIZE)),
+            offset,
+            request,
+        },
         ApiRequest::PlaylistSample {
             id,
             offset,
@@ -6148,7 +6168,8 @@ fn session_read(request: &ApiRequest) -> Option<SessionRead<'_>> {
         ApiRequest::RelatedArtists { id } => SessionRead::RelatedArtists { id },
         ApiRequest::ArtistTopTracks { id } => SessionRead::ArtistTop { id },
         ApiRequest::Playlist { id, .. } => SessionRead::Header { id },
-        ApiRequest::PlaylistItems { id, offset, .. } => SessionRead::Rows {
+        ApiRequest::PlaylistItems { id, offset, .. }
+        | ApiRequest::PlaylistQueueItems { id, offset, .. } => SessionRead::Rows {
             id,
             offset: *offset,
         },
@@ -6205,6 +6226,16 @@ fn session_response(request: &ApiRequest, answer: SessionAnswer) -> Option<ApiRe
             id: id.clone(),
             offset: *offset,
             generation: *generation,
+            result,
+        },
+        (
+            ApiRequest::PlaylistQueueItems {
+                offset, request, ..
+            },
+            SessionAnswer::Rows(result),
+        ) => ApiResponse::PlaylistQueueItems {
+            offset: *offset,
+            request: *request,
             result,
         },
         (ApiRequest::PlaylistSample { id, generation, .. }, SessionAnswer::Rows(result)) => {

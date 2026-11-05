@@ -579,8 +579,9 @@ pub struct App {
     pub accents: HashMap<String, Color32>,
     /// Each cover's colours, as read from the art, by the same URL.
     art_palettes: HashMap<String, Vec<[u8; 3]>>,
-    /// The colours mcloud reads from each picture, by the same URL.
+    /// The colours mcloud reads from each picture, by the same URL (bounded to 100 entries).
     artwork_colours: HashMap<String, crate::images::ArtworkColours>,
+    artwork_colour_order: std::collections::VecDeque<String>,
     accent_pending: HashSet<String>,
 
     pub dialog: Option<Dialog>,
@@ -1229,6 +1230,7 @@ impl App {
             accents: HashMap::new(),
             art_palettes: HashMap::new(),
             artwork_colours: HashMap::new(),
+            artwork_colour_order: std::collections::VecDeque::new(),
             accent_pending: HashSet::new(),
             dialog: None,
             cover_request: 0,
@@ -2406,12 +2408,30 @@ impl App {
         if let Some(colour) = self.artwork_colours.get(url) {
             return Some(*colour);
         }
-        if !self.accents.contains_key(url) && self.accent_pending.insert(url.to_string()) {
+        if self.accent_pending.insert(url.to_string()) {
             self.backend.send(Command::Accent {
                 url: url.to_string(),
             });
         }
         None
+    }
+
+    pub(crate) fn insert_artwork_colour(
+        &mut self,
+        url: String,
+        artwork: crate::images::ArtworkColours,
+    ) {
+        const MAX_ARTWORK_COLOURS: usize = 100;
+        if let Some(pos) = self.artwork_colour_order.iter().position(|u| u == &url) {
+            self.artwork_colour_order.remove(pos);
+        }
+        while self.artwork_colour_order.len() >= MAX_ARTWORK_COLOURS {
+            if let Some(oldest) = self.artwork_colour_order.pop_front() {
+                self.artwork_colours.remove(&oldest);
+            }
+        }
+        self.artwork_colour_order.push_back(url.clone());
+        self.artwork_colours.insert(url, artwork);
     }
 
     /// Finds a playlist already loaded in the library, search, or a Home shelf.
@@ -2685,7 +2705,7 @@ impl App {
                 } => {
                     self.accent_pending.remove(&url);
                     if let Some(artwork) = artwork {
-                        self.artwork_colours.insert(url.clone(), artwork);
+                        self.insert_artwork_colour(url.clone(), artwork);
                     }
                     let tint = self.palette.tint_from_art(color);
                     self.art_palettes.insert(url.clone(), palette);
@@ -8041,6 +8061,13 @@ impl App {
                     self.load_more(Page::Playlist(id));
                 }
             }
+            ApiResponse::PlaylistQueueItems {
+                request,
+                offset,
+                result,
+            } => {
+                self.receive_playlist_queue(request, offset, result);
+            }
             ApiResponse::PlaylistSample {
                 id,
                 generation,
@@ -10412,6 +10439,10 @@ impl App {
             self.queue_album(uri, label);
             return;
         }
+        if util::uri_kind(&uri) == Some("playlist") {
+            self.queue_playlist(uri, label);
+            return;
+        }
         if self.queued_moments_ago(&uri) {
             return;
         }
@@ -10464,6 +10495,134 @@ impl App {
         });
         // Translators: {name} is an album name.
         self.toast(gettext(self.locale, "Loading {name} to queue…").replace("{name}", &label));
+    }
+
+    fn queue_playlist(&mut self, uri: String, label: String) {
+        if self
+            .last_album_queue
+            .as_ref()
+            .is_some_and(|(previous, at)| previous == &uri && at.elapsed() < QUEUE_ADD_DEBOUNCE)
+        {
+            return;
+        }
+        let Some(id) = util::uri_id(&uri).map(str::to_string) else {
+            return;
+        };
+        self.last_album_queue = Some((uri, Instant::now()));
+        if let Some(page) = self.playlist_pages.get(&id)
+            && page.items.is_complete()
+            && page.items.base_offset == 0
+        {
+            let tracks: Vec<Track> = page
+                .items
+                .items
+                .iter()
+                .filter(|row| !row.is_local)
+                .filter_map(|row| match row.playable()? {
+                    PlayableItem::Track(track) => Some(track.clone()),
+                    _ => None,
+                })
+                .collect();
+            self.queue_album_tracks(tracks, label);
+            return;
+        }
+        self.album_queue_serial = self.album_queue_serial.wrapping_add(1);
+        let request = self.album_queue_serial;
+        self.pending_album_queues.insert(
+            request,
+            PendingAlbumQueue {
+                id: id.clone(),
+                label: label.clone(),
+                target: self.target(),
+                offset: 0,
+                tracks: Vec::new(),
+            },
+        );
+        self.backend.api(ApiRequest::PlaylistQueueItems {
+            id,
+            offset: 0,
+            request,
+        });
+        // Translators: {name} is an album name.
+        self.toast(gettext(self.locale, "Loading {name} to queue…").replace("{name}", &label));
+    }
+
+    fn receive_playlist_queue(
+        &mut self,
+        request: u64,
+        offset: u32,
+        result: crate::api::client::Result<crate::api::models::Page<PlaylistItem>>,
+    ) {
+        let Some(pending) = self.pending_album_queues.get(&request) else {
+            return;
+        };
+        if pending.offset != offset {
+            return;
+        }
+        let mut pending = self.pending_album_queues.remove(&request).unwrap();
+        if pending.target != self.target() {
+            self.toast_error(gettext(
+                self.locale,
+                "Playback device changed. Add the album to queue again",
+            ));
+            return;
+        }
+        let mut page = match result {
+            Ok(page) if page.offset == offset => page,
+            Ok(_) => {
+                self.toast_error(gettext(
+                    self.locale,
+                    "Couldn't load the album's songs in order. Try again",
+                ));
+                return;
+            }
+            Err(error) => {
+                self.toast_error(
+                    // Translators: {name} is an album name and {error} is an error message.
+                    gettext(self.locale, "Couldn't add {name} to queue: {error}")
+                        .replace("{name}", &pending.label)
+                        .replace("{error}", &error.to_string()),
+                );
+                return;
+            }
+        };
+        note_availability(&mut self.playlist_availability, &page.items);
+        fill_availability(&self.playlist_availability, &mut page.items);
+        let next = page.next_offset();
+        if page.next.is_some() && next.is_none() {
+            self.toast_error(gettext(
+                self.locale,
+                "Couldn't load the album's songs in order. Try again",
+            ));
+            return;
+        }
+        pending.tracks.extend(
+            page.items
+                .into_iter()
+                .filter(|row| !row.is_local)
+                .filter_map(|row| match row.playable()? {
+                    PlayableItem::Track(track) => Some(track.clone()),
+                    _ => None,
+                }),
+        );
+        if let Some(next) = next {
+            if next <= offset {
+                self.toast_error(gettext(
+                    self.locale,
+                    "Couldn't load the album's songs in order. Try again",
+                ));
+                return;
+            }
+            pending.offset = next;
+            self.backend.api(ApiRequest::PlaylistQueueItems {
+                id: pending.id.clone(),
+                offset: next,
+                request,
+            });
+            self.pending_album_queues.insert(request, pending);
+        } else {
+            self.queue_album_tracks(pending.tracks, pending.label);
+        }
     }
 
     fn receive_album_queue(
@@ -12227,6 +12386,7 @@ impl App {
                 if self.show_queue_panel {
                     self.show_lyrics_panel = false;
                     self.show_friends_panel = false;
+                    self.show_devices = false;
                     self.refresh_queue(true);
                 }
             }
@@ -12236,6 +12396,7 @@ impl App {
                 if self.show_lyrics_panel {
                     self.show_queue_panel = false;
                     self.show_friends_panel = false;
+                    self.show_devices = false;
                     self.lyrics_following = true;
                     self.request_lyrics();
                 }
@@ -12245,6 +12406,7 @@ impl App {
                 if self.show_friends_panel {
                     self.show_queue_panel = false;
                     self.show_lyrics_panel = false;
+                    self.show_devices = false;
                     self.refresh_friends();
                 }
             }
@@ -12298,6 +12460,11 @@ impl App {
             Action::ToggleDevicesPopup => {
                 self.show_devices = !self.show_devices;
                 if self.show_devices {
+                    if self.settings.interface == crate::settings::Interface::Mcloud {
+                        self.show_queue_panel = false;
+                        self.show_lyrics_panel = false;
+                        self.show_friends_panel = false;
+                    }
                     self.refresh_devices();
                     // Receivers waiting on the network are invisible to the
                     // Web API, so look for them ourselves.
@@ -33021,5 +33188,62 @@ mod tests {
         let server_err =
             widgets::sanitize_error_message("500 Internal Server Error", Locale::English);
         assert_eq!(server_err.as_ref(), "500 Internal Server Error");
+    }
+
+    #[test]
+    fn artwork_colours_cache_is_bounded_to_100() {
+        let mut app = test_app("artwork-colours-bound");
+        for i in 0..110 {
+            let url = format!("https://i.scdn.co/image/{i}");
+            app.insert_artwork_colour(
+                url,
+                crate::images::ArtworkColours {
+                    page: [i as u8, 0, 0],
+                    common: [0, 0, 0],
+                    bottom_edge: [0, 0, 0],
+                    trim: [0, 0, 32, 32],
+                },
+            );
+        }
+        assert_eq!(app.artwork_colours.len(), 100);
+        for i in 0..10 {
+            let url = format!("https://i.scdn.co/image/{i}");
+            assert!(!app.artwork_colours.contains_key(&url));
+        }
+        for i in 10..110 {
+            let url = format!("https://i.scdn.co/image/{i}");
+            assert!(app.artwork_colours.contains_key(&url));
+        }
+    }
+
+    #[test]
+    fn mcloud_right_panels_are_mutually_exclusive() {
+        let mut app = test_app("mcloud-right-panels");
+        let ctx = egui::Context::default();
+        app.settings.interface = crate::settings::Interface::Mcloud;
+
+        app.apply(Action::ToggleQueuePanel, &ctx);
+        assert!(app.show_queue_panel);
+        assert!(!app.show_friends_panel);
+        assert!(!app.show_lyrics_panel);
+        assert!(!app.show_devices);
+
+        app.apply(Action::ToggleFriendsPanel, &ctx);
+        assert!(!app.show_queue_panel);
+        assert!(app.show_friends_panel);
+        assert!(!app.show_lyrics_panel);
+        assert!(!app.show_devices);
+
+        app.apply(Action::ToggleDevicesPopup, &ctx);
+        assert!(!app.show_queue_panel);
+        assert!(!app.show_friends_panel);
+        assert!(!app.show_lyrics_panel);
+        assert!(app.show_devices);
+
+        app.apply(Action::ToggleLyricsPanel, &ctx);
+        assert!(!app.show_queue_panel);
+        assert!(!app.show_friends_panel);
+        assert!(app.show_lyrics_panel);
+        assert!(!app.show_devices);
     }
 }

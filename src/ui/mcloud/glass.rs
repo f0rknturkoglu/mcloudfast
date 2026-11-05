@@ -32,11 +32,22 @@ const TRANSPARENCY_RECHECK: Duration = Duration::from_secs(1);
 
 /// The halo's blur, in points: the shader mixes a min with it in at 70%.
 const HALO_BLUR: f32 = 13.5;
+/// The menu glass's halo blur, in points (macOS 27 NSMenu clear glass).
+const MENU_HALO_BLUR: f32 = 6.8;
+/// Corner radius of mcloud's popup menus, in points.
+pub const MENU_CORNER_RADIUS: f32 = 10.0;
 /// Output luminance (0–255) at each 1/32 of input luminance.
 const TONE: [f32; 33] = [
     32.0, 36.0, 45.0, 56.0, 65.0, 71.0, 78.0, 86.0, 90.0, 96.0, 102.0, 109.0, 116.0, 120.0, 122.0,
     125.0, 130.0, 135.0, 141.0, 147.0, 152.0, 156.0, 156.0, 157.0, 161.0, 167.0, 170.0, 170.0,
     174.0, 178.0, 179.0, 181.0, 185.0,
+];
+/// Menu output luminance (0–255) at each 1/32 of input luminance: compresses
+/// bright highlights (white -> 146) while preserving hue.
+const MENU_TONE: [f32; 33] = [
+    32.0, 38.25, 44.5, 50.75, 57.0, 62.5, 68.0, 73.5, 79.0, 81.75, 84.5, 87.25, 90.0, 93.75, 97.5,
+    101.25, 105.0, 110.75, 116.5, 122.25, 128.0, 132.5, 137.0, 141.5, 145.0, 145.25, 145.5, 145.75,
+    146.0, 146.0, 146.0, 146.0, 146.0,
 ];
 /// Colour gain by luminance: macOS's glass boosts dark colours more.
 const GAIN: [f32; 33] = [
@@ -50,6 +61,15 @@ const HIGHLIGHT: [f32; 15] = [
     0.0005, 0.0,
 ];
 
+/// Which surface geometry and optical profile to draw.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SurfaceKind {
+    /// Capsule lens used by the player, toolbar, and toasts.
+    Capsule,
+    /// Rounded-rect NSMenu lens (6.8pt blur, 18pt rim bend, white -> 146 tone).
+    Menu,
+}
+
 /// How finely the halo is made.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Quality {
@@ -57,6 +77,20 @@ struct Quality {
     downscale: i32,
     /// Horizontal and vertical pass pairs.
     iterations: u32,
+    /// Halo blur sigma in points.
+    halo_blur: f32,
+    /// Surface geometry and tone curve.
+    kind: SurfaceKind,
+}
+
+/// Rim displacement in points at `edge_pt` points inside a menu's edge:
+/// ~29pt at 3pt inward, flattening out to 0pt at 18pt inward.
+pub fn menu_rim_shift_pt(edge_pt: f32) -> f32 {
+    if edge_pt >= 18.0 {
+        return 0.0;
+    }
+    let t = (edge_pt.max(0.0) / 18.0).clamp(0.0, 1.0);
+    41.76 * (1.0 - t) * (1.0 - t)
 }
 
 impl Quality {
@@ -70,14 +104,38 @@ impl Quality {
             GlassEffect::Full => Some(Self {
                 downscale: 2,
                 iterations: 4,
+                halo_blur: HALO_BLUR,
+                kind: SurfaceKind::Capsule,
             }),
             GlassEffect::Balanced if over_lyrics => Some(Self {
                 downscale: 4,
                 iterations: 0,
+                halo_blur: HALO_BLUR,
+                kind: SurfaceKind::Capsule,
             }),
             GlassEffect::Balanced => Some(Self {
                 downscale: 4,
                 iterations: 3,
+                halo_blur: HALO_BLUR,
+                kind: SurfaceKind::Capsule,
+            }),
+            GlassEffect::Eco => None,
+        }
+    }
+
+    fn for_menu(effect: GlassEffect) -> Option<Self> {
+        match effect {
+            GlassEffect::Full => Some(Self {
+                downscale: 2,
+                iterations: 3,
+                halo_blur: MENU_HALO_BLUR,
+                kind: SurfaceKind::Menu,
+            }),
+            GlassEffect::Balanced => Some(Self {
+                downscale: 2,
+                iterations: 2,
+                halo_blur: MENU_HALO_BLUR,
+                kind: SurfaceKind::Menu,
             }),
             GlassEffect::Eco => None,
         }
@@ -85,7 +143,7 @@ impl Quality {
 
     /// The halo's standard deviation in screen pixels.
     fn sigma_px(self, pixels_per_point: f32) -> f32 {
-        HALO_BLUR * pixels_per_point
+        self.halo_blur * pixels_per_point
     }
 
     /// How far apart, in blurred texels, a pass's taps sit for the halo to
@@ -146,12 +204,26 @@ pub fn paint(ui: &egui::Ui, rect: Rect, effect: GlassEffect) -> bool {
 /// halo FBO over full-window lyrics while keeping the rim lens, tone curve
 /// and specular highlight.
 pub fn paint_surface(ui: &egui::Ui, rect: Rect, effect: GlassEffect, over_lyrics: bool) -> bool {
-    if reduced_transparency(ui.ctx()) {
-        return false;
-    }
     let Some(quality) = Quality::for_surface(effect, over_lyrics) else {
         return false;
     };
+    paint_with_quality(ui, rect, quality)
+}
+
+/// Paints macOS 27 NSMenu Liquid Glass inside the rounded rectangle `rect`
+/// (6.8pt blur, 18pt rim bend with ~29pt shift at 3pt inward, and white -> 146
+/// tone compression). Returns `false` when Eco or Reduced Transparency is active.
+pub fn paint_menu(ui: &egui::Ui, rect: Rect, effect: GlassEffect) -> bool {
+    let Some(quality) = Quality::for_menu(effect) else {
+        return false;
+    };
+    paint_with_quality(ui, rect, quality)
+}
+
+fn paint_with_quality(ui: &egui::Ui, rect: Rect, quality: Quality) -> bool {
+    if reduced_transparency(ui.ctx()) {
+        return false;
+    }
     let renderer = ui.ctx().data_mut(|data| {
         data.get_temp_mut_or_insert_with(Id::new("mcloud-glass"), || {
             Arc::new(Mutex::new(Renderer::Pending))
@@ -207,6 +279,7 @@ struct Uniforms {
     rect: Option<glow::UniformLocation>,
     capture: Option<glow::UniformLocation>,
     ppp: Option<glow::UniformLocation>,
+    mode: Option<glow::UniformLocation>,
     tone: Option<glow::UniformLocation>,
     gain: Option<glow::UniformLocation>,
     highlight: Option<glow::UniformLocation>,
@@ -289,6 +362,7 @@ uniform sampler2D u_halo;
 uniform vec4 u_rect;
 uniform vec4 u_capture;
 uniform float u_ppp;
+uniform int u_mode;
 uniform float u_tone[33];
 uniform float u_gain[33];
 uniform float u_highlight[15];
@@ -331,24 +405,43 @@ float highlight_at(float points) {
 
 void main() {
     vec2 p = gl_FragCoord.xy - u_rect.xy;
-    float radius = u_rect.w * 0.5;
-    // The nearest point on the capsule's spine; the rim is a radius away.
-    vec2 spine = vec2(clamp(p.x, radius, u_rect.z - radius), radius);
-    vec2 inward = spine - p;
-    float distance = length(inward);
-    float edge = radius - distance;
+    float edge;
+    vec2 normal;
+    float shift;
+    if (u_mode == 1) {
+        float r = min(10.0 * u_ppp, min(u_rect.z, u_rect.w) * 0.5);
+        vec2 half_size = u_rect.zw * 0.5;
+        vec2 center_p = p - half_size;
+        vec2 b = half_size - vec2(r);
+        vec2 q = abs(center_p) - b;
+        float sdf = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+        edge = -sdf;
+        vec2 grad = (q.x > 0.0 && q.y > 0.0)
+            ? normalize(q)
+            : (q.x > q.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
+        normal = -sign(center_p) * grad;
+        float flat_from = 18.0 * u_ppp;
+        float t = clamp(max(edge, 0.0) / flat_from, 0.0, 1.0);
+        shift = 41.76 * u_ppp * (1.0 - t) * (1.0 - t);
+    } else {
+        float radius = u_rect.w * 0.5;
+        // The nearest point on the capsule's spine; the rim is a radius away.
+        vec2 spine = vec2(clamp(p.x, radius, u_rect.z - radius), radius);
+        vec2 inward = spine - p;
+        float distance = length(inward);
+        edge = radius - distance;
+        normal = distance > 0.0001 ? inward / distance : vec2(0.0);
+        // The bend: a circular profile, the page one radius further in at the
+        // rim, flat from half a radius inside.
+        float reach = 1.01 * radius;
+        float flat_from = 0.495 * radius;
+        float t = min(1.0, max(edge, 0.0) / flat_from);
+        shift = reach * (1.0 - sqrt((2.0 - t) * t));
+    }
     float alpha = clamp(edge + 0.5, 0.0, 1.0);
     if (alpha <= 0.0) {
         discard;
     }
-    vec2 normal = distance > 0.0001 ? inward / distance : vec2(0.0);
-
-    // The bend: a circular profile, the page one radius further in at the
-    // rim, flat from half a radius inside.
-    float reach = 1.01 * radius;
-    float flat_from = 0.495 * radius;
-    float t = min(1.0, max(edge, 0.0) / flat_from);
-    float shift = reach * (1.0 - sqrt((2.0 - t) * t));
     vec2 at = gl_FragCoord.xy + normal * shift;
     vec2 uv = (at - u_capture.xy) / u_capture.zw;
     vec3 core = texture2D(u_tex, uv).rgb;
@@ -363,7 +456,7 @@ void main() {
     vec3 halo = texture2D(u_halo, uv).rgb;
 
     // Bright detail darkens toward its surroundings; dark detail stays.
-    vec3 colour = mix(core, min(core, halo), 0.7);
+    vec3 colour = mix(core, min(core, halo), u_mode == 1 ? 0.82 : 0.7);
 
     // The tone by luminance, keeping the hue.
     float luma = dot(colour, vec3(0.2126, 0.7152, 0.0722));
@@ -435,6 +528,7 @@ impl Resources {
                     rect: uniform("u_rect"),
                     capture: uniform("u_capture"),
                     ppp: uniform("u_ppp"),
+                    mode: uniform("u_mode"),
                     tone: uniform("u_tone"),
                     gain: uniform("u_gain"),
                     highlight: uniform("u_highlight"),
@@ -568,7 +662,12 @@ impl Resources {
                 capture[1] as f32,
             );
             gl.uniform_1_f32(uniforms.ppp.as_ref(), ppp);
-            gl.uniform_1_f32_slice(uniforms.tone.as_ref(), &TONE);
+            let is_menu = matches!(quality.kind, SurfaceKind::Menu);
+            gl.uniform_1_i32(uniforms.mode.as_ref(), i32::from(is_menu));
+            gl.uniform_1_f32_slice(
+                uniforms.tone.as_ref(),
+                if is_menu { &MENU_TONE } else { &TONE },
+            );
             gl.uniform_1_f32_slice(uniforms.gain.as_ref(), &GAIN);
             gl.uniform_1_f32_slice(uniforms.highlight.as_ref(), &HIGHLIGHT);
             gl.draw_arrays(glow::TRIANGLE_STRIP, 0, 4);
@@ -711,5 +810,20 @@ mod tests {
         assert_eq!((TONE[0], TONE[32]), (32.0, 185.0));
         assert!(TONE.windows(2).all(|pair| pair[0] <= pair[1]));
         assert!(GAIN.iter().all(|gain| (1.0..1.3).contains(gain)));
+    }
+
+    #[test]
+    fn menu_glass_profile_matches_macos_27_nsmenu() {
+        assert_eq!(Quality::for_menu(GlassEffect::Eco), None);
+        for effect in [GlassEffect::Full, GlassEffect::Balanced] {
+            let q = Quality::for_menu(effect).unwrap();
+            let sigma = q.spread(2.0) * q.downscale as f32 * 1.64 * (q.iterations as f32).sqrt();
+            assert!((sigma - MENU_HALO_BLUR * 2.0).abs() < 1e-3);
+        }
+        assert!((menu_rim_shift_pt(3.0) - 29.0).abs() < 0.05);
+        assert_eq!(menu_rim_shift_pt(18.0), 0.0);
+        assert_eq!(menu_rim_shift_pt(24.0), 0.0);
+        assert_eq!((MENU_TONE[0], MENU_TONE[32]), (32.0, 146.0));
+        assert!(MENU_TONE.windows(2).all(|pair| pair[0] <= pair[1]));
     }
 }

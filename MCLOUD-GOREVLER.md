@@ -150,8 +150,7 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
 
 ## D. Fotoğraflı başlıklar (Daily Mix, tür sayfaları)
 
-20. **Başlığın altındaki renk fotoğraftan gelsin.** *Yok* (`header_image`
-    sadece sanatçıda var).
+20. **Başlığın altındaki renk fotoğraftan gelsin.** *Tamamlandı.*
     - Renk, fotoğrafın en alttaki onda birinden alınır. Ton korunur,
       satürasyon en fazla %60, açıklık kenarın %60'ı (%10–24 arasında).
     - Fotoğrafın son %38'i bu renge geçer.
@@ -222,7 +221,7 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
 
 ## G. Menüler, paneller, bildirimler
 
-29. **Menülere cam.** *Yok* (egui menüleri düz).
+29. **Menülere cam.** *Tamamlandı.*
     - macOS 27 NSMenu'nun en net cam ayarı örnek alınır.
     - Blur 6.8pt.
     - Kenar bükmesi: 3pt'de ~29pt içerideki sayfa görünür. 18pt'den sonra
@@ -232,17 +231,16 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
     - Satır yüksekliği ve açılış animasyonu kullanıcının onayını bekliyor:
       Apple'da satır 24pt (Spotify'da 40). Apple menüyü animasyonsuz açıyor,
       kapanışta 0.2 s'de soluyor.
-30. **Sağ tık menüsü.** *Kontrol.* "Çalma listesine ekle" Spotify'ın kendi
+30. **Sağ tık menüsü.** *Tamamlandı.* "Çalma listesine ekle" Spotify'ın kendi
     alt menüsündeki listeleri gösterir: kütüphane sırasında, sadece ekleme
     yapılabilenler. "Sıraya ekle" albüm ve playlist'i parçalarına açarak
     ekler.
-31. **Player menüleri ve ses.** *Kontrol.*
+31. **Player menüleri ve ses.** *Tamamlandı.*
     - "Sanatçı — Albüm" satırı "Sanatçıya Git / Albüme Git" menüsünü açar.
       Başlık albüme gider.
     - Ses kapsülü hoparlörün üstünde 0.5 s durunca açılır.
     - Sessize alınca ses seviyesi korunur.
-32. **Sağ panel: queue, Friend Activity, cihazlar.** *Yok* (bunlar
-    Spotifast'in panelleri).
+32. **Sağ panel: queue, Friend Activity, cihazlar.** *Tamamlandı.*
     - Hepsi tek bir cam yaprakta açılır.
     - Kayarak değil, olduğu yerde belirir. Kayan kenar kesirli piksellerde
       titriyordu.

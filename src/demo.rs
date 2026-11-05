@@ -8142,6 +8142,7 @@ mod tests {
     }
 
     /// The rows a laid-out line breaks into, as text.
+    #[cfg(feature = "demo")]
     fn rows_of(galley: &egui::Galley) -> Vec<String> {
         galley
             .rows
@@ -8152,6 +8153,7 @@ mod tests {
 
     /// Under mcloud the lines not being sung sit smaller and the sung one
     /// grows into place, without the words breaking anywhere else.
+    #[cfg(feature = "demo")]
     #[test]
     fn mcloud_lines_grow_into_place_without_rewrapping() {
         let root =
@@ -8230,6 +8232,7 @@ mod tests {
     }
 
     /// The lyrics name who wrote the song under the words.
+    #[cfg(feature = "demo")]
     #[test]
     fn the_lyrics_name_their_writers() {
         let (ctx, mut app) = accessible_app("lyrics-writers");

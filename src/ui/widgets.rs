@@ -434,6 +434,38 @@ pub fn menu_item_enabled(
     menu_item_response(ui, palette, icon, label, enabled, false).1
 }
 
+/// Paints macOS 27 NSMenu Liquid Glass once per popup layer/pass when mcloud is
+/// active, falling back to `palette.overlay` when Eco or Reduced Transparency
+/// turns glass off.
+fn ensure_mcloud_menu_glass(ui: &Ui, palette: &Palette) {
+    if !super::mcloud::active(ui.ctx()) {
+        return;
+    }
+    let layer = ui.layer_id();
+    if layer.order == egui::Order::Background {
+        return;
+    }
+    let pass = ui.ctx().cumulative_pass_nr();
+    let key = egui::Id::new(("mcloud-menu-glass-pass", layer));
+    let already = ui.ctx().data(|d| d.get_temp::<u64>(key) == Some(pass));
+    if already {
+        return;
+    }
+    ui.ctx().data_mut(|d| d.insert_temp(key, pass));
+    let outer = egui::AreaState::load(ui.ctx(), layer.id)
+        .and_then(|state| state.size)
+        .map(|size| Rect::from_min_size(ui.max_rect().min - vec2(6.0, 6.0), size))
+        .unwrap_or_else(|| ui.max_rect().expand(6.0));
+    let effect = super::mcloud::glass_effect(ui.ctx());
+    if !super::mcloud::glass::paint_menu(ui, outer, effect) {
+        ui.painter().rect_filled(
+            outer,
+            CornerRadius::same(super::mcloud::glass::MENU_CORNER_RADIUS as u8),
+            palette.overlay,
+        );
+    }
+}
+
 /// A menu item that may be highlighted as the keyboard's choice, as the
 /// pointer would highlight it. Returns its response and whether it was
 /// clicked.
@@ -445,6 +477,7 @@ fn menu_item_response(
     enabled: bool,
     highlighted: bool,
 ) -> (egui::Response, bool) {
+    ensure_mcloud_menu_glass(ui, palette);
     let width = ui.available_width();
     let (rect, response) = ui.allocate_exact_size(
         vec2(width, 28.0),
@@ -551,6 +584,7 @@ fn submenu<R>(
     close_behavior: Option<egui::PopupCloseBehavior>,
     add_contents: impl FnOnce(&mut Ui) -> R,
 ) -> Option<egui::InnerResponse<R>> {
+    ensure_mcloud_menu_glass(ui, palette);
     let width = ui.available_width();
     let (rect, response) = ui.allocate_exact_size(vec2(width, 28.0), Sense::click());
     let is_in_menu = egui::menu::is_in_menu(ui);
@@ -629,6 +663,14 @@ fn submenu<R>(
     if let Some(close_behavior) = close_behavior {
         config = config.close_behavior(close_behavior);
     }
+    if super::mcloud::active(ui.ctx()) {
+        let mut style = (*ui.ctx().global_style()).clone();
+        style.visuals.window_fill = Color32::TRANSPARENT;
+        style.visuals.menu_corner_radius =
+            CornerRadius::same(super::mcloud::glass::MENU_CORNER_RADIUS as u8);
+        style.visuals.window_stroke = Stroke::new(1.0, Color32::from_white_alpha(33));
+        config = config.style(style);
+    }
     if is_in_menu {
         egui::menu::SubMenu::new()
             .config(config)
@@ -656,17 +698,35 @@ pub fn menu_separator(ui: &mut Ui, palette: &Palette) {
 
 /// The frame every popup menu uses.
 pub fn menu_frame(palette: &Palette) -> egui::Frame {
-    egui::Frame::new()
-        .fill(palette.overlay)
-        .stroke(Stroke::new(1.0, palette.outline))
-        .corner_radius(CornerRadius::same(theme::RADIUS))
-        .inner_margin(egui::Margin::same(6))
-        .shadow(egui::epaint::Shadow {
-            offset: [0, 6],
-            blur: 20,
-            spread: 0,
-            color: palette.shadow,
-        })
+    let mcloud_palette =
+        palette.window == Palette::mcloud().window && palette.overlay == Palette::mcloud().overlay;
+    if mcloud_palette {
+        egui::Frame::new()
+            .fill(Color32::TRANSPARENT)
+            .stroke(Stroke::new(1.0, Color32::from_white_alpha(33)))
+            .corner_radius(CornerRadius::same(
+                super::mcloud::glass::MENU_CORNER_RADIUS as u8,
+            ))
+            .inner_margin(egui::Margin::same(6))
+            .shadow(egui::epaint::Shadow {
+                offset: [0, 6],
+                blur: 20,
+                spread: 0,
+                color: palette.shadow,
+            })
+    } else {
+        egui::Frame::new()
+            .fill(palette.overlay)
+            .stroke(Stroke::new(1.0, palette.outline))
+            .corner_radius(CornerRadius::same(theme::RADIUS))
+            .inner_margin(egui::Margin::same(6))
+            .shadow(egui::epaint::Shadow {
+                offset: [0, 6],
+                blur: 20,
+                spread: 0,
+                color: palette.shadow,
+            })
+    }
 }
 
 /// Context menu for actions on selected tracks.
@@ -680,6 +740,7 @@ pub fn picked_menu(
     editable_playlist: Option<&(String, Option<String>)>,
 ) {
     let palette = app.palette;
+    ensure_mcloud_menu_glass(ui, &palette);
     let locale = app.locale;
     ui.set_min_width(220.0);
     ui.set_max_width(300.0);
@@ -1227,7 +1288,7 @@ pub fn context_menu_items(
     {
         app.actions.push(Action::ShufflePlay(uri.to_string()));
     }
-    if kind == "album"
+    if matches!(kind, "album" | "playlist")
         && menu_item(
             ui,
             &palette,

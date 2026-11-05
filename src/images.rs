@@ -723,6 +723,10 @@ pub struct ArtworkColours {
     /// The most common colour (theme.js `sheetColor`), for a sheet over
     /// the picture.
     pub common: [u8; 3],
+    /// The darkened bottom-edge wash colour sampled from the bottom 10% of
+    /// the cropped picture: hue preserved, saturation capped at 60%, and
+    /// lightness scaled by 0.60 and clamped to 10%..=24%.
+    pub bottom_edge: [u8; 3],
     /// Normalised content bounds `[left, top, right, bottom]` in `0..=255`
     /// after trimming solid black letterbox or pillarbox bars (`r, g, b < 20`).
     pub trim: [u8; 4],
@@ -770,11 +774,74 @@ pub fn artwork_colours(bytes: &[u8]) -> Option<ArtworkColours> {
     let small = cropped
         .resize_exact(32, 32, image::imageops::FilterType::Triangle)
         .to_rgb8();
+    let strip = cropped
+        .resize_exact(32, 20, image::imageops::FilterType::Triangle)
+        .to_rgb8();
+    let bottom_pixels = (18..20).flat_map(|y| {
+        let strip = &strip;
+        (0..32).map(move |x| strip.get_pixel(x, y).0)
+    });
     Some(ArtworkColours {
         page: artwork_colour_of(small.pixels().map(|pixel| pixel.0)),
         common: common_colour_of(small.pixels().map(|pixel| pixel.0)),
+        bottom_edge: bottom_edge_colour_of(bottom_pixels),
         trim,
     })
+}
+
+/// Samples the average RGB of a picture's bottom 10% strip, preserves its hue,
+/// caps HSL saturation at 60%, and scales HSL lightness by 60% into 10%..=24%.
+pub fn bottom_edge_colour_of(pixels: impl Iterator<Item = [u8; 3]>) -> [u8; 3] {
+    let mut total = [0.0f64; 3];
+    let mut count = 0.0f64;
+    for [r, g, b] in pixels {
+        total[0] += f64::from(r);
+        total[1] += f64::from(g);
+        total[2] += f64::from(b);
+        count += 1.0;
+    }
+    if count == 0.0 {
+        return [26, 26, 26];
+    }
+    let r = (total[0] / count / 255.0).clamp(0.0, 1.0);
+    let g = (total[1] / count / 255.0).clamp(0.0, 1.0);
+    let b = (total[2] / count / 255.0).clamp(0.0, 1.0);
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let d = max - min;
+    let l_orig = (max + min) * 0.5;
+    let (h, s_orig) = if d <= 1e-6 {
+        (0.0, 0.0)
+    } else {
+        let s = d / (1.0 - (2.0 * l_orig - 1.0).abs()).max(1e-6);
+        let h = if (max - r).abs() <= 1e-6 {
+            ((g - b) / d).rem_euclid(6.0) / 6.0
+        } else if (max - g).abs() <= 1e-6 {
+            ((b - r) / d + 2.0) / 6.0
+        } else {
+            ((r - g) / d + 4.0) / 6.0
+        };
+        (h, s)
+    };
+    let s = s_orig.min(0.60);
+    let l = (l_orig * 0.60).clamp(0.10, 0.24);
+    let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+    let h6 = h * 6.0;
+    let x = c * (1.0 - (h6.rem_euclid(2.0) - 1.0).abs());
+    let (r1, g1, b1) = match h6 as u32 {
+        0 => (c, x, 0.0),
+        1 => (x, c, 0.0),
+        2 => (0.0, c, x),
+        3 => (0.0, x, c),
+        4 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+    let m = l - c * 0.5;
+    [
+        ((r1 + m).clamp(0.0, 1.0) * 255.0).round() as u8,
+        ((g1 + m).clamp(0.0, 1.0) * 255.0).round() as u8,
+        ((b1 + m).clamp(0.0, 1.0) * 255.0).round() as u8,
+    ]
 }
 
 /// Scans inward from all four edges of `img` while every pixel on the edge has
@@ -2347,13 +2414,13 @@ mod tests {
             dir.clone(),
         );
         let now = Instant::now();
-        for i in 0..40 {
+        for i in 0..50 {
             let url = format!("https://i.scdn.co/image/{i}");
             loader.inner.entries.lock().expect("lock").insert(
                 url,
                 Entry::Ready {
                     bytes: Some(Arc::from(vec![0u8; jpeg])),
-                    last_used: now - Duration::from_secs(40 - i),
+                    last_used: now - Duration::from_secs(50 - i),
                     retained: jpeg,
                 },
             );
@@ -2363,16 +2430,16 @@ mod tests {
             jpeg_total < HELD_BYTES,
             "JPEG-only covers must still fit the budget: {jpeg_total}"
         );
-        for i in 0..40 {
+        for i in 0..50 {
             let url = format!("https://i.scdn.co/image/{i}");
             loader.release_bytes(&url);
             assert!(loader.note_texture(&url, &scaled_uri(&url, 640), 640, 640));
         }
         let before = retained_total(&loader);
-        assert_eq!(before, 40 * one);
+        assert_eq!(before, 50 * one);
         assert!(
             before > HELD_BYTES,
-            "640×640 cover textures must exceed 64 MiB: {before}"
+            "640×640 cover textures must exceed budget: {before}"
         );
         let ctx = egui::Context::default();
         loader.evict(&ctx);
@@ -2419,6 +2486,24 @@ mod tests {
         assert_eq!(cover_pixels(64.0), 64);
         assert_eq!(cover_pixels(65.5), 96);
         assert_eq!(cover_pixels(0.0), 32);
+    }
+
+    #[test]
+    fn bottom_edge_colour_caps_saturation_and_clamps_lightness() {
+        // Bright saturated red (255, 0, 0): saturation capped at 60%, lightness clamped to <= 24%.
+        let red = bottom_edge_colour_of(std::iter::once([255, 0, 0]));
+        let [r, g, b] = red.map(|c| c as f32 / 255.0);
+        let max = r.max(g).max(b);
+        let min = r.min(g).min(b);
+        let l = (max + min) / 2.0;
+        let s = (max - min) / (1.0 - (2.0 * l - 1.0).abs());
+        assert!((0.10..=0.245).contains(&l), "lightness clamped: {l}");
+        assert!(s <= 0.61, "saturation capped at 60%: {s}");
+
+        // Bright white (255, 255, 255): lightness clamped to 24%.
+        let white = bottom_edge_colour_of(std::iter::once([255, 255, 255]));
+        let [r, _, _] = white.map(|c| c as f32 / 255.0);
+        assert!((0.23..=0.25).contains(&r), "white held to ~24%: {r}");
     }
 
     /// A cover is scaled down with a filter that keeps fine detail, and

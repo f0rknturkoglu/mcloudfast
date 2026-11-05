@@ -44,6 +44,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         ctx,
         app.settings.interface == crate::settings::Interface::Mcloud,
     );
+    mcloud::set_glass_effect(ctx, app.settings.mcloud_glass);
     keys::handle(app, ctx);
     for path in winamp::dropped_skins(ctx) {
         app.actions.push(Action::InstallSkin(path));
@@ -120,6 +121,9 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         if app.show_friends_panel {
             friends::side_panel(app, ui);
         }
+        if mcloud && app.show_devices {
+            devices::side_panel(app, ui);
+        }
         content = ui.available_rect_before_wrap();
         central(app, ui);
     }
@@ -127,7 +131,9 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         mcloud::player::show(app, ui, content);
     }
     keep_room_for_panels(app, ctx);
-    devices::popup(app, ctx);
+    if !mcloud {
+        devices::popup(app, ctx);
+    }
     dialogs::show(app, ctx);
     update::show(app, ctx);
     widgets::drag_ghost(ctx, &app.palette, app.locale);
@@ -165,10 +171,16 @@ fn keep_room_for_panels(app: &App, ctx: &Context) {
         return;
     }
     let panels = app.lyrics_fullscreen.is_none();
+    let mcloud_devices =
+        app.settings.interface == crate::settings::Interface::Mcloud && app.show_devices;
     let width = main_min_width(
         topbar::least_width(ctx),
         panels && app.settings.sidebar_visible,
-        panels && (app.show_queue_panel || app.show_lyrics_panel || app.show_friends_panel),
+        panels
+            && (app.show_queue_panel
+                || app.show_lyrics_panel
+                || app.show_friends_panel
+                || mcloud_devices),
     )
     .round();
     let id = Id::new("main-min-width");
@@ -311,10 +323,25 @@ fn page_tint(app: &mut App) -> Option<Color32> {
     };
     // mcloud's artist page always takes the artist's colour: it is the
     // page's own, as in Apple Music, not an accent from the art.
-    let mcloud_artist = app.settings.interface == crate::settings::Interface::Mcloud
-        && matches!(page, Page::Artist(_));
-    if !app.settings.accent_from_art && image.is_some() && !mcloud_artist {
+    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
+    let mcloud_artist = mcloud && matches!(page, Page::Artist(_));
+    let mcloud_collection_tinted = mcloud
+        && matches!(page, Page::Playlist(_) | Page::Album(_) | Page::LikedSongs)
+        && app.settings.mcloud_page_tint != crate::settings::McloudPageTint::Off;
+    if !app.settings.accent_from_art
+        && image.is_some()
+        && !mcloud_artist
+        && !mcloud_collection_tinted
+    {
         return None;
+    }
+    if mcloud {
+        // Sample the bottom 10% of the page's own artwork without falling back
+        // to the previous page's or now-playing colour while loading.
+        return image
+            .as_deref()
+            .and_then(|url| app.artwork_colours(Some(url)))
+            .map(|c| Color32::from_rgb(c.bottom_edge[0], c.bottom_edge[1], c.bottom_edge[2]));
     }
     match image {
         Some(url) => app.tint_for(Some(&url)).or_else(|| app.now_playing_tint()),
@@ -376,7 +403,16 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
             } else if let Some((top, bottom)) =
                 header_wash(&palette, overview, tint).filter(|_| !flat)
             {
-                widgets::paint_vertical_gradient(ui, header_rect(rect, scrolled), top, bottom);
+                let h_rect = header_rect(rect, scrolled);
+                if app.settings.interface == crate::settings::Interface::Mcloud {
+                    // Photo headers hold their bottom-edge colour across the upper
+                    // 62% and fade over the final 38% into the window background.
+                    let split = h_rect.top() + h_rect.height() * 0.62;
+                    ui.painter().rect_filled(h_rect.with_max_y(split), 0.0, top);
+                    widgets::paint_vertical_gradient(ui, h_rect.with_min_y(split), top, bottom);
+                } else {
+                    widgets::paint_vertical_gradient(ui, h_rect, top, bottom);
+                }
             }
             ui.spacing_mut().item_spacing = vec2(8.0, 6.0);
             // egui fades a scrolled page's edge into the panel's plain

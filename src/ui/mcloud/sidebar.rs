@@ -1038,24 +1038,29 @@ fn account_row(app: &mut App, ui: &mut egui::Ui) {
 
     let label = gettext(locale, "Listening activity");
     let response = ui.interact(friends, ui.id().with("mcloud-friends"), Sense::click());
-    response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label.as_ref()));
-    let color = if app.show_friends_panel {
+    let is_down = response.is_pointer_button_down_on();
+    let clicked = response.clicked();
+    let active = (app.show_friends_panel ^ clicked) || is_down;
+    let response = response.on_hover_text(label.as_ref());
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(egui::WidgetType::Button, true, active, label.as_ref())
+    });
+    let color = if active {
         accent()
     } else if response.hovered() {
         TEXT
     } else {
         Color32::from_rgb(0xa9, 0xa9, 0xa9)
     };
-    if response.hovered() {
+    if active || response.hovered() {
         ui.painter().rect_filled(
             friends,
             CornerRadius::same(8),
-            Color32::from_white_alpha(13),
+            Color32::from_white_alpha(if active { 20 } else { 13 }),
         );
     }
     theme::paint_icon(ui, Icon::McloudFriends, friends, 18.0, color);
-    if response.on_hover_text(label.as_ref()).clicked() {
+    if clicked {
         app.actions.push(Action::ToggleFriendsPanel);
     }
 }

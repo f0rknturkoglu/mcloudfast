@@ -21,6 +21,7 @@ const CLOSE_GLYPH_INSET: i8 = 6;
 pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
     let locale = app.locale;
+    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
     let fit = super::yielding_panel(
         ui.ctx(),
         "friends-panel",
@@ -39,6 +40,15 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 .inner_margin(Margin::symmetric(12, 12)),
         );
     let response = panel.show(ui, |ui| {
+        if mcloud {
+            let sheet = ui.max_rect().expand(12.0);
+            let _ = super::mcloud::glass::paint_menu(ui, sheet, app.settings.mcloud_glass);
+            ui.painter().vline(
+                sheet.left(),
+                sheet.y_range(),
+                egui::Stroke::new(1.0, egui::Color32::from_white_alpha(26)),
+            );
+        }
         // The panel sits where the Queue would, under the same controls.
         let window_controls =
             super::window_controls_reservation(ui.ctx(), true, false, ui.available_width());

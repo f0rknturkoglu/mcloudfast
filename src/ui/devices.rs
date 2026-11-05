@@ -420,82 +420,6 @@ pub fn popup(app: &mut App, ctx: &egui::Context) {
                     });
                 });
                 ui.add_space(4.0);
-                let local_id = app.local_device_id.clone();
-                let soloist_id = app.soloist_device_id.clone();
-                // Offer one local destination once the managed player is
-                // ready. Keep an actually playing built-in engine visible;
-                // switching Soloist off in Settings restores its idle row.
-                let hide_builtin = soloist_id.is_some() && !app.local.is_active();
-                let mut devices: Vec<Device> = app.devices.clone();
-                if app.local_ready
-                    && let Some(local_id) = &local_id
-                    && !devices
-                        .iter()
-                        .any(|device| device.id.as_deref() == Some(local_id.as_str()))
-                {
-                    devices.insert(
-                        0,
-                        Device {
-                            id: Some(local_id.clone()),
-                            // Named without its suffix; the row below adds it.
-                            name: app.settings.device_name.clone(),
-                            is_active: app.local.is_active(),
-                            is_restricted: false,
-                            volume_percent: Some(crate::app::volume_to_percent(app.local.volume)),
-                            supports_volume: Some(true),
-                            kind: "computer".into(),
-                        },
-                    );
-                }
-                let active_id = match app.target() {
-                    crate::app::Target::Local => local_id.clone(),
-                    crate::app::Target::Remote(id) => id,
-                };
-                // Spotify leaves a Sonos out of its list; it is offered from
-                // the network instead and driven over Connect.
-                for receiver in &app.receivers {
-                    let listed = devices
-                        .iter()
-                        .any(|device| device.id.is_some() && device.id == receiver.device_id);
-                    if !listed
-                        && let Some(row) =
-                            crate::sonos::device_row(receiver, receiver.device_id == active_id)
-                    {
-                        devices.push(row);
-                    }
-                }
-                name_devices(&mut devices, &app.receivers);
-                let mut seen = std::collections::HashSet::new();
-                devices
-                    .retain(|device| device.id.as_ref().is_none_or(|id| seen.insert(id.clone())));
-
-                // Receivers on the network that Spotify has not listed yet.
-                // They are real speakers the user can see in the official
-                // client, so offering them here is the whole point.
-                let waiting: Vec<crate::zeroconf::Receiver> = app
-                    .receivers
-                    .iter()
-                    .filter(|receiver| !receiver_is_listed(receiver, &devices))
-                    .cloned()
-                    .collect();
-
-                let mut rows: Vec<_> = devices
-                    .into_iter()
-                    .map(OutputRow::Device)
-                    .chain(waiting.into_iter().map(OutputRow::Receiver))
-                    .collect();
-                if hide_builtin {
-                    rows.retain(|row| {
-                        row.identity().is_none_or(|id| Some(id) != local_id.as_deref())
-                    });
-                }
-                rank_outputs(
-                    &mut rows,
-                    &app.device_history,
-                    app.user_id(),
-                    active_id.as_deref(),
-                );
-
                 let max_height = (position.y - ctx.content_rect().top() - 62.0).clamp(52.0, 416.0);
                 crate::autoscroll::show(
                     ui,
@@ -507,118 +431,9 @@ pub fn popup(app: &mut App, ctx: &egui::Context) {
                         .max_height(max_height),
                     egui::Vec2b::new(false, true),
                     |ui| {
-                        if !app.local_ready && soloist_id.is_none() {
-                            enable_playback_row(app, ui);
-                        }
-                        if rows.is_empty() && app.local_ready {
-                            ui.add_space(8.0);
-                            theme::subtle(
-                                ui,
-                                &palette,
-                                &gettext(
-                                    locale,
-                                    "No devices found. Open Spotify on another device, then refresh.",
-                                ),
-                            );
-                            ui.add_space(8.0);
-                        }
-
-                        for row in &rows {
-                            ui.push_id(row.widget_key(), |ui| {
-                                let OutputRow::Device(device) = row else {
-                                    if let OutputRow::Receiver(receiver) = row {
-                                        receiver_row(app, ui, receiver);
-                                    }
-                                    return;
-                                };
-                                let is_local = device.id.is_some() && device.id == local_id;
-                                let is_soloist = device.id.is_some() && device.id == soloist_id;
-                                let active = device.id.is_some() && device.id == active_id;
-                                let name = if is_soloist {
-                                    gettext(locale, "This computer").into_owned()
-                                } else if is_local {
-                                    // Translators: {name} is the name this computer uses in Spotify Connect.
-                                    gettext(locale, "{name} (this computer)")
-                                        .replace("{name}", &device.name)
-                                } else {
-                                    device.name.clone()
-                                };
-                                let (rect, response) = ui.allocate_exact_size(
-                                    vec2(ui.available_width(), 52.0),
-                                    Sense::click(),
-                                );
-                                response.widget_info(|| {
-                                    egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name)
-                                });
-                                if response.hovered() {
-                                    ui.painter().rect_filled(
-                                        rect,
-                                        CornerRadius::same(6),
-                                        palette.surface_hover,
-                                    );
-                                }
-                                let color = if active && !is_soloist { palette.accent } else { palette.text };
-                                let icon_rect = Rect::from_center_size(
-                                    pos2(rect.left() + 24.0, rect.center().y),
-                                    egui::Vec2::splat(22.0),
-                                );
-                                (if is_soloist { Icon::Laptop } else { device_icon(&device.kind) })
-                                    .image(color, 22.0)
-                                    .paint_at(ui, icon_rect);
-                                let painter = ui.painter().with_clip_rect(rect);
-                                crate::bidi::paint_line(
-                                    &painter,
-                                    rect.left() + 48.0,
-                                    rect.right() - 12.0,
-                                    rect.center().y - 9.0,
-                                    &name,
-                                    theme::medium(14.0),
-                                    color,
-                                );
-                                let status = if is_soloist {
-                                    "Soloist".to_owned()
-                                } else if active {
-                                    gettext(locale, "Listening on this device").into_owned()
-                                } else if device.is_restricted {
-                                    gettext(locale, "Restricted").into_owned()
-                                } else if is_local {
-                                    gettext(locale, "Play here").into_owned()
-                                } else {
-                                    device.kind.replace('_', " ")
-                                };
-                                painter.text(
-                                    pos2(rect.left() + 48.0, rect.center().y + 10.0),
-                                    egui::Align2::LEFT_CENTER,
-                                    status,
-                                    theme::regular(12.0),
-                                    if active && !is_soloist {
-                                        palette.accent
-                                    } else {
-                                        palette.secondary
-                                    },
-                                );
-                                if active {
-                                    let dot = pos2(rect.right() - 16.0, rect.center().y);
-                                    if is_soloist {
-                                        Icon::Check.image(palette.secondary, 16.0).paint_at(ui,
-                                            Rect::from_center_size(dot, egui::Vec2::splat(16.0)));
-                                    } else {
-                                        ui.painter().circle_filled(dot, 4.0, palette.accent);
-                                    }
-                                }
-                                if response.clicked()
-                                    && !active
-                                    && let Some(id) = &device.id
-                                {
-                                    app.actions.push(Action::Transfer(id.clone()));
-                                }
-                            });
-                        }
+                        devices_contents(app, ui);
                     },
                 );
-                if app.local_ready && !hide_builtin {
-                    output_picker(app, ui);
-                }
             });
         });
     let popup_rect = area.response.rect;
@@ -631,6 +446,284 @@ pub fn popup(app: &mut App, ctx: &egui::Context) {
     });
     if clicked_outside {
         app.show_devices = false;
+    }
+}
+
+pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
+    let palette = app.palette;
+    let locale = app.locale;
+    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
+    let fit = super::yielding_panel(
+        ui.ctx(),
+        "devices-panel",
+        theme::SIDE_PANEL_MIN_WIDTH..=560.0,
+        app.settings.queue_width,
+        ui.available_width() - super::topbar::least_width(ui.ctx()),
+    );
+    let panel = egui::Panel::right("devices-panel")
+        .resizable(true)
+        .default_size(app.settings.queue_width)
+        .size_range(fit.range.clone())
+        .show_separator_line(false)
+        .frame(
+            egui::Frame::new()
+                .fill(palette.panel)
+                .inner_margin(egui::Margin::symmetric(12, 12)),
+        );
+    let response = panel.show(ui, |ui| {
+        if mcloud {
+            let sheet = ui.max_rect().expand(12.0);
+            let _ = super::mcloud::glass::paint_menu(ui, sheet, app.settings.mcloud_glass);
+            ui.painter().vline(
+                sheet.left(),
+                sheet.y_range(),
+                egui::Stroke::new(1.0, egui::Color32::from_white_alpha(26)),
+            );
+        }
+        let window_controls =
+            super::window_controls_reservation(ui.ctx(), true, false, ui.available_width());
+        ui.add_space(window_controls.queue_top);
+        let mut close = false;
+        egui::Sides::new().shrink_left().show(
+            ui,
+            |ui| {
+                ui.add_space(4.0);
+                theme::text(
+                    ui,
+                    gettext(locale, "Connect to a device").as_ref(),
+                    theme::bold(16.0),
+                    palette.text,
+                );
+            },
+            |ui| {
+                close = theme::icon_button(
+                    ui,
+                    Icon::X,
+                    18.0,
+                    palette.secondary,
+                    palette.text,
+                    &gettext(locale, "Close"),
+                )
+                .clicked();
+                if app.devices_loading {
+                    theme::spinner(ui, 16.0, palette.accent);
+                } else if theme::icon_button(
+                    ui,
+                    Icon::Refresh,
+                    15.0,
+                    palette.secondary,
+                    palette.text,
+                    &gettext(locale, "Refresh"),
+                )
+                .clicked()
+                {
+                    app.actions.push(Action::RefreshDevices);
+                }
+            },
+        );
+        if close {
+            app.actions.push(Action::ToggleDevicesPopup);
+        }
+        ui.add_space(12.0);
+        crate::autoscroll::show(
+            ui,
+            egui::ScrollArea::vertical()
+                .id_salt("devices-side-panel-scroll")
+                .auto_shrink([false, false]),
+            egui::Vec2b::new(false, true),
+            |ui| {
+                devices_contents(app, ui);
+            },
+        );
+    });
+    let width = response.response.rect.width();
+    if (width - app.settings.queue_width).abs() > 1.0
+        && super::panel_width_chosen(ui.ctx(), "devices-panel", &fit)
+    {
+        app.settings.queue_width = width;
+        app.actions.push(Action::SettingsChanged);
+    }
+}
+
+fn devices_contents(app: &mut App, ui: &mut egui::Ui) {
+    let palette = app.palette;
+    let locale = app.locale;
+    let local_id = app.local_device_id.clone();
+    let soloist_id = app.soloist_device_id.clone();
+    let hide_builtin = soloist_id.is_some() && !app.local.is_active();
+    let mut devices: Vec<Device> = app.devices.clone();
+    if app.local_ready
+        && let Some(local_id) = &local_id
+        && !devices
+            .iter()
+            .any(|device| device.id.as_deref() == Some(local_id.as_str()))
+    {
+        devices.insert(
+            0,
+            Device {
+                id: Some(local_id.clone()),
+                name: app.settings.device_name.clone(),
+                is_active: app.local.is_active(),
+                is_restricted: false,
+                volume_percent: Some(crate::app::volume_to_percent(app.local.volume)),
+                supports_volume: Some(true),
+                kind: "computer".into(),
+            },
+        );
+    }
+    let active_id = match app.target() {
+        crate::app::Target::Local => local_id.clone(),
+        crate::app::Target::Remote(id) => id,
+    };
+    for receiver in &app.receivers {
+        let listed = devices
+            .iter()
+            .any(|device| device.id.is_some() && device.id == receiver.device_id);
+        if !listed
+            && let Some(row) = crate::sonos::device_row(receiver, receiver.device_id == active_id)
+        {
+            devices.push(row);
+        }
+    }
+    name_devices(&mut devices, &app.receivers);
+    let mut seen = std::collections::HashSet::new();
+    devices.retain(|device| device.id.as_ref().is_none_or(|id| seen.insert(id.clone())));
+
+    let waiting: Vec<crate::zeroconf::Receiver> = app
+        .receivers
+        .iter()
+        .filter(|receiver| !receiver_is_listed(receiver, &devices))
+        .cloned()
+        .collect();
+
+    let mut rows: Vec<_> = devices
+        .into_iter()
+        .map(OutputRow::Device)
+        .chain(waiting.into_iter().map(OutputRow::Receiver))
+        .collect();
+    if hide_builtin {
+        rows.retain(|row| {
+            row.identity()
+                .is_none_or(|id| Some(id) != local_id.as_deref())
+        });
+    }
+    rank_outputs(
+        &mut rows,
+        &app.device_history,
+        app.user_id(),
+        active_id.as_deref(),
+    );
+
+    if !app.local_ready && soloist_id.is_none() {
+        enable_playback_row(app, ui);
+    }
+    if rows.is_empty() && app.local_ready {
+        ui.add_space(8.0);
+        theme::subtle(
+            ui,
+            &palette,
+            &gettext(
+                locale,
+                "No devices found. Open Spotify on another device, then refresh.",
+            ),
+        );
+        ui.add_space(8.0);
+    }
+
+    for row in &rows {
+        ui.push_id(row.widget_key(), |ui| {
+            let OutputRow::Device(device) = row else {
+                if let OutputRow::Receiver(receiver) = row {
+                    receiver_row(app, ui, receiver);
+                }
+                return;
+            };
+            let is_local = device.id.is_some() && device.id == local_id;
+            let is_soloist = device.id.is_some() && device.id == soloist_id;
+            let active = device.id.is_some() && device.id == active_id;
+            let name = if is_soloist {
+                gettext(locale, "This computer").into_owned()
+            } else if is_local {
+                gettext(locale, "{name} (this computer)").replace("{name}", &device.name)
+            } else {
+                device.name.clone()
+            };
+            let (rect, response) =
+                ui.allocate_exact_size(vec2(ui.available_width(), 52.0), Sense::click());
+            response
+                .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name));
+            if response.hovered() {
+                ui.painter()
+                    .rect_filled(rect, CornerRadius::same(6), palette.surface_hover);
+            }
+            let color = if active && !is_soloist {
+                palette.accent
+            } else {
+                palette.text
+            };
+            let icon_rect = Rect::from_center_size(
+                pos2(rect.left() + 24.0, rect.center().y),
+                egui::Vec2::splat(22.0),
+            );
+            (if is_soloist {
+                Icon::Laptop
+            } else {
+                device_icon(&device.kind)
+            })
+            .image(color, 22.0)
+            .paint_at(ui, icon_rect);
+            let painter = ui.painter().with_clip_rect(rect);
+            crate::bidi::paint_line(
+                &painter,
+                rect.left() + 48.0,
+                rect.right() - 12.0,
+                rect.center().y - 9.0,
+                &name,
+                theme::medium(14.0),
+                color,
+            );
+            let status = if is_soloist {
+                "Soloist".to_owned()
+            } else if active {
+                gettext(locale, "Listening on this device").into_owned()
+            } else if device.is_restricted {
+                gettext(locale, "Restricted").into_owned()
+            } else if is_local {
+                gettext(locale, "Play here").into_owned()
+            } else {
+                device.kind.replace('_', " ")
+            };
+            painter.text(
+                pos2(rect.left() + 48.0, rect.center().y + 10.0),
+                egui::Align2::LEFT_CENTER,
+                status,
+                theme::regular(12.0),
+                if active && !is_soloist {
+                    palette.accent
+                } else {
+                    palette.secondary
+                },
+            );
+            if active {
+                let dot = pos2(rect.right() - 16.0, rect.center().y);
+                if is_soloist {
+                    Icon::Check
+                        .image(palette.secondary, 16.0)
+                        .paint_at(ui, Rect::from_center_size(dot, egui::Vec2::splat(16.0)));
+                } else {
+                    ui.painter().circle_filled(dot, 4.0, palette.accent);
+                }
+            }
+            if response.clicked()
+                && !active
+                && let Some(id) = &device.id
+            {
+                app.actions.push(Action::Transfer(id.clone()));
+            }
+        });
+    }
+    if app.local_ready && !hide_builtin {
+        output_picker(app, ui);
     }
 }
 

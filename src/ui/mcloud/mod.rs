@@ -27,8 +27,21 @@ pub(super) fn set_active(ctx: &egui::Context, active: bool) {
     ctx.data_mut(|data| data.insert_temp(active_id(), active));
 }
 
+pub fn glass_effect(ctx: &egui::Context) -> crate::settings::GlassEffect {
+    ctx.data(|data| data.get_temp::<crate::settings::GlassEffect>(glass_effect_id()))
+        .unwrap_or_default()
+}
+
+pub(super) fn set_glass_effect(ctx: &egui::Context, effect: crate::settings::GlassEffect) {
+    ctx.data_mut(|data| data.insert_temp(glass_effect_id(), effect));
+}
+
 fn active_id() -> egui::Id {
     egui::Id::new("mcloud-active")
+}
+
+fn glass_effect_id() -> egui::Id {
+    egui::Id::new("mcloud-glass-effect")
 }
 
 /// mcloud's page padding (user.css `--am-pad`): 2.6% of the window's width,

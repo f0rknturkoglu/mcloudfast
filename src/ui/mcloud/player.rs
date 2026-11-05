@@ -38,6 +38,8 @@ const PLAY_ICON: f32 = 26.0;
 const LCD_TOP: f32 = 6.0;
 const LCD_BOTTOM: f32 = 13.0;
 const VOLUME: Vec2 = Vec2::new(110.0, 38.0);
+/// How long the pointer rests on the speaker before the volume capsule opens.
+const VOLUME_HOVER_DELAY: f64 = 0.5;
 
 const NORMAL: Color32 = Color32::from_rgb(0xe8, 0xe8, 0xe8);
 const DIM: Color32 = Color32::from_rgb(0x8d, 0x8d, 0x8d);
@@ -318,10 +320,45 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
         VOLUME,
     );
     let pointer = ui.input(|input| input.pointer.hover_pos());
+    let now_s = ui.input(|input| input.time);
     let open_id = Id::new("mcloud-volume-open");
+    let hover_start_id = Id::new("mcloud-volume-hover-start");
     let was_open = ui.data(|data| data.get_temp::<bool>(open_id).unwrap_or(false));
-    let hovering = pointer
-        .is_some_and(|at| speaker.contains(at) || (was_open && capsule.expand(4.0).contains(at)));
+    let on_speaker = pointer.is_some_and(|at| speaker.contains(at));
+    let speaker_ready = if on_speaker {
+        if was_open {
+            true
+        } else {
+            let start = ui.data(|data| data.get_temp::<f64>(hover_start_id));
+            match start {
+                Some(start) => {
+                    let elapsed = now_s - start;
+                    if elapsed >= VOLUME_HOVER_DELAY {
+                        true
+                    } else {
+                        ui.ctx()
+                            .request_repaint_after(std::time::Duration::from_secs_f64(
+                                (VOLUME_HOVER_DELAY - elapsed).max(0.01),
+                            ));
+                        false
+                    }
+                }
+                None => {
+                    ui.data_mut(|data| data.insert_temp(hover_start_id, now_s));
+                    ui.ctx()
+                        .request_repaint_after(std::time::Duration::from_secs_f64(
+                            VOLUME_HOVER_DELAY,
+                        ));
+                    false
+                }
+            }
+        }
+    } else {
+        ui.data_mut(|data| data.remove::<f64>(hover_start_id));
+        false
+    };
+    let hovering =
+        speaker_ready || (was_open && pointer.is_some_and(|at| capsule.expand(4.0).contains(at)));
     let open = adjustable && (hovering || app.volume_preview.is_some());
     ui.data_mut(|data| data.insert_temp(open_id, open));
     let reveal = ui.ctx().animate_bool_with_time(open_id, open, 0.35);
@@ -347,12 +384,13 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
             }
 
             let remote = now.is_some_and(|now| !now.local) && !app.targets_own_soloist();
+            let devices_open = remote || app.show_devices;
             let response = button(
                 ui,
                 slots[2],
                 Icon::McloudDevices,
                 ICON,
-                faded(if remote { palette.accent } else { NORMAL }),
+                faded(if devices_open { palette.accent } else { NORMAL }),
                 &gettext(locale, "Connect to a device"),
             );
             ui.ctx().data_mut(|data| {
@@ -668,7 +706,12 @@ fn display(
             } else {
                 Color32::from_rgb(0x9a, 0x9a, 0x9a)
             };
-            theme::paint_icon(ui, Icon::McloudStar, star, 13.0, color.gamma_multiply(fade));
+            let star_icon = if saved {
+                Icon::McloudStarFilled
+            } else {
+                Icon::McloudStar
+            };
+            theme::paint_icon(ui, star_icon, star, 13.0, color.gamma_multiply(fade));
             let label = if saved {
                 gettext(locale, "Remove from Liked Songs")
             } else {
@@ -698,10 +741,55 @@ fn display(
         Color32::from_white_alpha(208).gamma_multiply(fade),
         ui.rect_contains_pointer(lcd),
     );
-    if subtitle_response.clicked()
-        && let Some(id) = now.artists.first().and_then(|artist| artist.id.clone())
-    {
-        app.actions.push(Action::Open(Page::Artist(id)));
+    let artists_with_id: Vec<_> = now.artists.iter().filter(|a| a.id.is_some()).collect();
+    let album_id = now.album_id.clone().filter(|id| !id.is_empty());
+    if !artists_with_id.is_empty() && album_id.is_some() {
+        egui::Popup::menu(&subtitle_response)
+            .frame(widgets::menu_frame(palette))
+            .align(egui::RectAlign::TOP_START)
+            .show(|ui| {
+                ui.set_min_width(200.0);
+                if artists_with_id.len() == 1 {
+                    if widgets::menu_item(
+                        ui,
+                        palette,
+                        Some(Icon::User),
+                        &gettext(locale, "Go to artist"),
+                    ) && let Some(id) = artists_with_id[0].id.clone()
+                    {
+                        app.actions.push(Action::Open(Page::Artist(id)));
+                    }
+                } else {
+                    let label = gettext(locale, "Go to artist");
+                    widgets::menu_submenu(ui, palette, Some(Icon::User), &label, |ui| {
+                        ui.set_min_width(200.0);
+                        for artist in &artists_with_id {
+                            if widgets::menu_item(ui, palette, Some(Icon::User), &artist.name)
+                                && let Some(id) = artist.id.clone()
+                            {
+                                app.actions.push(Action::Open(Page::Artist(id)));
+                            }
+                        }
+                    });
+                }
+                if let Some(album_id) = &album_id
+                    && widgets::menu_item(
+                        ui,
+                        palette,
+                        Some(Icon::Disc),
+                        &gettext(locale, "Go to album"),
+                    )
+                {
+                    app.actions
+                        .push(Action::Open(Page::Album(album_id.clone())));
+                }
+            });
+    } else if subtitle_response.clicked() {
+        if let Some(id) = artists_with_id.first().and_then(|artist| artist.id.clone()) {
+            app.actions.push(Action::Open(Page::Artist(id)));
+        } else if let Some(album_id) = album_id {
+            app.actions.push(Action::Open(Page::Album(album_id)));
+        }
     }
 
     let (position, duration) = (now.position_ms, now.duration_ms);
