@@ -5854,6 +5854,34 @@ mod tests {
         app.backend.shutdown();
     }
 
+    /// Browse's rows all start where its heading does, in a window barely
+    /// wider than the column too: a row that reached past the page's left
+    /// edge moved that edge for the next row.
+    #[test]
+    fn browse_rows_stay_on_the_pages_left_edge() {
+        let (ctx, mut app) = accessible_app("browse-left-edge");
+        for width in [1108.0, 1104.0, 1400.0] {
+            let mut left = None;
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(width, 2000.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| {
+                    let before = ui.cursor().left();
+                    crate::ui::browse::show(&mut app, ui);
+                    left = Some((before, ui.cursor().left()));
+                },
+            );
+            output.textures_delta.clear();
+            let (before, after) = left.unwrap();
+            assert_eq!(after, before, "at {width}pt");
+        }
+    }
+
     #[test]
     fn loading_collections_keep_their_hero_layout() {
         fn playlist(app: &mut App, ui: &mut egui::Ui) {

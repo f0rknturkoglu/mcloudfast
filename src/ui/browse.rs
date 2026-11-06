@@ -177,7 +177,10 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
 
     for chunk in CATEGORIES.chunks(count) {
         ui.horizontal(|ui| {
-            ui.add_space(inset - ui.spacing().item_spacing.x);
+            // Spacing is added between items, not before the first one. Less
+            // than nothing here would also move the page's left edge with it,
+            // and each row would start further left than the one before.
+            ui.add_space(inset);
             ui.spacing_mut().item_spacing.x = GAP;
             for category in chunk {
                 let (rect, response) =
