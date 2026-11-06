@@ -244,7 +244,7 @@ pub(in crate::ui) fn loaded(
     if let Loadable::Loaded(related) = &page.related
         && !related.is_empty()
     {
-        let title = gettext(app.locale, "Fans also like");
+        let title = gettext(app.locale, "Similar Artists");
         shelf(ui, "artist-related", &title, |ui| {
             for artist in related {
                 let image = pick_image(&artist.images, app.art_px(ARTIST_CARD));
@@ -1218,7 +1218,7 @@ pub(crate) fn card(
 /// The latest release: its artwork beside the date, the name, the number
 /// of songs and a "+" that saves it.
 fn latest_card(app: &mut App, ui: &mut egui::Ui, album: &Album, card_width: f32) {
-    title(ui, &gettext(app.locale, "Latest release"));
+    title(ui, &gettext(app.locale, "Latest Release"));
     let (row, response) = ui.allocate_exact_size(vec2(card_width, LATEST_ART), Sense::click());
     let art = Rect::from_min_size(row.min, Vec2::splat(LATEST_ART));
     widgets::paint_cover(

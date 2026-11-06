@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-06 14:41+0300\n"
+"POT-Creation-Date: 2026-11-06 15:01+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -379,7 +379,7 @@ msgstr ""
 msgid "Next up"
 msgstr ""
 
-#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3307
+#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3383
 #: src/ui/collection.rs:1279 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr ""
@@ -462,8 +462,8 @@ msgstr ""
 msgid "No timed lyrics for this track."
 msgstr ""
 
-#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3205 src/ui/widgets.rs:3245
-#: src/ui/widgets.rs:3273 src/app.rs:14101 src/ui/collection.rs:930
+#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3281 src/ui/widgets.rs:3321
+#: src/ui/widgets.rs:3349 src/app.rs:14101 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr ""
 
@@ -508,7 +508,7 @@ msgstr ""
 msgid "Filter playlists"
 msgstr ""
 
-#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359 src/ui/mcloud/sidebar.rs:442
+#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359
 msgid "New playlist"
 msgstr ""
 
@@ -548,12 +548,11 @@ msgstr ""
 msgid "Go to song radio"
 msgstr ""
 
-#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222 src/ui/mcloud/player.rs:757
-#: src/ui/mcloud/player.rs:763
+#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222
 msgid "Go to artist"
 msgstr ""
 
-#: src/ui/widgets.rs:1240 src/ui/mcloud/player.rs:780
+#: src/ui/widgets.rs:1240
 msgid "Go to album"
 msgstr ""
 
@@ -635,105 +634,105 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. Translators: {column} is a column heading of a song list, such as Title.
-#: src/ui/widgets.rs:2540
+#: src/ui/widgets.rs:2545
 #, rust-format
 msgid "Sort by {column}"
 msgstr ""
 
-#: src/ui/widgets.rs:2595
+#: src/ui/widgets.rs:2601
 msgid "Sort by playlist order"
 msgstr ""
 
-#: src/ui/widgets.rs:2630
+#: src/ui/widgets.rs:2636
 msgid "Original order, reversed"
 msgstr ""
 
-#: src/ui/widgets.rs:2643
+#: src/ui/widgets.rs:2649
 msgctxt "column heading"
 msgid "TITLE"
 msgstr ""
 
-#: src/ui/widgets.rs:2672
+#: src/ui/widgets.rs:2678
 msgctxt "column heading"
 msgid "ALBUM"
 msgstr ""
 
-#: src/ui/widgets.rs:2681 src/ui/mcloud/pages.rs:366
+#: src/ui/widgets.rs:2687 src/ui/mcloud/pages.rs:366
 msgctxt "column heading"
 msgid "ADDED BY"
 msgstr ""
 
-#: src/ui/widgets.rs:2690
+#: src/ui/widgets.rs:2696
 msgctxt "column heading"
 msgid "DATE ADDED"
 msgstr ""
 
-#: src/ui/widgets.rs:2700
+#: src/ui/widgets.rs:2706
 msgctxt "column heading"
 msgid "PLAYS"
 msgstr ""
 
-#: src/ui/widgets.rs:2722 src/ui/widgets.rs:2752
+#: src/ui/widgets.rs:2728 src/ui/widgets.rs:2758
 msgid "Sort by duration"
 msgstr ""
 
-#: src/ui/widgets.rs:3019
+#: src/ui/widgets.rs:3025
 msgid "More options"
 msgstr ""
 
-#: src/ui/widgets.rs:3284 src/app.rs:14310 src/app.rs:14324
+#: src/ui/widgets.rs:3360 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
 msgstr ""
 
-#: src/ui/widgets.rs:3548
+#: src/ui/widgets.rs:3624
 msgid "Cut"
 msgstr ""
 
-#: src/ui/widgets.rs:3553 src/ui/login.rs:560
+#: src/ui/widgets.rs:3629 src/ui/login.rs:560
 msgid "Copy"
 msgstr ""
 
-#: src/ui/widgets.rs:3558
+#: src/ui/widgets.rs:3634
 msgid "Paste"
 msgstr ""
 
-#: src/ui/widgets.rs:3575
+#: src/ui/widgets.rs:3651
 msgid "Select all"
 msgstr ""
 
-#: src/ui/widgets.rs:3712 src/ui/mcloud/library.rs:135
+#: src/ui/widgets.rs:3788 src/ui/mcloud/library.rs:135
 msgid "Clear"
 msgstr ""
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3757
+#: src/ui/widgets.rs:3833
 #, rust-format
 msgid "Built with love by {name}"
 msgstr ""
 
-#: src/ui/widgets.rs:3902
+#: src/ui/widgets.rs:3978
 msgid "Host"
 msgstr ""
 
-#: src/ui/widgets.rs:3919
+#: src/ui/widgets.rs:3995
 msgid "Port"
 msgstr ""
 
-#: src/ui/widgets.rs:3937
+#: src/ui/widgets.rs:4013
 msgid "Username"
 msgstr ""
 
-#: src/ui/widgets.rs:3948
+#: src/ui/widgets.rs:4024
 msgid "Password"
 msgstr ""
 
-#: src/ui/widgets.rs:3966
+#: src/ui/widgets.rs:4042
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
 msgstr ""
 
-#: src/ui/widgets.rs:3970
+#: src/ui/widgets.rs:4046
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -2439,8 +2438,7 @@ msgstr ""
 msgid "Popular"
 msgstr ""
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:292
-#: src/ui/mcloud/sidebar.rs:459
+#: src/ui/artist.rs:94
 msgid "Show less"
 msgstr ""
 
@@ -2460,7 +2458,7 @@ msgstr ""
 msgid "Nothing in this category."
 msgstr ""
 
-#: src/ui/artist.rs:224 src/ui/mcloud/artist.rs:247
+#: src/ui/artist.rs:224
 msgid "Fans also like"
 msgstr ""
 
@@ -3850,8 +3848,24 @@ msgid ""
 "on GPU acceleration for the virtual machine. Open {url} to read more?"
 msgstr ""
 
+#: src/ui/mcloud/sidebar.rs:292 src/ui/mcloud/sidebar.rs:459
+msgid "Show Less"
+msgstr ""
+
+#: src/ui/mcloud/sidebar.rs:442
+msgid "New Playlist"
+msgstr ""
+
 #: src/ui/mcloud/sidebar.rs:703
-msgid "Show all"
+msgid "Show All"
+msgstr ""
+
+#: src/ui/mcloud/player.rs:757 src/ui/mcloud/player.rs:763
+msgid "Go to Artist"
+msgstr ""
+
+#: src/ui/mcloud/player.rs:780
+msgid "Go to Album"
 msgstr ""
 
 #: src/ui/mcloud/pages.rs:358 src/ui/mcloud/pages.rs:365
@@ -3873,6 +3887,10 @@ msgstr ""
 msgid "More by {artist}"
 msgstr ""
 
+#: src/ui/mcloud/artist.rs:247
+msgid "Similar Artists"
+msgstr ""
+
 #: src/ui/mcloud/artist.rs:706
 msgid "Monthly listeners"
 msgstr ""
@@ -3886,7 +3904,7 @@ msgid "Top cities"
 msgstr ""
 
 #: src/ui/mcloud/artist.rs:1221
-msgid "Latest release"
+msgid "Latest Release"
 msgstr ""
 
 #: src/ui/mcloud/artist.rs:1369

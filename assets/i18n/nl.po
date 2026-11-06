@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-05 04:19+0300\n"
+"POT-Creation-Date: 2026-11-06 15:01+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Dutch\n"
@@ -376,7 +376,7 @@ msgstr "Hierna"
 msgid "Next up"
 msgstr "Daarna"
 
-#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3307
+#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3383
 #: src/ui/collection.rs:1279 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr "Opnieuw proberen"
@@ -461,8 +461,8 @@ msgstr "Instrumentaal"
 msgid "No timed lyrics for this track."
 msgstr "Geen gesynchroniseerde songtekst voor dit nummer."
 
-#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3205 src/ui/widgets.rs:3245
-#: src/ui/widgets.rs:3273 src/app.rs:14101 src/ui/collection.rs:930
+#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3281 src/ui/widgets.rs:3321
+#: src/ui/widgets.rs:3349 src/app.rs:14101 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr "Laden…"
 
@@ -507,7 +507,7 @@ msgstr "Verwijderen uit deze playlist"
 msgid "Filter playlists"
 msgstr "Playlists filteren"
 
-#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359 src/ui/mcloud/sidebar.rs:442
+#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359
 msgid "New playlist"
 msgstr "Nieuwe playlist"
 
@@ -547,12 +547,11 @@ msgstr "Verbergen in deze playlist"
 msgid "Go to song radio"
 msgstr "Ga naar songradio"
 
-#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222 src/ui/mcloud/player.rs:757
-#: src/ui/mcloud/player.rs:763
+#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222
 msgid "Go to artist"
 msgstr "Ga naar artiest"
 
-#: src/ui/widgets.rs:1240 src/ui/mcloud/player.rs:780
+#: src/ui/widgets.rs:1240
 msgid "Go to album"
 msgstr "Ga naar album"
 
@@ -634,99 +633,99 @@ msgstr[0] "{name} + {count} ander"
 msgstr[1] "{name} + {count} andere"
 
 #. Translators: {column} is a column heading of a song list, such as Title.
-#: src/ui/widgets.rs:2540
+#: src/ui/widgets.rs:2545
 #, rust-format
 msgid "Sort by {column}"
 msgstr "Sorteren op {column}"
 
-#: src/ui/widgets.rs:2595
+#: src/ui/widgets.rs:2601
 msgid "Sort by playlist order"
 msgstr "Sorteren op playlistvolgorde"
 
-#: src/ui/widgets.rs:2630
+#: src/ui/widgets.rs:2636
 msgid "Original order, reversed"
 msgstr "Oorspronkelijke volgorde, omgekeerd"
 
-#: src/ui/widgets.rs:2643
+#: src/ui/widgets.rs:2649
 msgctxt "column heading"
 msgid "TITLE"
 msgstr "TITEL"
 
-#: src/ui/widgets.rs:2672
+#: src/ui/widgets.rs:2678
 msgctxt "column heading"
 msgid "ALBUM"
 msgstr "ALBUM"
 
-#: src/ui/widgets.rs:2681 src/ui/mcloud/pages.rs:366
+#: src/ui/widgets.rs:2687 src/ui/mcloud/pages.rs:366
 msgctxt "column heading"
 msgid "ADDED BY"
 msgstr "TOEGEVOEGD DOOR"
 
-#: src/ui/widgets.rs:2690
+#: src/ui/widgets.rs:2696
 msgctxt "column heading"
 msgid "DATE ADDED"
 msgstr "DATUM TOEGEVOEGD"
 
-#: src/ui/widgets.rs:2700
+#: src/ui/widgets.rs:2706
 msgctxt "column heading"
 msgid "PLAYS"
 msgstr "KEER AFGESPEELD"
 
-#: src/ui/widgets.rs:2722 src/ui/widgets.rs:2752
+#: src/ui/widgets.rs:2728 src/ui/widgets.rs:2758
 msgid "Sort by duration"
 msgstr "Sorteren op duur"
 
-#: src/ui/widgets.rs:3019
+#: src/ui/widgets.rs:3025
 msgid "More options"
 msgstr "Meer opties"
 
-#: src/ui/widgets.rs:3284 src/app.rs:14310 src/app.rs:14324
+#: src/ui/widgets.rs:3360 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
 msgstr "Netwerkverbindingsfout. Controleer je verbinding."
 
-#: src/ui/widgets.rs:3548
+#: src/ui/widgets.rs:3624
 msgid "Cut"
 msgstr "Knippen"
 
-#: src/ui/widgets.rs:3553 src/ui/login.rs:560
+#: src/ui/widgets.rs:3629 src/ui/login.rs:560
 msgid "Copy"
 msgstr "Kopiëren"
 
-#: src/ui/widgets.rs:3558
+#: src/ui/widgets.rs:3634
 msgid "Paste"
 msgstr "Plakken"
 
-#: src/ui/widgets.rs:3575
+#: src/ui/widgets.rs:3651
 msgid "Select all"
 msgstr "Alles selecteren"
 
-#: src/ui/widgets.rs:3712 src/ui/mcloud/library.rs:135
+#: src/ui/widgets.rs:3788 src/ui/mcloud/library.rs:135
 msgid "Clear"
 msgstr "Wissen"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3757
+#: src/ui/widgets.rs:3833
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "Met liefde gemaakt door {name}"
 
-#: src/ui/widgets.rs:3902
+#: src/ui/widgets.rs:3978
 msgid "Host"
 msgstr "Host"
 
-#: src/ui/widgets.rs:3919
+#: src/ui/widgets.rs:3995
 msgid "Port"
 msgstr "Poort"
 
-#: src/ui/widgets.rs:3937
+#: src/ui/widgets.rs:4013
 msgid "Username"
 msgstr "Gebruikersnaam"
 
-#: src/ui/widgets.rs:3948
+#: src/ui/widgets.rs:4024
 msgid "Password"
 msgstr "Wachtwoord"
 
-#: src/ui/widgets.rs:3966
+#: src/ui/widgets.rs:4042
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
@@ -734,7 +733,7 @@ msgstr ""
 "Proxy-aanmelding geldt voor webverzoeken. Lokaal afspelen gebruikt deze "
 "proxy alleen zonder aanmelding."
 
-#: src/ui/widgets.rs:3970
+#: src/ui/widgets.rs:4046
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -1856,7 +1855,9 @@ msgstr "Mixhoezen in Apple Music-stijl"
 msgid ""
 "Draw Daily Mix and radio covers in Apple Music's Essentials and station "
 "style."
-msgstr "Toon hoezen van Daily Mix en radio in de Essentials- en zenderstijl van Apple Music."
+msgstr ""
+"Toon hoezen van Daily Mix en radio in de Essentials- en zenderstijl van "
+"Apple Music."
 
 #: src/ui/settings.rs:1391 src/ui/settings.rs:1617
 msgctxt "glass"
@@ -2561,8 +2562,7 @@ msgstr ""
 msgid "Popular"
 msgstr "Populair"
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:292
-#: src/ui/mcloud/sidebar.rs:459
+#: src/ui/artist.rs:94
 msgid "Show less"
 msgstr "Minder tonen"
 
@@ -2582,7 +2582,7 @@ msgstr "Discografie"
 msgid "Nothing in this category."
 msgstr "Niets in deze categorie."
 
-#: src/ui/artist.rs:224 src/ui/mcloud/artist.rs:247
+#: src/ui/artist.rs:224
 msgid "Fans also like"
 msgstr "Fans vinden ook leuk"
 
@@ -4021,9 +4021,25 @@ msgstr ""
 "stuurprogramma of zet GPU-versnelling aan voor de virtuele machine. {url} "
 "openen voor meer informatie?"
 
+#: src/ui/mcloud/sidebar.rs:292 src/ui/mcloud/sidebar.rs:459
+msgid "Show Less"
+msgstr "Minder tonen"
+
+#: src/ui/mcloud/sidebar.rs:442
+msgid "New Playlist"
+msgstr "Nieuwe playlist"
+
 #: src/ui/mcloud/sidebar.rs:703
-msgid "Show all"
+msgid "Show All"
 msgstr "Alles tonen"
+
+#: src/ui/mcloud/player.rs:757 src/ui/mcloud/player.rs:763
+msgid "Go to Artist"
+msgstr "Ga naar artiest"
+
+#: src/ui/mcloud/player.rs:780
+msgid "Go to Album"
+msgstr "Ga naar album"
 
 #: src/ui/mcloud/pages.rs:358 src/ui/mcloud/pages.rs:365
 #: src/ui/mcloud/pages.rs:428
@@ -4044,6 +4060,10 @@ msgstr "Muziek"
 msgid "More by {artist}"
 msgstr "Meer van {artist}"
 
+#: src/ui/mcloud/artist.rs:247
+msgid "Similar Artists"
+msgstr "Vergelijkbare artiesten"
+
 #: src/ui/mcloud/artist.rs:706
 msgid "Monthly listeners"
 msgstr "Maandelijkse luisteraars"
@@ -4057,7 +4077,7 @@ msgid "Top cities"
 msgstr "Topsteden"
 
 #: src/ui/mcloud/artist.rs:1221
-msgid "Latest release"
+msgid "Latest Release"
 msgstr "Nieuwste release"
 
 #: src/ui/mcloud/artist.rs:1369
@@ -4094,253 +4114,3 @@ msgstr[1] "{count} items"
 msgctxt "search result"
 msgid "Song"
 msgstr "Nummer"
-
-#~ msgid "Explore by genre and mood"
-#~ msgstr "Ontdek op genre en sfeer"
-
-#~ msgid "Spotify's own player, with lossless support."
-#~ msgstr "Spotify’s eigen speler, met ondersteuning voor verliesvrije audio."
-
-#~ msgid ""
-#~ "You'll need Spotify Premium, your personal Soloist key and one pairing in "
-#~ "Spotify. Spotifast handles the download and updates."
-#~ msgstr ""
-#~ "Je hebt Spotify Premium, je persoonlijke Soloist-sleutel en een eenmalige "
-#~ "koppeling in Spotify nodig. Spotifast regelt de download en updates."
-
-#~ msgid ""
-#~ "For local files and full queue editing, use the built-in player. You can "
-#~ "switch later in Settings."
-#~ msgstr ""
-#~ "Gebruik de ingebouwde speler voor lokale bestanden en volledige "
-#~ "wachtrijbewerking. Je kunt later wisselen in Instellingen."
-
-#~ msgid ""
-#~ "Create a Soloist key in Spotify's developer dashboard. This is separate "
-#~ "from your Web API app's Client ID."
-#~ msgstr ""
-#~ "Maak een Soloist-sleutel in Spotify's ontwikkelaarsdashboard. Deze staat "
-#~ "los van de Client ID van je Web API-app."
-
-#~ msgid ""
-#~ "Soloist makes its own Spotify connections. Spotifast's proxy settings do "
-#~ "not route its audio traffic."
-#~ msgstr ""
-#~ "Soloist maakt zelf verbinding met Spotify. Spotifasts proxy-instellingen "
-#~ "gelden niet voor zijn audioverkeer."
-
-#~ msgid ""
-#~ "Downloads directly from Spotify and saves your key in the system "
-#~ "credential store. By enabling Soloist, you use Spotify's separate "
-#~ "software under its terms."
-#~ msgstr ""
-#~ "Downloadt rechtstreeks van Spotify en bewaart je sleutel in de "
-#~ "systeemopslag voor inloggegevens. Door Soloist in te schakelen gebruik je "
-#~ "Spotify's afzonderlijke software onder diens voorwaarden."
-
-#~ msgid ""
-#~ "Open Spotify on the same network, using the account signed in here. In "
-#~ "the device picker, choose:"
-#~ msgstr ""
-#~ "Open Spotify op hetzelfde netwerk met het account waarmee je hier bent "
-#~ "aangemeld. Kies in de apparatenlijst:"
-
-#~ msgid ""
-#~ "Spotifast will notice when pairing finishes. Future starts reconnect "
-#~ "automatically."
-#~ msgstr ""
-#~ "Spotifast merkt wanneer het koppelen klaar is. Bij volgende starts wordt "
-#~ "de verbinding automatisch hersteld."
-
-#~ msgid ""
-#~ "If this takes a while, make sure Spotify is signed in to the same account "
-#~ "as Spotifast, then select this device there."
-#~ msgstr ""
-#~ "Duurt dit lang, controleer dan of Spotify hetzelfde account gebruikt als "
-#~ "Spotifast en kies dit apparaat in Spotify."
-
-#~ msgid ""
-#~ "For EQ, visualizers, local files and queue editing, use the built-in "
-#~ "player. You can switch later in Settings."
-#~ msgstr ""
-#~ "Gebruik de ingebouwde speler voor de equalizer, visualisaties, lokale "
-#~ "bestanden en het bewerken van de wachtrij. Je kunt later wisselen in "
-#~ "Instellingen."
-
-#~ msgid ""
-#~ "Spotify manages audio quality. EQ, visualizers and local files use the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Spotify beheert de geluidskwaliteit. EQ, visualisaties en lokale "
-#~ "bestanden gebruiken de ingebouwde speler."
-
-#~ msgid "Confirming your Spotify account…"
-#~ msgstr "Je Spotify-account bevestigen…"
-
-#~ msgid "Details"
-#~ msgstr "Details"
-
-#~ msgid ""
-#~ "Spotifast checks daily for a replacement during the last 30 days of each "
-#~ "build. Updates wait until Soloist is inactive."
-#~ msgstr ""
-#~ "Tijdens de laatste 30 dagen van elke versie zoekt Spotifast dagelijks "
-#~ "naar een vervanging. Updates wachten tot Soloist inactief is."
-
-#~ msgid ""
-#~ "Soloist uses your system audio output. Turn it off to use the built-in "
-#~ "player's EQ, visualizers, local files and queue editing."
-#~ msgstr ""
-#~ "Soloist gebruikt de audio-uitgang van het systeem. Schakel het uit om de "
-#~ "equalizer, visualisaties, lokale bestanden en wachtrijbewerking van de "
-#~ "ingebouwde speler te gebruiken."
-
-#~ msgid ""
-#~ "Spotify chooses playback quality. Soloist does not report the delivered "
-#~ "audio format yet."
-#~ msgstr ""
-#~ "Spotify kiest de afspeelkwaliteit. Soloist meldt het ontvangen "
-#~ "audioformaat nog niet."
-
-#~ msgid ""
-#~ "Audio quality, output, EQ and local-file settings below apply to the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "De onderstaande instellingen voor audiokwaliteit, uitvoer, EQ en lokale "
-#~ "bestanden gelden voor de ingebouwde speler."
-
-#~ msgid ""
-#~ "Spotify's own player, with support for lossless audio. Requires Premium, "
-#~ "your personal Soloist key, and one pairing in the Spotify app."
-#~ msgstr ""
-#~ "Spotify's eigen speler, met ondersteuning voor verliesvrije audio. "
-#~ "Vereist Premium, je persoonlijke Soloist-sleutel en eenmalig koppelen in "
-#~ "de Spotify-app."
-
-#~ msgid ""
-#~ "Soloist plays through your system audio output. Spotifast's EQ, "
-#~ "visualizers, local files, and full queue editing are available with the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Soloist gebruikt de audio-uitvoer van je systeem. Spotifasts EQ, "
-#~ "visualisaties, lokale bestanden en volledige wachtrijbewerking zijn "
-#~ "beschikbaar met de ingebouwde speler."
-
-#~ msgid "Soloist is ready"
-#~ msgstr "Soloist is klaar"
-
-#~ msgid ""
-#~ "A fresh build is downloaded. It will be applied when Soloist is inactive "
-#~ "or Spotifast restarts."
-#~ msgstr ""
-#~ "Een nieuwe versie is gedownload. Deze wordt toegepast zodra Soloist "
-#~ "inactief is of Spotifast opnieuw start."
-
-#~ msgid "Soloist setup, privacy and limitations"
-#~ msgstr "Soloist instellen, privacy en beperkingen"
-
-#~ msgid ""
-#~ "Use a personal Development Mode app for a separate API quota. The shared "
-#~ "app stays active."
-#~ msgstr ""
-#~ "Gebruik een persoonlijke app in Development Mode voor een apart API-"
-#~ "quotum. De gedeelde app blijft actief."
-
-#~ msgid "Remove personal app"
-#~ msgstr "Persoonlijke app verwijderen"
-
-#~ msgid "Shared access remains signed in."
-#~ msgstr "Gedeelde toegang blijft ingelogd."
-
-#~ msgid "Spotify can be slow on the shared app"
-#~ msgstr "Spotify kan traag zijn met de gedeelde app"
-
-#~ msgid ""
-#~ "Everyone using Spotifast shares one app, and Spotify slows it down when "
-#~ "it's busy. Set up your own personal Spotify app and you won't have to "
-#~ "wait. It's free and takes a few minutes."
-#~ msgstr ""
-#~ "Iedereen die Spotifast gebruikt deelt één app, en Spotify remt die af als "
-#~ "het druk is. Stel je eigen persoonlijke Spotify-app in, dan hoef je niet "
-#~ "te wachten. Het is gratis en duurt een paar minuten."
-
-#~ msgid "Use the shared Spotify app instead"
-#~ msgstr "In plaats daarvan de gedeelde Spotify-app gebruiken"
-
-#~ msgid ""
-#~ "Set up your own personal Spotify app and you won't have to wait. It's "
-#~ "free and takes a few minutes."
-#~ msgstr ""
-#~ "Stel je eigen persoonlijke Spotify-app in, dan hoef je niet te wachten. "
-#~ "Het is gratis en duurt een paar minuten."
-
-#~ msgid ""
-#~ "Spotifast hides to the system tray. Quit from the tray menu or with Cmd+Q."
-#~ msgstr ""
-#~ "Spotifast verdwijnt naar het systeemvak. Sluit af via het menu in het "
-#~ "systeemvak of met Cmd+Q."
-
-#~ msgid "Your most-played tracks from the last four weeks."
-#~ msgstr "Je meest afgespeelde nummers van de afgelopen vier weken."
-
-#~ msgid "Spend less time waiting for Spotify"
-#~ msgstr "Minder wachten op Spotify"
-
-#~ msgid ""
-#~ "Spotifast's default connection shares Spotify's request limit with other "
-#~ "listeners. When it gets busy, loading music and using playback controls "
-#~ "can take longer."
-#~ msgstr ""
-#~ "De standaardverbinding van Spotifast deelt de verzoeklimiet van Spotify "
-#~ "met andere luisteraars. Als het druk is, kan het laden van muziek en het "
-#~ "gebruik van de afspeelknoppen langer duren."
-
-#~ msgid ""
-#~ "Your Premium account lets you create a free personal Spotify app. Connect "
-#~ "it here to give supported requests your own allowance. Some pages still "
-#~ "use the shared connection."
-#~ msgstr ""
-#~ "Met je Premium-account kun je gratis een persoonlijke Spotify-app maken. "
-#~ "Verbind die hier zodat ondersteunde verzoeken je eigen tegoed gebruiken. "
-#~ "Sommige pagina's gebruiken nog steeds de gedeelde verbinding."
-
-#~ msgid ""
-#~ "Setup takes a few minutes. You can also find it later in Settings under "
-#~ "Personal Spotify app."
-#~ msgstr ""
-#~ "Instellen duurt een paar minuten. Je vindt het later ook in Instellingen "
-#~ "onder Persoonlijke Spotify-app."
-
-#~ msgid "Keep shared app"
-#~ msgstr "Gedeelde app houden"
-
-#~ msgid ""
-#~ "Play the local files your playlists list from a folder on this computer. "
-#~ "Only 44.1 kHz files play."
-#~ msgstr ""
-#~ "Speel de lokale bestanden uit je playlists af vanuit een map op deze "
-#~ "computer. Alleen bestanden van 44,1 kHz worden afgespeeld."
-
-#~ msgid "PulseAudio also covers PipeWire. Rodio talks to ALSA directly."
-#~ msgstr "PulseAudio dekt ook PipeWire. Rodio praat rechtstreeks met ALSA."
-
-#~ msgid "Couldn't load this shelf"
-#~ msgstr "Kan deze rij niet laden"
-
-#~ msgid "Spotify does not let apps remove one queued song."
-#~ msgstr "Spotify laat apps geen los nummer uit de wachtrij verwijderen."
-
-#~ msgid "MacBook notch interactive widget"
-#~ msgstr "Interactieve MacBook-notch-widget"
-
-#~ msgid "Scroll left"
-#~ msgstr "Naar links scrollen"
-
-#~ msgid "Scroll right"
-#~ msgstr "Naar rechts scrollen"
-
-#~ msgid "Enable lyrics motion"
-#~ msgstr "Songtekstbeweging inschakelen"
-
-#~ msgid "Reduce lyrics motion"
-#~ msgstr "Songtekstbeweging verminderen"

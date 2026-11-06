@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-05 04:19+0300\n"
+"POT-Creation-Date: 2026-11-06 15:01+0300\n"
 "PO-Revision-Date: 2026-09-23 20:00+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Russian\n"
@@ -381,7 +381,7 @@ msgstr "Добавлено в очередь"
 msgid "Next up"
 msgstr "Далее"
 
-#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3307
+#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3383
 #: src/ui/collection.rs:1279 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr "Повторить"
@@ -464,8 +464,8 @@ msgstr "Инструментальная композиция"
 msgid "No timed lyrics for this track."
 msgstr "Для этого трека нет синхронизированного текста."
 
-#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3205 src/ui/widgets.rs:3245
-#: src/ui/widgets.rs:3273 src/app.rs:14101 src/ui/collection.rs:930
+#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3281 src/ui/widgets.rs:3321
+#: src/ui/widgets.rs:3349 src/app.rs:14101 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr "Загрузка…"
 
@@ -511,7 +511,7 @@ msgstr "Удалить из этого плейлиста"
 msgid "Filter playlists"
 msgstr "Фильтр плейлистов"
 
-#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359 src/ui/mcloud/sidebar.rs:442
+#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359
 msgid "New playlist"
 msgstr "Новый плейлист"
 
@@ -551,12 +551,11 @@ msgstr "Скрыть в этом плейлисте"
 msgid "Go to song radio"
 msgstr "Перейти к радио трека"
 
-#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222 src/ui/mcloud/player.rs:757
-#: src/ui/mcloud/player.rs:763
+#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222
 msgid "Go to artist"
 msgstr "Перейти к исполнителю"
 
-#: src/ui/widgets.rs:1240 src/ui/mcloud/player.rs:780
+#: src/ui/widgets.rs:1240
 msgid "Go to album"
 msgstr "Перейти к альбому"
 
@@ -639,99 +638,99 @@ msgstr[1] "{name} + ещё {count}"
 msgstr[2] "{name} + ещё {count}"
 
 #. Translators: {column} is a column heading of a song list, such as Title.
-#: src/ui/widgets.rs:2540
+#: src/ui/widgets.rs:2545
 #, rust-format
 msgid "Sort by {column}"
 msgstr "Сортировка: {column}"
 
-#: src/ui/widgets.rs:2595
+#: src/ui/widgets.rs:2601
 msgid "Sort by playlist order"
 msgstr "Сортировать в порядке плейлиста"
 
-#: src/ui/widgets.rs:2630
+#: src/ui/widgets.rs:2636
 msgid "Original order, reversed"
 msgstr "Исходный порядок, обратный"
 
-#: src/ui/widgets.rs:2643
+#: src/ui/widgets.rs:2649
 msgctxt "column heading"
 msgid "TITLE"
 msgstr "НАЗВАНИЕ"
 
-#: src/ui/widgets.rs:2672
+#: src/ui/widgets.rs:2678
 msgctxt "column heading"
 msgid "ALBUM"
 msgstr "АЛЬБОМ"
 
-#: src/ui/widgets.rs:2681 src/ui/mcloud/pages.rs:366
+#: src/ui/widgets.rs:2687 src/ui/mcloud/pages.rs:366
 msgctxt "column heading"
 msgid "ADDED BY"
 msgstr "КТО ДОБАВИЛ"
 
-#: src/ui/widgets.rs:2690
+#: src/ui/widgets.rs:2696
 msgctxt "column heading"
 msgid "DATE ADDED"
 msgstr "ДАТА ДОБАВЛЕНИЯ"
 
-#: src/ui/widgets.rs:2700
+#: src/ui/widgets.rs:2706
 msgctxt "column heading"
 msgid "PLAYS"
 msgstr "ПРОСЛУШИВАНИЯ"
 
-#: src/ui/widgets.rs:2722 src/ui/widgets.rs:2752
+#: src/ui/widgets.rs:2728 src/ui/widgets.rs:2758
 msgid "Sort by duration"
 msgstr "Сортировать по длительности"
 
-#: src/ui/widgets.rs:3019
+#: src/ui/widgets.rs:3025
 msgid "More options"
 msgstr "Другие параметры"
 
-#: src/ui/widgets.rs:3284 src/app.rs:14310 src/app.rs:14324
+#: src/ui/widgets.rs:3360 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
 msgstr "Ошибка сетевого подключения. Проверьте соединение."
 
-#: src/ui/widgets.rs:3548
+#: src/ui/widgets.rs:3624
 msgid "Cut"
 msgstr "Вырезать"
 
-#: src/ui/widgets.rs:3553 src/ui/login.rs:560
+#: src/ui/widgets.rs:3629 src/ui/login.rs:560
 msgid "Copy"
 msgstr "Копировать"
 
-#: src/ui/widgets.rs:3558
+#: src/ui/widgets.rs:3634
 msgid "Paste"
 msgstr "Вставить"
 
-#: src/ui/widgets.rs:3575
+#: src/ui/widgets.rs:3651
 msgid "Select all"
 msgstr "Выделить всё"
 
-#: src/ui/widgets.rs:3712 src/ui/mcloud/library.rs:135
+#: src/ui/widgets.rs:3788 src/ui/mcloud/library.rs:135
 msgid "Clear"
 msgstr "Очистить"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3757
+#: src/ui/widgets.rs:3833
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "Сделано с любовью: {name}"
 
-#: src/ui/widgets.rs:3902
+#: src/ui/widgets.rs:3978
 msgid "Host"
 msgstr "Хост"
 
-#: src/ui/widgets.rs:3919
+#: src/ui/widgets.rs:3995
 msgid "Port"
 msgstr "Порт"
 
-#: src/ui/widgets.rs:3937
+#: src/ui/widgets.rs:4013
 msgid "Username"
 msgstr "Имя пользователя"
 
-#: src/ui/widgets.rs:3948
+#: src/ui/widgets.rs:4024
 msgid "Password"
 msgstr "Пароль"
 
-#: src/ui/widgets.rs:3966
+#: src/ui/widgets.rs:4042
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
@@ -739,7 +738,7 @@ msgstr ""
 "Логин прокси применяется к веб-запросам. Локальное воспроизведение "
 "использует этот прокси только без логина."
 
-#: src/ui/widgets.rs:3970
+#: src/ui/widgets.rs:4046
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -1858,7 +1857,8 @@ msgstr "Обложки миксов в стиле Apple Music"
 msgid ""
 "Draw Daily Mix and radio covers in Apple Music's Essentials and station "
 "style."
-msgstr "Рисует обложки Daily Mix и радио в стиле Essentials и станций Apple Music."
+msgstr ""
+"Рисует обложки Daily Mix и радио в стиле Essentials и станций Apple Music."
 
 #: src/ui/settings.rs:1391 src/ui/settings.rs:1617
 msgctxt "glass"
@@ -2563,8 +2563,7 @@ msgstr ""
 msgid "Popular"
 msgstr "Популярные треки"
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:292
-#: src/ui/mcloud/sidebar.rs:459
+#: src/ui/artist.rs:94
 msgid "Show less"
 msgstr "Свернуть"
 
@@ -2584,7 +2583,7 @@ msgstr "Дискография"
 msgid "Nothing in this category."
 msgstr "В этой категории ничего нет."
 
-#: src/ui/artist.rs:224 src/ui/mcloud/artist.rs:247
+#: src/ui/artist.rs:224
 msgid "Fans also like"
 msgstr "Поклонникам также нравится"
 
@@ -4036,9 +4035,25 @@ msgstr ""
 "драйвер или включите GPU-ускорение для виртуальной машины. Открыть {url}, "
 "чтобы узнать больше?"
 
+#: src/ui/mcloud/sidebar.rs:292 src/ui/mcloud/sidebar.rs:459
+msgid "Show Less"
+msgstr "Свернуть"
+
+#: src/ui/mcloud/sidebar.rs:442
+msgid "New Playlist"
+msgstr "Новый плейлист"
+
 #: src/ui/mcloud/sidebar.rs:703
-msgid "Show all"
+msgid "Show All"
 msgstr "Показать все"
+
+#: src/ui/mcloud/player.rs:757 src/ui/mcloud/player.rs:763
+msgid "Go to Artist"
+msgstr "Перейти к исполнителю"
+
+#: src/ui/mcloud/player.rs:780
+msgid "Go to Album"
+msgstr "Перейти к альбому"
 
 #: src/ui/mcloud/pages.rs:358 src/ui/mcloud/pages.rs:365
 #: src/ui/mcloud/pages.rs:428
@@ -4059,6 +4074,10 @@ msgstr "Музыка"
 msgid "More by {artist}"
 msgstr "Другие релизы исполнителя {artist}"
 
+#: src/ui/mcloud/artist.rs:247
+msgid "Similar Artists"
+msgstr "Похожие исполнители"
+
 #: src/ui/mcloud/artist.rs:706
 msgid "Monthly listeners"
 msgstr "Слушателей за месяц"
@@ -4072,7 +4091,7 @@ msgid "Top cities"
 msgstr "Популярные города"
 
 #: src/ui/mcloud/artist.rs:1221
-msgid "Latest release"
+msgid "Latest Release"
 msgstr "Последний релиз"
 
 #: src/ui/mcloud/artist.rs:1369
@@ -4110,254 +4129,3 @@ msgstr[2] "{count} элементов"
 msgctxt "search result"
 msgid "Song"
 msgstr "Трек"
-
-#~ msgid "Explore by genre and mood"
-#~ msgstr "Поиск по жанрам и настроению"
-
-#~ msgid "Spotify's own player, with lossless support."
-#~ msgstr "Плеер Spotify с поддержкой звука без потерь."
-
-#~ msgid ""
-#~ "You'll need Spotify Premium, your personal Soloist key and one pairing in "
-#~ "Spotify. Spotifast handles the download and updates."
-#~ msgstr ""
-#~ "Вам понадобятся Spotify Premium, личный ключ Soloist и однократное "
-#~ "сопряжение в Spotify. Spotifast выполнит загрузку и обновления."
-
-#~ msgid ""
-#~ "For local files and full queue editing, use the built-in player. You can "
-#~ "switch later in Settings."
-#~ msgstr ""
-#~ "Для локальных файлов и полного редактирования очереди используйте "
-#~ "встроенный плеер. Позже его можно сменить в настройках."
-
-#~ msgid ""
-#~ "Create a Soloist key in Spotify's developer dashboard. This is separate "
-#~ "from your Web API app's Client ID."
-#~ msgstr ""
-#~ "Создайте ключ Soloist в панели разработчика Spotify. Он отличается от "
-#~ "Client ID вашего приложения Web API."
-
-#~ msgid ""
-#~ "Soloist makes its own Spotify connections. Spotifast's proxy settings do "
-#~ "not route its audio traffic."
-#~ msgstr ""
-#~ "Soloist самостоятельно подключается к Spotify. Настройки прокси Spotifast "
-#~ "не распространяются на его аудиотрафик."
-
-#~ msgid ""
-#~ "Downloads directly from Spotify and saves your key in the system "
-#~ "credential store. By enabling Soloist, you use Spotify's separate "
-#~ "software under its terms."
-#~ msgstr ""
-#~ "Скачивает напрямую у Spotify и сохраняет ключ в системном хранилище "
-#~ "учётных данных. Включая Soloist, вы используете отдельную программу "
-#~ "Spotify на её условиях."
-
-#~ msgid ""
-#~ "Open Spotify on the same network, using the account signed in here. In "
-#~ "the device picker, choose:"
-#~ msgstr ""
-#~ "Откройте Spotify в той же сети с учётной записью, используемой здесь. В "
-#~ "списке устройств выберите:"
-
-#~ msgid ""
-#~ "Spotifast will notice when pairing finishes. Future starts reconnect "
-#~ "automatically."
-#~ msgstr ""
-#~ "Spotifast обнаружит завершение сопряжения. При следующих запусках "
-#~ "подключение будет автоматическим."
-
-#~ msgid ""
-#~ "If this takes a while, make sure Spotify is signed in to the same account "
-#~ "as Spotifast, then select this device there."
-#~ msgstr ""
-#~ "Если это занимает много времени, убедитесь, что Spotify и Spotifast "
-#~ "используют одну учётную запись, и выберите это устройство в Spotify."
-
-#~ msgid ""
-#~ "For EQ, visualizers, local files and queue editing, use the built-in "
-#~ "player. You can switch later in Settings."
-#~ msgstr ""
-#~ "Для эквалайзера, визуализаций, локальных файлов и редактирования очереди "
-#~ "используйте встроенный плеер. Позже его можно сменить в настройках."
-
-#~ msgid ""
-#~ "Spotify manages audio quality. EQ, visualizers and local files use the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Spotify управляет качеством звука. Эквалайзер, визуализации и локальные "
-#~ "файлы используют встроенный плеер."
-
-#~ msgid "Confirming your Spotify account…"
-#~ msgstr "Подтверждение учётной записи Spotify…"
-
-#~ msgid "Details"
-#~ msgstr "Подробности"
-
-#~ msgid ""
-#~ "Spotifast checks daily for a replacement during the last 30 days of each "
-#~ "build. Updates wait until Soloist is inactive."
-#~ msgstr ""
-#~ "В последние 30 дней действия каждой версии Spotifast ежедневно ищет "
-#~ "замену. Обновления ждут, пока Soloist станет неактивным."
-
-#~ msgid ""
-#~ "Soloist uses your system audio output. Turn it off to use the built-in "
-#~ "player's EQ, visualizers, local files and queue editing."
-#~ msgstr ""
-#~ "Soloist использует системный аудиовыход. Отключите его, чтобы "
-#~ "пользоваться эквалайзером, визуализациями, локальными файлами и "
-#~ "редактированием очереди встроенного проигрывателя."
-
-#~ msgid ""
-#~ "Spotify chooses playback quality. Soloist does not report the delivered "
-#~ "audio format yet."
-#~ msgstr ""
-#~ "Spotify выбирает качество воспроизведения. Soloist пока не сообщает "
-#~ "формат получаемого звука."
-
-#~ msgid ""
-#~ "Audio quality, output, EQ and local-file settings below apply to the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Настройки качества звука, вывода, эквалайзера и локальных файлов ниже "
-#~ "относятся к встроенному проигрывателю."
-
-#~ msgid ""
-#~ "Spotify's own player, with support for lossless audio. Requires Premium, "
-#~ "your personal Soloist key, and one pairing in the Spotify app."
-#~ msgstr ""
-#~ "Собственный проигрыватель Spotify с поддержкой звука без потерь. Нужны "
-#~ "Premium, личный ключ Soloist и однократное сопряжение в приложении "
-#~ "Spotify."
-
-#~ msgid ""
-#~ "Soloist plays through your system audio output. Spotifast's EQ, "
-#~ "visualizers, local files, and full queue editing are available with the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Soloist использует системный аудиовыход. Эквалайзер, визуализации, "
-#~ "локальные файлы и полное редактирование очереди Spotifast доступны во "
-#~ "встроенном проигрывателе."
-
-#~ msgid "Soloist is ready"
-#~ msgstr "Soloist готов"
-
-#~ msgid ""
-#~ "A fresh build is downloaded. It will be applied when Soloist is inactive "
-#~ "or Spotifast restarts."
-#~ msgstr ""
-#~ "Новая версия скачана. Она будет применена, когда Soloist станет "
-#~ "неактивным или Spotifast перезапустится."
-
-#~ msgid "Soloist setup, privacy and limitations"
-#~ msgstr "Настройка, конфиденциальность и ограничения Soloist"
-
-#~ msgid ""
-#~ "Use a personal Development Mode app for a separate API quota. The shared "
-#~ "app stays active."
-#~ msgstr ""
-#~ "Используй личное приложение в Development Mode, чтобы получить отдельную "
-#~ "квоту API. Общее приложение остаётся активным."
-
-#~ msgid "Remove personal app"
-#~ msgstr "Удалить личное приложение"
-
-#~ msgid "Shared access remains signed in."
-#~ msgstr "Общий доступ остаётся активным."
-
-#~ msgid "Spotify can be slow on the shared app"
-#~ msgstr "Через общее приложение Spotify может работать медленно"
-
-#~ msgid ""
-#~ "Everyone using Spotifast shares one app, and Spotify slows it down when "
-#~ "it's busy. Set up your own personal Spotify app and you won't have to "
-#~ "wait. It's free and takes a few minutes."
-#~ msgstr ""
-#~ "Все пользователи Spotifast используют одно общее приложение, и Spotify "
-#~ "замедляет его, когда нагрузка высокая. Настройте собственное личное "
-#~ "приложение Spotify, и ждать не придётся. Это бесплатно и займёт несколько "
-#~ "минут."
-
-#~ msgid "Use the shared Spotify app instead"
-#~ msgstr "Использовать общее приложение Spotify"
-
-#~ msgid ""
-#~ "Set up your own personal Spotify app and you won't have to wait. It's "
-#~ "free and takes a few minutes."
-#~ msgstr ""
-#~ "Настройте собственное личное приложение Spotify, и ждать не придётся. Это "
-#~ "бесплатно и займёт несколько минут."
-
-#~ msgid ""
-#~ "Spotifast hides to the system tray. Quit from the tray menu or with Cmd+Q."
-#~ msgstr ""
-#~ "Spotifast сворачивается в системный трей. Выйти можно через меню трея или "
-#~ "по Cmd+Q."
-
-#~ msgid "Your most-played tracks from the last four weeks."
-#~ msgstr "Самое прослушиваемое за последние четыре недели."
-
-#~ msgid "Spend less time waiting for Spotify"
-#~ msgstr "Меньше ждать Spotify"
-
-#~ msgid ""
-#~ "Spotifast's default connection shares Spotify's request limit with other "
-#~ "listeners. When it gets busy, loading music and using playback controls "
-#~ "can take longer."
-#~ msgstr ""
-#~ "Стандартное подключение Spotifast делит лимит запросов Spotify с другими "
-#~ "слушателями. При высокой нагрузке музыка загружается, а кнопки управления "
-#~ "срабатывают медленнее."
-
-#~ msgid ""
-#~ "Your Premium account lets you create a free personal Spotify app. Connect "
-#~ "it here to give supported requests your own allowance. Some pages still "
-#~ "use the shared connection."
-#~ msgstr ""
-#~ "С аккаунтом Premium можно бесплатно создать личное приложение Spotify. "
-#~ "Подключи его здесь, и поддерживаемые запросы будут расходовать твою "
-#~ "собственную квоту. Некоторые страницы всё равно используют общее "
-#~ "подключение."
-
-#~ msgid ""
-#~ "Setup takes a few minutes. You can also find it later in Settings under "
-#~ "Personal Spotify app."
-#~ msgstr ""
-#~ "Настройка займёт несколько минут. Её можно найти и позже в настройках, в "
-#~ "разделе «Личное приложение Spotify»."
-
-#~ msgid "Keep shared app"
-#~ msgstr "Оставить общее приложение"
-
-#~ msgid ""
-#~ "Play the local files your playlists list from a folder on this computer. "
-#~ "Only 44.1 kHz files play."
-#~ msgstr ""
-#~ "Воспроизводи локальные файлы из своих плейлистов из папки на этом "
-#~ "компьютере. Воспроизводятся только файлы 44,1 кГц."
-
-#~ msgid "PulseAudio also covers PipeWire. Rodio talks to ALSA directly."
-#~ msgstr "PulseAudio работает и с PipeWire. Rodio обращается к ALSA напрямую."
-
-#~ msgid "Couldn't load this shelf"
-#~ msgstr "Не удалось загрузить этот раздел"
-
-#~ msgid "Spotify does not let apps remove one queued song."
-#~ msgstr "Spotify не позволяет приложениям удалять из очереди отдельный трек."
-
-#~ msgid "MacBook notch interactive widget"
-#~ msgstr "Интерактивный виджет для выреза MacBook"
-
-#~ msgid "Scroll left"
-#~ msgstr "Прокрутить влево"
-
-#~ msgid "Scroll right"
-#~ msgstr "Прокрутить вправо"
-
-#~ msgid "Enable lyrics motion"
-#~ msgstr "Включить анимацию текста"
-
-#~ msgid "Reduce lyrics motion"
-#~ msgstr "Уменьшить анимацию текста"

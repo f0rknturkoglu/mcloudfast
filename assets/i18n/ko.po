@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-05 04:19+0300\n"
+"POT-Creation-Date: 2026-11-06 15:01+0300\n"
 "PO-Revision-Date: 2026-10-15 12:00+0900\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Korean\n"
@@ -372,7 +372,7 @@ msgstr "다음 재생 항목"
 msgid "Next up"
 msgstr "다음 재생"
 
-#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3307
+#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3383
 #: src/ui/collection.rs:1279 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr "다시 시도"
@@ -455,8 +455,8 @@ msgstr "연주곡"
 msgid "No timed lyrics for this track."
 msgstr "이 트랙에는 시간 동기화된 가사가 없습니다."
 
-#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3205 src/ui/widgets.rs:3245
-#: src/ui/widgets.rs:3273 src/app.rs:14101 src/ui/collection.rs:930
+#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3281 src/ui/widgets.rs:3321
+#: src/ui/widgets.rs:3349 src/app.rs:14101 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr "불러오는 중…"
 
@@ -501,7 +501,7 @@ msgstr "이 플레이리스트에서 삭제"
 msgid "Filter playlists"
 msgstr "플레이리스트 필터"
 
-#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359 src/ui/mcloud/sidebar.rs:442
+#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359
 msgid "New playlist"
 msgstr "새 플레이리스트"
 
@@ -541,12 +541,11 @@ msgstr "이 플레이리스트에서 숨기기"
 msgid "Go to song radio"
 msgstr "곡 라디오로 이동"
 
-#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222 src/ui/mcloud/player.rs:757
-#: src/ui/mcloud/player.rs:763
+#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222
 msgid "Go to artist"
 msgstr "아티스트로 이동"
 
-#: src/ui/widgets.rs:1240 src/ui/mcloud/player.rs:780
+#: src/ui/widgets.rs:1240
 msgid "Go to album"
 msgstr "앨범으로 이동"
 
@@ -627,99 +626,99 @@ msgid_plural "{name} + {count} more"
 msgstr[0] "{name} 외 {count}곡"
 
 #. Translators: {column} is a column heading of a song list, such as Title.
-#: src/ui/widgets.rs:2540
+#: src/ui/widgets.rs:2545
 #, rust-format
 msgid "Sort by {column}"
 msgstr "{column} 기준으로 정렬"
 
-#: src/ui/widgets.rs:2595
+#: src/ui/widgets.rs:2601
 msgid "Sort by playlist order"
 msgstr "플레이리스트 순서로 정렬"
 
-#: src/ui/widgets.rs:2630
+#: src/ui/widgets.rs:2636
 msgid "Original order, reversed"
 msgstr "원래 순서의 역순"
 
-#: src/ui/widgets.rs:2643
+#: src/ui/widgets.rs:2649
 msgctxt "column heading"
 msgid "TITLE"
 msgstr "제목"
 
-#: src/ui/widgets.rs:2672
+#: src/ui/widgets.rs:2678
 msgctxt "column heading"
 msgid "ALBUM"
 msgstr "앨범"
 
-#: src/ui/widgets.rs:2681 src/ui/mcloud/pages.rs:366
+#: src/ui/widgets.rs:2687 src/ui/mcloud/pages.rs:366
 msgctxt "column heading"
 msgid "ADDED BY"
 msgstr "추가한 사람"
 
-#: src/ui/widgets.rs:2690
+#: src/ui/widgets.rs:2696
 msgctxt "column heading"
 msgid "DATE ADDED"
 msgstr "추가한 날짜"
 
-#: src/ui/widgets.rs:2700
+#: src/ui/widgets.rs:2706
 msgctxt "column heading"
 msgid "PLAYS"
 msgstr "재생 횟수"
 
-#: src/ui/widgets.rs:2722 src/ui/widgets.rs:2752
+#: src/ui/widgets.rs:2728 src/ui/widgets.rs:2758
 msgid "Sort by duration"
 msgstr "재생 시간으로 정렬"
 
-#: src/ui/widgets.rs:3019
+#: src/ui/widgets.rs:3025
 msgid "More options"
 msgstr "옵션 더 보기"
 
-#: src/ui/widgets.rs:3284 src/app.rs:14310 src/app.rs:14324
+#: src/ui/widgets.rs:3360 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
 msgstr "네트워크 연결 오류입니다. 연결 상태를 확인하세요."
 
-#: src/ui/widgets.rs:3548
+#: src/ui/widgets.rs:3624
 msgid "Cut"
 msgstr "잘라내기"
 
-#: src/ui/widgets.rs:3553 src/ui/login.rs:560
+#: src/ui/widgets.rs:3629 src/ui/login.rs:560
 msgid "Copy"
 msgstr "복사"
 
-#: src/ui/widgets.rs:3558
+#: src/ui/widgets.rs:3634
 msgid "Paste"
 msgstr "붙여넣기"
 
-#: src/ui/widgets.rs:3575
+#: src/ui/widgets.rs:3651
 msgid "Select all"
 msgstr "모두 선택"
 
-#: src/ui/widgets.rs:3712 src/ui/mcloud/library.rs:135
+#: src/ui/widgets.rs:3788 src/ui/mcloud/library.rs:135
 msgid "Clear"
 msgstr "지우기"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3757
+#: src/ui/widgets.rs:3833
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "{name}이(가) 정성껏 만들었습니다"
 
-#: src/ui/widgets.rs:3902
+#: src/ui/widgets.rs:3978
 msgid "Host"
 msgstr "호스트"
 
-#: src/ui/widgets.rs:3919
+#: src/ui/widgets.rs:3995
 msgid "Port"
 msgstr "포트"
 
-#: src/ui/widgets.rs:3937
+#: src/ui/widgets.rs:4013
 msgid "Username"
 msgstr "사용자 이름"
 
-#: src/ui/widgets.rs:3948
+#: src/ui/widgets.rs:4024
 msgid "Password"
 msgstr "비밀번호"
 
-#: src/ui/widgets.rs:3966
+#: src/ui/widgets.rs:4042
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
@@ -727,7 +726,7 @@ msgstr ""
 "프록시 로그인은 웹 요청에 적용됩니다. 로컬 재생은 로그인이 없을 때만 이 프록"
 "시를 사용합니다."
 
-#: src/ui/widgets.rs:3970
+#: src/ui/widgets.rs:4046
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -1819,7 +1818,9 @@ msgstr "Apple Music 스타일 믹스 커버"
 msgid ""
 "Draw Daily Mix and radio covers in Apple Music's Essentials and station "
 "style."
-msgstr "Daily Mix와 라디오 커버를 Apple Music의 Essentials 및 스테이션 스타일로 표시합니다."
+msgstr ""
+"Daily Mix와 라디오 커버를 Apple Music의 Essentials 및 스테이션 스타일로 표시"
+"합니다."
 
 #: src/ui/settings.rs:1391 src/ui/settings.rs:1617
 msgctxt "glass"
@@ -2509,8 +2510,7 @@ msgstr ""
 msgid "Popular"
 msgstr "인기"
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:292
-#: src/ui/mcloud/sidebar.rs:459
+#: src/ui/artist.rs:94
 msgid "Show less"
 msgstr "간단히 보기"
 
@@ -2530,7 +2530,7 @@ msgstr "디스코그래피"
 msgid "Nothing in this category."
 msgstr "이 카테고리에 항목이 없습니다."
 
-#: src/ui/artist.rs:224 src/ui/mcloud/artist.rs:247
+#: src/ui/artist.rs:224
 msgid "Fans also like"
 msgstr "팬들이 좋아하는 다른 아티스트"
 
@@ -3949,9 +3949,25 @@ msgstr ""
 "나 가상 머신의 GPU 가속을 켜세요. 자세한 내용을 보려면 {url}을(를) 여시겠습니"
 "까?"
 
+#: src/ui/mcloud/sidebar.rs:292 src/ui/mcloud/sidebar.rs:459
+msgid "Show Less"
+msgstr "간단히 보기"
+
+#: src/ui/mcloud/sidebar.rs:442
+msgid "New Playlist"
+msgstr "새 플레이리스트"
+
 #: src/ui/mcloud/sidebar.rs:703
-msgid "Show all"
+msgid "Show All"
 msgstr "모두 보기"
+
+#: src/ui/mcloud/player.rs:757 src/ui/mcloud/player.rs:763
+msgid "Go to Artist"
+msgstr "아티스트로 이동"
+
+#: src/ui/mcloud/player.rs:780
+msgid "Go to Album"
+msgstr "앨범으로 이동"
 
 #: src/ui/mcloud/pages.rs:358 src/ui/mcloud/pages.rs:365
 #: src/ui/mcloud/pages.rs:428
@@ -3972,6 +3988,10 @@ msgstr "음악"
 msgid "More by {artist}"
 msgstr "{artist}의 다른 앨범"
 
+#: src/ui/mcloud/artist.rs:247
+msgid "Similar Artists"
+msgstr "비슷한 아티스트"
+
 #: src/ui/mcloud/artist.rs:706
 msgid "Monthly listeners"
 msgstr "월별 청취자"
@@ -3985,7 +4005,7 @@ msgid "Top cities"
 msgstr "주요 도시"
 
 #: src/ui/mcloud/artist.rs:1221
-msgid "Latest release"
+msgid "Latest Release"
 msgstr "최신 발매"
 
 #: src/ui/mcloud/artist.rs:1369
@@ -4021,226 +4041,3 @@ msgstr[0] "{count}개 항목"
 msgctxt "search result"
 msgid "Song"
 msgstr "곡"
-
-#~ msgid "Explore by genre and mood"
-#~ msgstr "장르 및 분위기별로 둘러보기"
-
-#~ msgid "Spotify's own player, with lossless support."
-#~ msgstr "무손실 오디오를 지원하는 Spotify 공식 플레이어입니다."
-
-#~ msgid ""
-#~ "You'll need Spotify Premium, your personal Soloist key and one pairing in "
-#~ "Spotify. Spotifast handles the download and updates."
-#~ msgstr ""
-#~ "Spotify Premium, 개인 Soloist 키, Spotify에서 한 번의 페어링이 필요합니"
-#~ "다. 다운로드와 업데이트는 Spotifast가 처리합니다."
-
-#~ msgid ""
-#~ "For local files and full queue editing, use the built-in player. You can "
-#~ "switch later in Settings."
-#~ msgstr ""
-#~ "로컬 파일과 전체 대기열 편집 기능을 사용하려면 내장 플레이어를 선택하세"
-#~ "요. 나중에 설정에서 전환할 수 있습니다."
-
-#~ msgid ""
-#~ "Create a Soloist key in Spotify's developer dashboard. This is separate "
-#~ "from your Web API app's Client ID."
-#~ msgstr ""
-#~ "Spotify 개발자 대시보드에서 Soloist 키를 만드세요. Web API 앱의 Client ID"
-#~ "와는 별개입니다."
-
-#~ msgid ""
-#~ "Soloist makes its own Spotify connections. Spotifast's proxy settings do "
-#~ "not route its audio traffic."
-#~ msgstr ""
-#~ "Soloist는 자체적으로 Spotify에 연결합니다. Spotifast의 프록시 설정은 "
-#~ "Soloist의 오디오 트래픽에 적용되지 않습니다."
-
-#~ msgid ""
-#~ "Downloads directly from Spotify and saves your key in the system "
-#~ "credential store. By enabling Soloist, you use Spotify's separate "
-#~ "software under its terms."
-#~ msgstr ""
-#~ "Spotify에서 직접 다운로드하고 시스템 자격 증명 저장소에 키를 저장합니다. "
-#~ "Soloist를 활성화하면 Spotify의 별도 소프트웨어를 해당 약관에 따라 사용하"
-#~ "게 됩니다."
-
-#~ msgid ""
-#~ "Open Spotify on the same network, using the account signed in here. In "
-#~ "the device picker, choose:"
-#~ msgstr ""
-#~ "같은 네트워크에서 여기에 로그인한 계정으로 Spotify를 여세요. 기기 목록에"
-#~ "서 다음을 선택하세요:"
-
-#~ msgid ""
-#~ "Spotifast will notice when pairing finishes. Future starts reconnect "
-#~ "automatically."
-#~ msgstr ""
-#~ "Spotifast가 페어링 완료를 감지합니다. 이후 시작할 때는 자동으로 다시 연결"
-#~ "합니다."
-
-#~ msgid ""
-#~ "If this takes a while, make sure Spotify is signed in to the same account "
-#~ "as Spotifast, then select this device there."
-#~ msgstr ""
-#~ "오래 걸리면 Spotify가 Spotifast와 같은 계정에 로그인되어 있는지 확인한 후 "
-#~ "Spotify에서 이 기기를 선택하세요."
-
-#~ msgid ""
-#~ "For EQ, visualizers, local files and queue editing, use the built-in "
-#~ "player. You can switch later in Settings."
-#~ msgstr ""
-#~ "EQ, 시각화, 로컬 파일, 대기열 편집을 사용하려면 내장 플레이어를 선택하세"
-#~ "요. 나중에 설정에서 전환할 수 있습니다."
-
-#~ msgid ""
-#~ "Spotify manages audio quality. EQ, visualizers and local files use the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "음질은 Spotify에서 관리합니다. EQ, 시각화 및 로컬 파일은 내장 플레이어를 "
-#~ "사용합니다."
-
-#~ msgid "Confirming your Spotify account…"
-#~ msgstr "Spotify 계정 확인 중…"
-
-#~ msgid "Details"
-#~ msgstr "세부 정보"
-
-#~ msgid ""
-#~ "Spotifast checks daily for a replacement during the last 30 days of each "
-#~ "build. Updates wait until Soloist is inactive."
-#~ msgstr ""
-#~ "각 버전의 만료 전 마지막 30일 동안 Spotifast는 매일 새 버전을 확인합니다. "
-#~ "업데이트는 Soloist가 비활성 상태가 될 때까지 기다립니다."
-
-#~ msgid ""
-#~ "Soloist uses your system audio output. Turn it off to use the built-in "
-#~ "player's EQ, visualizers, local files and queue editing."
-#~ msgstr ""
-#~ "Soloist는 시스템 오디오 출력을 사용합니다. 내장 플레이어의 이퀄라이저, 시"
-#~ "각화, 로컬 파일 및 대기열 편집을 사용하려면 Soloist를 끄세요."
-
-#~ msgid ""
-#~ "Spotify chooses playback quality. Soloist does not report the delivered "
-#~ "audio format yet."
-#~ msgstr ""
-#~ "Spotify가 재생 품질을 선택합니다. Soloist는 실제로 수신한 오디오 형식을 아"
-#~ "직 알려주지 않습니다."
-
-#~ msgid ""
-#~ "Audio quality, output, EQ and local-file settings below apply to the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "아래의 음질, 출력, EQ 및 로컬 파일 설정은 내장 플레이어에 적용됩니다."
-
-#~ msgid ""
-#~ "Spotify's own player, with support for lossless audio. Requires Premium, "
-#~ "your personal Soloist key, and one pairing in the Spotify app."
-#~ msgstr ""
-#~ "무손실 오디오를 지원하는 Spotify의 자체 플레이어입니다. Premium, 개인 "
-#~ "Soloist 키, Spotify 앱에서의 최초 페어링이 필요합니다."
-
-#~ msgid ""
-#~ "Soloist plays through your system audio output. Spotifast's EQ, "
-#~ "visualizers, local files, and full queue editing are available with the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Soloist는 시스템 오디오 출력을 사용합니다. Spotifast의 EQ, 시각화, 로컬 파"
-#~ "일 및 전체 대기열 편집 기능은 내장 플레이어에서 사용할 수 있습니다."
-
-#~ msgid "Soloist is ready"
-#~ msgstr "Soloist가 준비되었습니다"
-
-#~ msgid ""
-#~ "A fresh build is downloaded. It will be applied when Soloist is inactive "
-#~ "or Spotifast restarts."
-#~ msgstr ""
-#~ "새 버전을 다운로드했습니다. Soloist가 비활성 상태가 되거나 Spotifast가 다"
-#~ "시 시작될 때 적용됩니다."
-
-#~ msgid "Soloist setup, privacy and limitations"
-#~ msgstr "Soloist 설정, 개인정보 보호 및 제한 사항"
-
-#~ msgid ""
-#~ "Use a personal Development Mode app for a separate API quota. The shared "
-#~ "app stays active."
-#~ msgstr ""
-#~ "별도의 API 할당량을 위해 개인 개발 모드 앱을 사용합니다. 공유 앱은 계속 활"
-#~ "성 상태로 유지됩니다."
-
-#~ msgid "Remove personal app"
-#~ msgstr "개인 앱 삭제"
-
-#~ msgid "Shared access remains signed in."
-#~ msgstr "공유 앱 접근은 로그인 상태로 유지됩니다."
-
-#~ msgid "Spotify can be slow on the shared app"
-#~ msgstr "공유 앱에서는 Spotify가 느릴 수 있습니다"
-
-#~ msgid ""
-#~ "Everyone using Spotifast shares one app, and Spotify slows it down when "
-#~ "it's busy. Set up your own personal Spotify app and you won't have to "
-#~ "wait. It's free and takes a few minutes."
-#~ msgstr ""
-#~ "Spotifast 사용자는 모두 하나의 앱을 함께 쓰며, 사용량이 많으면 Spotify가 "
-#~ "이 앱의 속도를 늦춥니다. 나만의 개인 Spotify 앱을 설정하면 기다릴 필요가 "
-#~ "없습니다. 무료이며 몇 분이면 됩니다."
-
-#~ msgid "Use the shared Spotify app instead"
-#~ msgstr "대신 공유 Spotify 앱 사용"
-
-#~ msgid ""
-#~ "Set up your own personal Spotify app and you won't have to wait. It's "
-#~ "free and takes a few minutes."
-#~ msgstr ""
-#~ "나만의 개인 Spotify 앱을 설정하면 기다릴 필요가 없습니다. 무료이며 몇 분이"
-#~ "면 됩니다."
-
-#~ msgid ""
-#~ "Spotifast hides to the system tray. Quit from the tray menu or with Cmd+Q."
-#~ msgstr ""
-#~ "Spotifast가 시스템 트레이로 숨겨집니다. 트레이 메뉴나 Cmd+Q로 종료하세요."
-
-#~ msgid "Your most-played tracks from the last four weeks."
-#~ msgstr "지난 4주 동안 가장 많이 재생한 트랙입니다."
-
-#~ msgid "Spend less time waiting for Spotify"
-#~ msgstr "Spotify 대기 시간 줄이기"
-
-#~ msgid ""
-#~ "Spotifast's default connection shares Spotify's request limit with other "
-#~ "listeners. When it gets busy, loading music and using playback controls "
-#~ "can take longer."
-#~ msgstr ""
-#~ "Spotifast의 기본 연결은 Spotify 요청 한도를 다른 사용자와 공유합니다. 요청"
-#~ "이 많을 때는 음악을 불러오거나 재생 컨트롤을 사용하는 데 시간이 더 걸릴 "
-#~ "수 있습니다."
-
-#~ msgid ""
-#~ "Your Premium account lets you create a free personal Spotify app. Connect "
-#~ "it here to give supported requests your own allowance. Some pages still "
-#~ "use the shared connection."
-#~ msgstr ""
-#~ "Premium 계정으로 무료 개인 Spotify 앱을 만들 수 있습니다. 여기에서 연결하"
-#~ "면 지원되는 요청에 나만의 한도가 적용됩니다. 일부 페이지는 계속 공유 연결"
-#~ "을 사용합니다."
-
-#~ msgid ""
-#~ "Setup takes a few minutes. You can also find it later in Settings under "
-#~ "Personal Spotify app."
-#~ msgstr ""
-#~ "설정에는 몇 분 정도 걸립니다. 나중에 설정의 개인 Spotify 앱에서도 찾을 수 "
-#~ "있습니다."
-
-#~ msgid "Keep shared app"
-#~ msgstr "공유 앱 유지"
-
-#~ msgid ""
-#~ "Play the local files your playlists list from a folder on this computer. "
-#~ "Only 44.1 kHz files play."
-#~ msgstr ""
-#~ "플레이리스트에 있는 로컬 파일을 이 컴퓨터의 폴더에서 재생합니다. 44.1kHz "
-#~ "파일만 재생됩니다."
-
-#~ msgid "PulseAudio also covers PipeWire. Rodio talks to ALSA directly."
-#~ msgstr "PulseAudio는 PipeWire도 지원합니다. Rodio는 ALSA와 직접 통신합니다."

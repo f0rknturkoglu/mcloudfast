@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-05 04:19+0300\n"
+"POT-Creation-Date: 2026-11-06 15:01+0300\n"
 "PO-Revision-Date: 2026-10-02 20:30+0300\n"
 "Last-Translator: Barış Berke Çetin <brsberkectn@gmail.com>\n"
 "Language-Team: Turkish\n"
@@ -376,7 +376,7 @@ msgstr "Sıradaki"
 msgid "Next up"
 msgstr "Daha sonra"
 
-#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3307
+#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3383
 #: src/ui/collection.rs:1279 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr "Yeniden dene"
@@ -460,8 +460,8 @@ msgstr "Enstrümantal"
 msgid "No timed lyrics for this track."
 msgstr "Bu parça için senkronize şarkı sözü yok."
 
-#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3205 src/ui/widgets.rs:3245
-#: src/ui/widgets.rs:3273 src/app.rs:14101 src/ui/collection.rs:930
+#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3281 src/ui/widgets.rs:3321
+#: src/ui/widgets.rs:3349 src/app.rs:14101 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr "Yükleniyor…"
 
@@ -506,7 +506,7 @@ msgstr "Bu çalma listesinden kaldır"
 msgid "Filter playlists"
 msgstr "Çalma listelerini filtrele"
 
-#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359 src/ui/mcloud/sidebar.rs:442
+#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359
 msgid "New playlist"
 msgstr "Yeni çalma listesi"
 
@@ -546,12 +546,11 @@ msgstr "Bu çalma listesinde gizle"
 msgid "Go to song radio"
 msgstr "Şarkı radyosuna git"
 
-#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222 src/ui/mcloud/player.rs:757
-#: src/ui/mcloud/player.rs:763
+#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222
 msgid "Go to artist"
 msgstr "Sanatçıya git"
 
-#: src/ui/widgets.rs:1240 src/ui/mcloud/player.rs:780
+#: src/ui/widgets.rs:1240
 msgid "Go to album"
 msgstr "Albüme git"
 
@@ -633,99 +632,99 @@ msgstr[0] "{name} + {count} tane daha"
 msgstr[1] "{name} + {count} tane daha"
 
 #. Translators: {column} is a column heading of a song list, such as Title.
-#: src/ui/widgets.rs:2540
+#: src/ui/widgets.rs:2545
 #, rust-format
 msgid "Sort by {column}"
 msgstr "{column} sütununa göre sırala"
 
-#: src/ui/widgets.rs:2595
+#: src/ui/widgets.rs:2601
 msgid "Sort by playlist order"
 msgstr "Çalma listesi sırasına göre sırala"
 
-#: src/ui/widgets.rs:2630
+#: src/ui/widgets.rs:2636
 msgid "Original order, reversed"
 msgstr "Özgün sıra, ters çevrilmiş"
 
-#: src/ui/widgets.rs:2643
+#: src/ui/widgets.rs:2649
 msgctxt "column heading"
 msgid "TITLE"
 msgstr "BAŞLIK"
 
-#: src/ui/widgets.rs:2672
+#: src/ui/widgets.rs:2678
 msgctxt "column heading"
 msgid "ALBUM"
 msgstr "ALBÜM"
 
-#: src/ui/widgets.rs:2681 src/ui/mcloud/pages.rs:366
+#: src/ui/widgets.rs:2687 src/ui/mcloud/pages.rs:366
 msgctxt "column heading"
 msgid "ADDED BY"
 msgstr "EKLEYEN"
 
-#: src/ui/widgets.rs:2690
+#: src/ui/widgets.rs:2696
 msgctxt "column heading"
 msgid "DATE ADDED"
 msgstr "EKLENME TARİHİ"
 
-#: src/ui/widgets.rs:2700
+#: src/ui/widgets.rs:2706
 msgctxt "column heading"
 msgid "PLAYS"
 msgstr "DİNLENME"
 
-#: src/ui/widgets.rs:2722 src/ui/widgets.rs:2752
+#: src/ui/widgets.rs:2728 src/ui/widgets.rs:2758
 msgid "Sort by duration"
 msgstr "Süreye göre sırala"
 
-#: src/ui/widgets.rs:3019
+#: src/ui/widgets.rs:3025
 msgid "More options"
 msgstr "Diğer seçenekler"
 
-#: src/ui/widgets.rs:3284 src/app.rs:14310 src/app.rs:14324
+#: src/ui/widgets.rs:3360 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
 msgstr "Ağ bağlantısı hatası. Bağlantınızı kontrol edin."
 
-#: src/ui/widgets.rs:3548
+#: src/ui/widgets.rs:3624
 msgid "Cut"
 msgstr "Kes"
 
-#: src/ui/widgets.rs:3553 src/ui/login.rs:560
+#: src/ui/widgets.rs:3629 src/ui/login.rs:560
 msgid "Copy"
 msgstr "Kopyala"
 
-#: src/ui/widgets.rs:3558
+#: src/ui/widgets.rs:3634
 msgid "Paste"
 msgstr "Yapıştır"
 
-#: src/ui/widgets.rs:3575
+#: src/ui/widgets.rs:3651
 msgid "Select all"
 msgstr "Tümünü seç"
 
-#: src/ui/widgets.rs:3712 src/ui/mcloud/library.rs:135
+#: src/ui/widgets.rs:3788 src/ui/mcloud/library.rs:135
 msgid "Clear"
 msgstr "Temizle"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3757
+#: src/ui/widgets.rs:3833
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "{name} tarafından sevgiyle geliştirildi"
 
-#: src/ui/widgets.rs:3902
+#: src/ui/widgets.rs:3978
 msgid "Host"
 msgstr "Sunucu"
 
-#: src/ui/widgets.rs:3919
+#: src/ui/widgets.rs:3995
 msgid "Port"
 msgstr "Port"
 
-#: src/ui/widgets.rs:3937
+#: src/ui/widgets.rs:4013
 msgid "Username"
 msgstr "Kullanıcı adı"
 
-#: src/ui/widgets.rs:3948
+#: src/ui/widgets.rs:4024
 msgid "Password"
 msgstr "Parola"
 
-#: src/ui/widgets.rs:3966
+#: src/ui/widgets.rs:4042
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
@@ -733,7 +732,7 @@ msgstr ""
 "Proxy girişi web istekleri için geçerlidir. Yerel çalma bu proxy'yi yalnızca "
 "kimlik doğrulamasız kullanır."
 
-#: src/ui/widgets.rs:3970
+#: src/ui/widgets.rs:4046
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -1850,7 +1849,9 @@ msgstr "Apple Music mix kapakları"
 msgid ""
 "Draw Daily Mix and radio covers in Apple Music's Essentials and station "
 "style."
-msgstr "Daily Mix ve radyo kapaklarını Apple Music'in Essentials ve istasyon stilinde çizer."
+msgstr ""
+"Daily Mix ve radyo kapaklarını Apple Music'in Essentials ve istasyon "
+"stilinde çizer."
 
 #: src/ui/settings.rs:1391 src/ui/settings.rs:1617
 msgctxt "glass"
@@ -2560,8 +2561,7 @@ msgstr ""
 msgid "Popular"
 msgstr "Popüler"
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:292
-#: src/ui/mcloud/sidebar.rs:459
+#: src/ui/artist.rs:94
 msgid "Show less"
 msgstr "Daha az göster"
 
@@ -2581,7 +2581,7 @@ msgstr "Diskografi"
 msgid "Nothing in this category."
 msgstr "Bu kategoride hiçbir şey yok."
 
-#: src/ui/artist.rs:224 src/ui/mcloud/artist.rs:247
+#: src/ui/artist.rs:224
 msgid "Fans also like"
 msgstr "Hayranlar bunları da beğendi"
 
@@ -4018,9 +4018,25 @@ msgstr ""
 "sürücüsünü yükleyin veya sanal makine için GPU hızlandırmayı açın. Daha "
 "fazlasını okumak için {url} açılsın mı?"
 
+#: src/ui/mcloud/sidebar.rs:292 src/ui/mcloud/sidebar.rs:459
+msgid "Show Less"
+msgstr "Daha Az Göster"
+
+#: src/ui/mcloud/sidebar.rs:442
+msgid "New Playlist"
+msgstr "Yeni Çalma Listesi"
+
 #: src/ui/mcloud/sidebar.rs:703
-msgid "Show all"
-msgstr "Tümünü göster"
+msgid "Show All"
+msgstr "Tümünü Göster"
+
+#: src/ui/mcloud/player.rs:757 src/ui/mcloud/player.rs:763
+msgid "Go to Artist"
+msgstr "Sanatçıya Git"
+
+#: src/ui/mcloud/player.rs:780
+msgid "Go to Album"
+msgstr "Albüme Git"
 
 #: src/ui/mcloud/pages.rs:358 src/ui/mcloud/pages.rs:365
 #: src/ui/mcloud/pages.rs:428
@@ -4041,6 +4057,10 @@ msgstr "Müzik"
 msgid "More by {artist}"
 msgstr "{artist} adlı sanatçıdan diğerleri"
 
+#: src/ui/mcloud/artist.rs:247
+msgid "Similar Artists"
+msgstr "Benzer Sanatçılar"
+
 #: src/ui/mcloud/artist.rs:706
 msgid "Monthly listeners"
 msgstr "Aylık dinleyici"
@@ -4054,8 +4074,8 @@ msgid "Top cities"
 msgstr "En çok dinlendiği şehirler"
 
 #: src/ui/mcloud/artist.rs:1221
-msgid "Latest release"
-msgstr "Son çıkan"
+msgid "Latest Release"
+msgstr "Son Çıkan"
 
 #: src/ui/mcloud/artist.rs:1369
 msgid "Top Songs"
@@ -4091,241 +4111,3 @@ msgstr[1] "{count} öğe"
 msgctxt "search result"
 msgid "Song"
 msgstr "Şarkı"
-
-#~ msgid "Explore by genre and mood"
-#~ msgstr "Türlere ve ruh hallerine göre keşfet"
-
-#~ msgid "Spotify's own player, with lossless support."
-#~ msgstr "Kayıpsız ses destekleyen Spotify oynatıcısı."
-
-#~ msgid ""
-#~ "You'll need Spotify Premium, your personal Soloist key and one pairing in "
-#~ "Spotify. Spotifast handles the download and updates."
-#~ msgstr ""
-#~ "Spotify Premium, kişisel Soloist anahtarınız ve Spotify’da bir kez "
-#~ "eşleştirme gerekir. İndirme ve güncellemeleri Spotifast halleder."
-
-#~ msgid ""
-#~ "For local files and full queue editing, use the built-in player. You can "
-#~ "switch later in Settings."
-#~ msgstr ""
-#~ "Yerel dosyalar ve tam kuyruk düzenleme için yerleşik oynatıcıyı kullanın. "
-#~ "Daha sonra Ayarlar’dan değiştirebilirsiniz."
-
-#~ msgid ""
-#~ "Create a Soloist key in Spotify's developer dashboard. This is separate "
-#~ "from your Web API app's Client ID."
-#~ msgstr ""
-#~ "Spotify geliştirici panelinde bir Soloist anahtarı oluşturun. Bu, Web API "
-#~ "uygulamanızın Client ID'sinden farklıdır."
-
-#~ msgid ""
-#~ "Soloist makes its own Spotify connections. Spotifast's proxy settings do "
-#~ "not route its audio traffic."
-#~ msgstr ""
-#~ "Soloist kendi Spotify bağlantılarını kurar. Spotifast'ın proxy ayarları "
-#~ "Soloist'in ses trafiğine uygulanmaz."
-
-#~ msgid ""
-#~ "Downloads directly from Spotify and saves your key in the system "
-#~ "credential store. By enabling Soloist, you use Spotify's separate "
-#~ "software under its terms."
-#~ msgstr ""
-#~ "Doğrudan Spotify'dan indirir ve anahtarınızı sistemin kimlik bilgisi "
-#~ "deposuna kaydeder. Soloist'i etkinleştirerek Spotify'ın ayrı yazılımını "
-#~ "kendi koşulları kapsamında kullanırsınız."
-
-#~ msgid ""
-#~ "Open Spotify on the same network, using the account signed in here. In "
-#~ "the device picker, choose:"
-#~ msgstr ""
-#~ "Aynı ağda, burada oturum açtığınız hesapla Spotify'ı açın. Cihaz "
-#~ "listesinden şunu seçin:"
-
-#~ msgid ""
-#~ "Spotifast will notice when pairing finishes. Future starts reconnect "
-#~ "automatically."
-#~ msgstr ""
-#~ "Spotifast eşleştirme tamamlandığında bunu algılar. Sonraki başlatmalarda "
-#~ "otomatik olarak yeniden bağlanır."
-
-#~ msgid ""
-#~ "If this takes a while, make sure Spotify is signed in to the same account "
-#~ "as Spotifast, then select this device there."
-#~ msgstr ""
-#~ "Uzun sürerse Spotify'ın Spotifast ile aynı hesapta oturum açtığından emin "
-#~ "olun ve bu cihazı Spotify'da seçin."
-
-#~ msgid ""
-#~ "For EQ, visualizers, local files and queue editing, use the built-in "
-#~ "player. You can switch later in Settings."
-#~ msgstr ""
-#~ "EQ, görselleştirmeler, yerel dosyalar ve kuyruk düzenleme için yerleşik "
-#~ "oynatıcıyı kullanın. Daha sonra Ayarlar’dan değiştirebilirsiniz."
-
-#~ msgid ""
-#~ "Spotify manages audio quality. EQ, visualizers and local files use the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Ses kalitesini Spotify yönetir. EQ, görselleştirmeler ve yerel dosyalar "
-#~ "yerleşik oynatıcıyı kullanır."
-
-#~ msgid "Confirming your Spotify account…"
-#~ msgstr "Spotify hesabınız doğrulanıyor…"
-
-#~ msgid "Details"
-#~ msgstr "Ayrıntılar"
-
-#~ msgid ""
-#~ "Spotifast checks daily for a replacement during the last 30 days of each "
-#~ "build. Updates wait until Soloist is inactive."
-#~ msgstr ""
-#~ "Spotifast, her sürümün son 30 gününde her gün yeni sürüm arar. "
-#~ "Güncellemeler Soloist'in etkin olmamasını bekler."
-
-#~ msgid ""
-#~ "Soloist uses your system audio output. Turn it off to use the built-in "
-#~ "player's EQ, visualizers, local files and queue editing."
-#~ msgstr ""
-#~ "Soloist, sistemin ses çıkışını kullanır. Yerleşik oynatıcının "
-#~ "ekolayzırını, görselleştirmelerini, yerel dosyalarını ve kuyruk "
-#~ "düzenlemesini kullanmak için Soloist’i kapatın."
-
-#~ msgid ""
-#~ "Spotify chooses playback quality. Soloist does not report the delivered "
-#~ "audio format yet."
-#~ msgstr ""
-#~ "Oynatma kalitesini Spotify seçer. Soloist henüz alınan ses biçimini "
-#~ "bildirmiyor."
-
-#~ msgid ""
-#~ "Audio quality, output, EQ and local-file settings below apply to the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Aşağıdaki ses kalitesi, çıkış, ekolayzır ve yerel dosya ayarları yerleşik "
-#~ "oynatıcı için geçerlidir."
-
-#~ msgid ""
-#~ "Spotify's own player, with support for lossless audio. Requires Premium, "
-#~ "your personal Soloist key, and one pairing in the Spotify app."
-#~ msgstr ""
-#~ "Spotify'ın kayıpsız sesi destekleyen kendi oynatıcısı. Premium, kişisel "
-#~ "Soloist anahtarınız ve Spotify uygulamasında bir kez eşleştirme "
-#~ "gerektirir."
-
-#~ msgid ""
-#~ "Soloist plays through your system audio output. Spotifast's EQ, "
-#~ "visualizers, local files, and full queue editing are available with the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Soloist sisteminizin ses çıkışını kullanır. Spotifast'ın ekolayzırı, "
-#~ "görselleştirmeleri, yerel dosyaları ve tam kuyruk düzenleme özellikleri "
-#~ "yerleşik oynatıcıyla kullanılabilir."
-
-#~ msgid "Soloist is ready"
-#~ msgstr "Soloist hazır"
-
-#~ msgid ""
-#~ "A fresh build is downloaded. It will be applied when Soloist is inactive "
-#~ "or Spotifast restarts."
-#~ msgstr ""
-#~ "Yeni bir sürüm indirildi. Soloist etkin değilken veya Spotifast yeniden "
-#~ "başlatıldığında uygulanacak."
-
-#~ msgid "Soloist setup, privacy and limitations"
-#~ msgstr "Soloist kurulumu, gizlilik ve sınırlamalar"
-
-#~ msgid ""
-#~ "Use a personal Development Mode app for a separate API quota. The shared "
-#~ "app stays active."
-#~ msgstr ""
-#~ "Ayrı bir API kotası için kişisel bir Geliştirici Modu uygulaması "
-#~ "kullanın. Paylaşılan uygulama etkin kalır."
-
-#~ msgid "Remove personal app"
-#~ msgstr "Kişisel uygulamayı kaldır"
-
-#~ msgid "Shared access remains signed in."
-#~ msgstr "Paylaşılan erişim oturumu açık kalır."
-
-#~ msgid "Spotify can be slow on the shared app"
-#~ msgstr "Spotify paylaşılan uygulamada yavaş olabilir"
-
-#~ msgid ""
-#~ "Everyone using Spotifast shares one app, and Spotify slows it down when "
-#~ "it's busy. Set up your own personal Spotify app and you won't have to "
-#~ "wait. It's free and takes a few minutes."
-#~ msgstr ""
-#~ "Spotifast kullanan herkes tek bir uygulamayı paylaşır ve Spotify yoğun "
-#~ "olduğunda bu uygulamayı yavaşlatır. Kendi kişisel Spotify uygulamanızı "
-#~ "ayarlayın, beklemek zorunda kalmayın. Ücretsizdir ve birkaç dakika sürer."
-
-#~ msgid "Use the shared Spotify app instead"
-#~ msgstr "Bunun yerine paylaşılan Spotify uygulamasını kullan"
-
-#~ msgid ""
-#~ "Set up your own personal Spotify app and you won't have to wait. It's "
-#~ "free and takes a few minutes."
-#~ msgstr ""
-#~ "Kendi kişisel Spotify uygulamanızı ayarlayın, beklemek zorunda kalmayın. "
-#~ "Ücretsizdir ve birkaç dakika sürer."
-
-#~ msgid ""
-#~ "Spotifast hides to the system tray. Quit from the tray menu or with Cmd+Q."
-#~ msgstr ""
-#~ "Spotifast sistem tepsisine gizlenir. Tepsi menüsünden veya Cmd+Q ile "
-#~ "çıkın."
-
-#~ msgid "Your most-played tracks from the last four weeks."
-#~ msgstr "Son dört haftada en çok dinlediğin parçalar."
-
-#~ msgid "Spend less time waiting for Spotify"
-#~ msgstr "Spotify'ı beklerken daha az zaman harcayın"
-
-#~ msgid ""
-#~ "Spotifast's default connection shares Spotify's request limit with other "
-#~ "listeners. When it gets busy, loading music and using playback controls "
-#~ "can take longer."
-#~ msgstr ""
-#~ "Spotifast'in varsayılan bağlantısı, Spotify'ın istek limitini diğer "
-#~ "dinleyicilerle paylaşır. Yoğunlaştığında, müzik yüklemek ve çalma "
-#~ "kontrollerini kullanmak daha uzun sürebilir."
-
-#~ msgid ""
-#~ "Your Premium account lets you create a free personal Spotify app. Connect "
-#~ "it here to give supported requests your own allowance. Some pages still "
-#~ "use the shared connection."
-#~ msgstr ""
-#~ "Premium hesabınız ücretsiz bir kişisel Spotify uygulaması oluşturmanıza "
-#~ "olanak tanır. Desteklenen isteklerinize kendi kotanızı tanımlamak için "
-#~ "buradan bağlayın. Bazı sayfalar paylaşılan bağlantıyı kullanmaya devam "
-#~ "eder."
-
-#~ msgid ""
-#~ "Setup takes a few minutes. You can also find it later in Settings under "
-#~ "Personal Spotify app."
-#~ msgstr ""
-#~ "Kurulum birkaç dakika sürer. Daha sonra Ayarlar'da Kişisel Spotify "
-#~ "uygulaması altında da bulabilirsiniz."
-
-#~ msgid "Keep shared app"
-#~ msgstr "Paylaşılan uygulamada kal"
-
-#~ msgid ""
-#~ "Play the local files your playlists list from a folder on this computer. "
-#~ "Only 44.1 kHz files play."
-#~ msgstr ""
-#~ "Çalma listelerinizdeki yerel dosyaları bu bilgisayardaki bir klasörden "
-#~ "çalın. Yalnızca 44,1 kHz dosyalar çalınır."
-
-#~ msgid "PulseAudio also covers PipeWire. Rodio talks to ALSA directly."
-#~ msgstr ""
-#~ "PulseAudio aynı zamanda PipeWire'ı da kapsar. Rodio doğrudan ALSA ile "
-#~ "iletişim kurar."
-
-#~ msgid "Couldn't load this shelf"
-#~ msgstr "Bu bölüm yüklenemedi"
-
-#~ msgid "Spotify does not let apps remove one queued song."
-#~ msgstr ""
-#~ "Spotify uygulamaların sıradan tek bir şarkıyı kaldırmasına izin vermiyor."

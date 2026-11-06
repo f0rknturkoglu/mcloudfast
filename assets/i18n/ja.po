@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-05 04:19+0300\n"
+"POT-Creation-Date: 2026-11-06 15:01+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Japanese\n"
@@ -372,7 +372,7 @@ msgstr "次に再生"
 msgid "Next up"
 msgstr "このあと再生"
 
-#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3307
+#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3383
 #: src/ui/collection.rs:1279 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr "再試行"
@@ -455,8 +455,8 @@ msgstr "インストゥルメンタル"
 msgid "No timed lyrics for this track."
 msgstr "この曲には同期された歌詞がありません。"
 
-#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3205 src/ui/widgets.rs:3245
-#: src/ui/widgets.rs:3273 src/app.rs:14101 src/ui/collection.rs:930
+#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3281 src/ui/widgets.rs:3321
+#: src/ui/widgets.rs:3349 src/app.rs:14101 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr "読み込み中…"
 
@@ -501,7 +501,7 @@ msgstr "このプレイリストから削除"
 msgid "Filter playlists"
 msgstr "プレイリストを絞り込む"
 
-#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359 src/ui/mcloud/sidebar.rs:442
+#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359
 msgid "New playlist"
 msgstr "新しいプレイリスト"
 
@@ -541,12 +541,11 @@ msgstr "このプレイリストで非表示にする"
 msgid "Go to song radio"
 msgstr "曲のラジオへ移動"
 
-#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222 src/ui/mcloud/player.rs:757
-#: src/ui/mcloud/player.rs:763
+#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222
 msgid "Go to artist"
 msgstr "アーティストへ移動"
 
-#: src/ui/widgets.rs:1240 src/ui/mcloud/player.rs:780
+#: src/ui/widgets.rs:1240
 msgid "Go to album"
 msgstr "アルバムへ移動"
 
@@ -627,99 +626,99 @@ msgid_plural "{name} + {count} more"
 msgstr[0] "{name} ほか{count}件"
 
 #. Translators: {column} is a column heading of a song list, such as Title.
-#: src/ui/widgets.rs:2540
+#: src/ui/widgets.rs:2545
 #, rust-format
 msgid "Sort by {column}"
 msgstr "{column}で並べ替え"
 
-#: src/ui/widgets.rs:2595
+#: src/ui/widgets.rs:2601
 msgid "Sort by playlist order"
 msgstr "プレイリストの順に並べ替え"
 
-#: src/ui/widgets.rs:2630
+#: src/ui/widgets.rs:2636
 msgid "Original order, reversed"
 msgstr "元の順序、逆順"
 
-#: src/ui/widgets.rs:2643
+#: src/ui/widgets.rs:2649
 msgctxt "column heading"
 msgid "TITLE"
 msgstr "タイトル"
 
-#: src/ui/widgets.rs:2672
+#: src/ui/widgets.rs:2678
 msgctxt "column heading"
 msgid "ALBUM"
 msgstr "アルバム"
 
-#: src/ui/widgets.rs:2681 src/ui/mcloud/pages.rs:366
+#: src/ui/widgets.rs:2687 src/ui/mcloud/pages.rs:366
 msgctxt "column heading"
 msgid "ADDED BY"
 msgstr "追加したユーザー"
 
-#: src/ui/widgets.rs:2690
+#: src/ui/widgets.rs:2696
 msgctxt "column heading"
 msgid "DATE ADDED"
 msgstr "追加日"
 
-#: src/ui/widgets.rs:2700
+#: src/ui/widgets.rs:2706
 msgctxt "column heading"
 msgid "PLAYS"
 msgstr "再生回数"
 
-#: src/ui/widgets.rs:2722 src/ui/widgets.rs:2752
+#: src/ui/widgets.rs:2728 src/ui/widgets.rs:2758
 msgid "Sort by duration"
 msgstr "再生時間で並べ替え"
 
-#: src/ui/widgets.rs:3019
+#: src/ui/widgets.rs:3025
 msgid "More options"
 msgstr "その他のオプション"
 
-#: src/ui/widgets.rs:3284 src/app.rs:14310 src/app.rs:14324
+#: src/ui/widgets.rs:3360 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
 msgstr "ネットワーク接続エラーです。接続を確認してください。"
 
-#: src/ui/widgets.rs:3548
+#: src/ui/widgets.rs:3624
 msgid "Cut"
 msgstr "切り取り"
 
-#: src/ui/widgets.rs:3553 src/ui/login.rs:560
+#: src/ui/widgets.rs:3629 src/ui/login.rs:560
 msgid "Copy"
 msgstr "コピー"
 
-#: src/ui/widgets.rs:3558
+#: src/ui/widgets.rs:3634
 msgid "Paste"
 msgstr "貼り付け"
 
-#: src/ui/widgets.rs:3575
+#: src/ui/widgets.rs:3651
 msgid "Select all"
 msgstr "すべて選択"
 
-#: src/ui/widgets.rs:3712 src/ui/mcloud/library.rs:135
+#: src/ui/widgets.rs:3788 src/ui/mcloud/library.rs:135
 msgid "Clear"
 msgstr "クリア"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3757
+#: src/ui/widgets.rs:3833
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "{name}が心を込めて制作"
 
-#: src/ui/widgets.rs:3902
+#: src/ui/widgets.rs:3978
 msgid "Host"
 msgstr "ホスト"
 
-#: src/ui/widgets.rs:3919
+#: src/ui/widgets.rs:3995
 msgid "Port"
 msgstr "ポート"
 
-#: src/ui/widgets.rs:3937
+#: src/ui/widgets.rs:4013
 msgid "Username"
 msgstr "ユーザー名"
 
-#: src/ui/widgets.rs:3948
+#: src/ui/widgets.rs:4024
 msgid "Password"
 msgstr "パスワード"
 
-#: src/ui/widgets.rs:3966
+#: src/ui/widgets.rs:4042
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
@@ -727,7 +726,7 @@ msgstr ""
 "プロキシのログイン情報はWebリクエストに適用されます。ローカル再生では、ログイ"
 "ン情報がない場合のみこのプロキシを使用します。"
 
-#: src/ui/widgets.rs:3970
+#: src/ui/widgets.rs:4046
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -1839,7 +1838,9 @@ msgstr "Apple Music 風のミックスカバー"
 msgid ""
 "Draw Daily Mix and radio covers in Apple Music's Essentials and station "
 "style."
-msgstr "Daily Mix とラジオのカバーを Apple Music の Essentials とステーションのスタイルで表示します。"
+msgstr ""
+"Daily Mix とラジオのカバーを Apple Music の Essentials とステーションのスタイ"
+"ルで表示します。"
 
 #: src/ui/settings.rs:1391 src/ui/settings.rs:1617
 msgctxt "glass"
@@ -2543,8 +2544,7 @@ msgstr ""
 msgid "Popular"
 msgstr "人気"
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:292
-#: src/ui/mcloud/sidebar.rs:459
+#: src/ui/artist.rs:94
 msgid "Show less"
 msgstr "表示を減らす"
 
@@ -2564,7 +2564,7 @@ msgstr "ディスコグラフィ"
 msgid "Nothing in this category."
 msgstr "このカテゴリーには何もありません。"
 
-#: src/ui/artist.rs:224 src/ui/mcloud/artist.rs:247
+#: src/ui/artist.rs:224
 msgid "Fans also like"
 msgstr "ファンの間で人気"
 
@@ -3987,9 +3987,25 @@ msgstr ""
 "するか、仮想マシンの GPU アクセラレーションを有効にしてください。詳しくは "
 "{url} を開きますか？"
 
+#: src/ui/mcloud/sidebar.rs:292 src/ui/mcloud/sidebar.rs:459
+msgid "Show Less"
+msgstr "表示を減らす"
+
+#: src/ui/mcloud/sidebar.rs:442
+msgid "New Playlist"
+msgstr "新しいプレイリスト"
+
 #: src/ui/mcloud/sidebar.rs:703
-msgid "Show all"
+msgid "Show All"
 msgstr "すべて表示"
+
+#: src/ui/mcloud/player.rs:757 src/ui/mcloud/player.rs:763
+msgid "Go to Artist"
+msgstr "アーティストへ移動"
+
+#: src/ui/mcloud/player.rs:780
+msgid "Go to Album"
+msgstr "アルバムへ移動"
 
 #: src/ui/mcloud/pages.rs:358 src/ui/mcloud/pages.rs:365
 #: src/ui/mcloud/pages.rs:428
@@ -4010,6 +4026,10 @@ msgstr "音楽"
 msgid "More by {artist}"
 msgstr "{artist}のその他の作品"
 
+#: src/ui/mcloud/artist.rs:247
+msgid "Similar Artists"
+msgstr "類似アーティスト"
+
 #: src/ui/mcloud/artist.rs:706
 msgid "Monthly listeners"
 msgstr "月間リスナー"
@@ -4023,7 +4043,7 @@ msgid "Top cities"
 msgstr "主な都市"
 
 #: src/ui/mcloud/artist.rs:1221
-msgid "Latest release"
+msgid "Latest Release"
 msgstr "最新リリース"
 
 #: src/ui/mcloud/artist.rs:1369
@@ -4059,251 +4079,3 @@ msgstr[0] "{count}項目"
 msgctxt "search result"
 msgid "Song"
 msgstr "曲"
-
-#~ msgid "Explore by genre and mood"
-#~ msgstr "ジャンルや気分から探す"
-
-#~ msgid "Spotify's own player, with lossless support."
-#~ msgstr "ロスレス音声に対応したSpotify公式プレーヤー。"
-
-#~ msgid ""
-#~ "You'll need Spotify Premium, your personal Soloist key and one pairing in "
-#~ "Spotify. Spotifast handles the download and updates."
-#~ msgstr ""
-#~ "Spotify Premium、個人用のSoloistキー、Spotifyでの初回ペアリングが必要で"
-#~ "す。ダウンロードと更新はSpotifastが行います。"
-
-#~ msgid ""
-#~ "For local files and full queue editing, use the built-in player. You can "
-#~ "switch later in Settings."
-#~ msgstr ""
-#~ "ローカルファイルとキューの全編集機能には内蔵プレーヤーを使用してください。"
-#~ "後で設定から切り替えられます。"
-
-#~ msgid ""
-#~ "Create a Soloist key in Spotify's developer dashboard. This is separate "
-#~ "from your Web API app's Client ID."
-#~ msgstr ""
-#~ "Spotifyの開発者ダッシュボードでSoloistキーを作成してください。Web APIアプ"
-#~ "リのClient IDとは別のものです。"
-
-#~ msgid ""
-#~ "Soloist makes its own Spotify connections. Spotifast's proxy settings do "
-#~ "not route its audio traffic."
-#~ msgstr ""
-#~ "Soloistは独自にSpotifyに接続します。Spotifastのプロキシ設定はSoloistの音声"
-#~ "通信には適用されません。"
-
-#~ msgid ""
-#~ "Downloads directly from Spotify and saves your key in the system "
-#~ "credential store. By enabling Soloist, you use Spotify's separate "
-#~ "software under its terms."
-#~ msgstr ""
-#~ "Spotifyから直接ダウンロードし、キーをシステムの資格情報ストアに保存しま"
-#~ "す。Soloistを有効にすると、Spotifyの別ソフトウェアをその利用規約に従って使"
-#~ "用することになります。"
-
-#~ msgid ""
-#~ "Open Spotify on the same network, using the account signed in here. In "
-#~ "the device picker, choose:"
-#~ msgstr ""
-#~ "同じネットワーク上で、ここにログインしているアカウントを使ってSpotifyを開"
-#~ "いてください。デバイス一覧で次を選択します："
-
-#~ msgid ""
-#~ "Spotifast will notice when pairing finishes. Future starts reconnect "
-#~ "automatically."
-#~ msgstr ""
-#~ "ペアリングの完了はSpotifastが検出します。次回以降の起動時は自動的に再接続"
-#~ "します。"
-
-#~ msgid ""
-#~ "If this takes a while, make sure Spotify is signed in to the same account "
-#~ "as Spotifast, then select this device there."
-#~ msgstr ""
-#~ "時間がかかる場合は、SpotifyがSpotifastと同じアカウントにログインしているこ"
-#~ "とを確認し、Spotifyでこのデバイスを選択してください。"
-
-#~ msgid ""
-#~ "For EQ, visualizers, local files and queue editing, use the built-in "
-#~ "player. You can switch later in Settings."
-#~ msgstr ""
-#~ "EQ、ビジュアライザー、ローカルファイル、キュー編集を使うには内蔵プレーヤー"
-#~ "を選んでください。後から設定で切り替えられます。"
-
-#~ msgid ""
-#~ "Spotify manages audio quality. EQ, visualizers and local files use the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "音質は Spotify が管理します。EQ、ビジュアライザー、ローカルファイルには内"
-#~ "蔵プレーヤーを使用します。"
-
-#~ msgid "Confirming your Spotify account…"
-#~ msgstr "Spotifyアカウントを確認中…"
-
-#~ msgid "Details"
-#~ msgstr "詳細"
-
-#~ msgid ""
-#~ "Spotifast checks daily for a replacement during the last 30 days of each "
-#~ "build. Updates wait until Soloist is inactive."
-#~ msgstr ""
-#~ "各バージョンの有効期限までの最後の30日間、Spotifastは更新版を毎日確認しま"
-#~ "す。更新はSoloistが非アクティブになるまで待機します。"
-
-#~ msgid ""
-#~ "Soloist uses your system audio output. Turn it off to use the built-in "
-#~ "player's EQ, visualizers, local files and queue editing."
-#~ msgstr ""
-#~ "Soloistはシステムの音声出力を使用します。内蔵プレーヤーのイコライザー、ビ"
-#~ "ジュアライザー、ローカルファイル、キュー編集を使うには、Soloistをオフにし"
-#~ "てください。"
-
-#~ msgid ""
-#~ "Spotify chooses playback quality. Soloist does not report the delivered "
-#~ "audio format yet."
-#~ msgstr ""
-#~ "再生品質はSpotifyが選択します。Soloistは実際に受信した音声形式をまだ報告し"
-#~ "ません。"
-
-#~ msgid ""
-#~ "Audio quality, output, EQ and local-file settings below apply to the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "以下の音質、出力、EQ、ローカルファイルの設定は内蔵プレーヤーに適用されま"
-#~ "す。"
-
-#~ msgid ""
-#~ "Spotify's own player, with support for lossless audio. Requires Premium, "
-#~ "your personal Soloist key, and one pairing in the Spotify app."
-#~ msgstr ""
-#~ "ロスレス音声に対応したSpotify公式のプレーヤーです。Premium、個人用の"
-#~ "Soloistキー、Spotifyアプリでの初回ペアリングが必要です。"
-
-#~ msgid ""
-#~ "Soloist plays through your system audio output. Spotifast's EQ, "
-#~ "visualizers, local files, and full queue editing are available with the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Soloistはシステムの音声出力を使用します。SpotifastのEQ、ビジュアライザー、"
-#~ "ローカルファイル、キューの完全な編集機能は内蔵プレーヤーで利用できます。"
-
-#~ msgid "Soloist is ready"
-#~ msgstr "Soloistの準備ができました"
-
-#~ msgid ""
-#~ "A fresh build is downloaded. It will be applied when Soloist is inactive "
-#~ "or Spotifast restarts."
-#~ msgstr ""
-#~ "新しいバージョンをダウンロードしました。Soloistが非アクティブになったと"
-#~ "き、またはSpotifastの再起動時に適用します。"
-
-#~ msgid "Soloist setup, privacy and limitations"
-#~ msgstr "Soloistの設定、プライバシー、制限事項"
-
-#~ msgid ""
-#~ "Use a personal Development Mode app for a separate API quota. The shared "
-#~ "app stays active."
-#~ msgstr ""
-#~ "個人用の開発モードアプリを使うと、専用のAPI割り当てを利用できます。共有ア"
-#~ "プリも引き続き有効です。"
-
-#~ msgid "Remove personal app"
-#~ msgstr "個人用アプリを削除"
-
-#~ msgid "Shared access remains signed in."
-#~ msgstr "共有アクセスはログインしたままになります。"
-
-#~ msgid "Spotify can be slow on the shared app"
-#~ msgstr "共有アプリではSpotifyが遅くなることがあります"
-
-#~ msgid ""
-#~ "Everyone using Spotifast shares one app, and Spotify slows it down when "
-#~ "it's busy. Set up your own personal Spotify app and you won't have to "
-#~ "wait. It's free and takes a few minutes."
-#~ msgstr ""
-#~ "Spotifastの利用者は全員で1つのアプリを共有しており、混み合うとSpotifyがそ"
-#~ "の速度を落とします。自分専用の個人用Spotifyアプリを設定すれば、待たずに済"
-#~ "みます。無料で、数分で終わります。"
-
-#~ msgid "Use the shared Spotify app instead"
-#~ msgstr "代わりに共有Spotifyアプリを使う"
-
-#~ msgid ""
-#~ "Set up your own personal Spotify app and you won't have to wait. It's "
-#~ "free and takes a few minutes."
-#~ msgstr ""
-#~ "自分専用の個人用Spotifyアプリを設定すれば、待たずに済みます。無料で、数分"
-#~ "で終わります。"
-
-#~ msgid ""
-#~ "Spotifast hides to the system tray. Quit from the tray menu or with Cmd+Q."
-#~ msgstr ""
-#~ "Spotifastはシステムトレイに隠れます。トレイメニューまたはCmd+Qで終了できま"
-#~ "す。"
-
-#~ msgid "Your most-played tracks from the last four weeks."
-#~ msgstr "過去4週間でよく再生した曲です。"
-
-#~ msgid "Spend less time waiting for Spotify"
-#~ msgstr "Spotifyの待ち時間を短く"
-
-#~ msgid ""
-#~ "Spotifast's default connection shares Spotify's request limit with other "
-#~ "listeners. When it gets busy, loading music and using playback controls "
-#~ "can take longer."
-#~ msgstr ""
-#~ "Spotifastの標準の接続は、Spotifyのリクエスト上限をほかのリスナーと共有して"
-#~ "います。混雑すると、音楽の読み込みや再生操作に時間がかかることがあります。"
-
-#~ msgid ""
-#~ "Your Premium account lets you create a free personal Spotify app. Connect "
-#~ "it here to give supported requests your own allowance. Some pages still "
-#~ "use the shared connection."
-#~ msgstr ""
-#~ "Premiumアカウントでは、個人用のSpotifyアプリを無料で作成できます。ここで接"
-#~ "続すると、対応するリクエストに専用の割り当てを使えます。一部のページは引き"
-#~ "続き共有の接続を使います。"
-
-#~ msgid ""
-#~ "Setup takes a few minutes. You can also find it later in Settings under "
-#~ "Personal Spotify app."
-#~ msgstr ""
-#~ "設定には数分かかります。あとで設定の「個人用Spotifyアプリ」からも行えま"
-#~ "す。"
-
-#~ msgid "Keep shared app"
-#~ msgstr "共有アプリを使い続ける"
-
-#~ msgid ""
-#~ "Play the local files your playlists list from a folder on this computer. "
-#~ "Only 44.1 kHz files play."
-#~ msgstr ""
-#~ "プレイリストにあるローカルファイルを、このコンピューターのフォルダーから再"
-#~ "生します。再生できるのは 44.1 kHz のファイルだけです。"
-
-#~ msgid "PulseAudio also covers PipeWire. Rodio talks to ALSA directly."
-#~ msgstr ""
-#~ "PulseAudioはPipeWireにも対応しています。RodioはALSAと直接やり取りします。"
-
-#~ msgid "Couldn't load this shelf"
-#~ msgstr "このセクションを読み込めませんでした"
-
-#~ msgid "Spotify does not let apps remove one queued song."
-#~ msgstr ""
-#~ "Spotifyではアプリから再生待ちの曲を1曲だけ削除することはできません。"
-
-#~ msgid "MacBook notch interactive widget"
-#~ msgstr "MacBookノッチ対話型ウィジェット"
-
-#~ msgid "Scroll left"
-#~ msgstr "左へスクロール"
-
-#~ msgid "Scroll right"
-#~ msgstr "右へスクロール"
-
-#~ msgid "Enable lyrics motion"
-#~ msgstr "歌詞の動きを有効にする"
-
-#~ msgid "Reduce lyrics motion"
-#~ msgstr "歌詞の動きを減らす"

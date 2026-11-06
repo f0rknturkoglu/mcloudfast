@@ -64,7 +64,7 @@ pub(crate) fn ease_out_cubic(t: f32) -> f32 {
 enum Leading<'a> {
     Icon(Icon),
     Art(Option<&'a str>, &'a crate::images::ArtLoader),
-    /// "Show all": a small chevron in the icon column.
+    /// "Show All": a small chevron in the icon column.
     Chevron,
 }
 
@@ -271,7 +271,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 );
             });
 
-            // Sticky "Playlists" header with "Show less" when expanded and scrolled past the heading.
+            // Sticky "Playlists" header with "Show Less" when expanded and scrolled past the heading.
             let expanded = ui
                 .ctx()
                 .data(|d| d.get_temp::<bool>(expanded_id))
@@ -289,7 +289,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     Stroke::new(1.0, Color32::from_white_alpha(15)),
                 );
                 let add = gettext(app.locale, "Create a playlist");
-                let show_less = gettext(app.locale, "Show less");
+                let show_less = gettext(app.locale, "Show Less");
                 let (less_clicked, create_clicked) = paint_heading_in_rect(
                     ui,
                     sticky_rect,
@@ -439,7 +439,7 @@ fn trigger_show_less(ctx: &egui::Context, scroll_y: f32, viewport_h: f32) {
 
 fn start_inline_playlist_creation(ctx: &egui::Context, locale: crate::i18n::Locale) {
     let inline_id = egui::Id::new("mcloud-inline-create-playlist");
-    let default_name = gettext(locale, "New playlist").into_owned();
+    let default_name = gettext(locale, "New Playlist").into_owned();
     ctx.data_mut(|d| {
         d.insert_temp(inline_id, default_name);
         d.insert_temp(inline_id.with("focus"), true);
@@ -447,7 +447,7 @@ fn start_inline_playlist_creation(ctx: &egui::Context, locale: crate::i18n::Loca
 }
 
 /// Pinned playlists first, in pin order, then the most recently played,
-/// as Spotify's own sidebar sorted by Recents; "Show all" lists the rest.
+/// as Spotify's own sidebar sorted by Recents; "Show All" lists the rest.
 fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &mut Option<f32>) {
     let locale = app.locale;
     let expanded_id = egui::Id::new("mcloud-playlists-expanded");
@@ -456,7 +456,7 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
         .unwrap_or(false);
 
     let add = gettext(locale, "Create a playlist");
-    let show_less = gettext(locale, "Show less");
+    let show_less = gettext(locale, "Show Less");
     let (less, create) = heading(
         ui,
         &gettext(locale, "Playlists"),
@@ -700,7 +700,7 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
         && row(
             ui,
             Leading::Chevron,
-            &gettext(locale, "Show all"),
+            &gettext(locale, "Show All"),
             false,
             false,
         )
@@ -752,7 +752,7 @@ fn playlist_order(
     order
 }
 
-/// A section heading. With `buttons`, it carries "Show less" (when given)
+/// A section heading. With `buttons`, it carries "Show Less" (when given)
 /// and a "+" on its right; returns whether each was clicked.
 fn heading(
     ui: &mut egui::Ui,

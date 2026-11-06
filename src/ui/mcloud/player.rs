@@ -754,13 +754,13 @@ fn display(
                         ui,
                         palette,
                         Some(Icon::User),
-                        &gettext(locale, "Go to artist"),
+                        &gettext(locale, "Go to Artist"),
                     ) && let Some(id) = artists_with_id[0].id.clone()
                     {
                         app.actions.push(Action::Open(Page::Artist(id)));
                     }
                 } else {
-                    let label = gettext(locale, "Go to artist");
+                    let label = gettext(locale, "Go to Artist");
                     widgets::menu_submenu(ui, palette, Some(Icon::User), &label, |ui| {
                         ui.set_min_width(200.0);
                         for artist in &artists_with_id {
@@ -777,7 +777,7 @@ fn display(
                         ui,
                         palette,
                         Some(Icon::Disc),
-                        &gettext(locale, "Go to album"),
+                        &gettext(locale, "Go to Album"),
                     )
                 {
                     app.actions

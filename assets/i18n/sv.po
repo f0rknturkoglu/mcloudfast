@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-05 04:19+0300\n"
+"POT-Creation-Date: 2026-11-06 15:01+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Swedish\n"
@@ -376,7 +376,7 @@ msgstr "Härnäst"
 msgid "Next up"
 msgstr "Sedan"
 
-#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3307
+#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3383
 #: src/ui/collection.rs:1279 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr "Försök igen"
@@ -459,8 +459,8 @@ msgstr "Instrumental"
 msgid "No timed lyrics for this track."
 msgstr "Ingen synkroniserad text för den här låten."
 
-#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3205 src/ui/widgets.rs:3245
-#: src/ui/widgets.rs:3273 src/app.rs:14101 src/ui/collection.rs:930
+#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3281 src/ui/widgets.rs:3321
+#: src/ui/widgets.rs:3349 src/app.rs:14101 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr "Läser in…"
 
@@ -505,7 +505,7 @@ msgstr "Ta bort från den här spellistan"
 msgid "Filter playlists"
 msgstr "Filtrera spellistor"
 
-#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359 src/ui/mcloud/sidebar.rs:442
+#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359
 msgid "New playlist"
 msgstr "Ny spellista"
 
@@ -545,12 +545,11 @@ msgstr "Dölj i den här spellistan"
 msgid "Go to song radio"
 msgstr "Gå till låtradio"
 
-#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222 src/ui/mcloud/player.rs:757
-#: src/ui/mcloud/player.rs:763
+#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222
 msgid "Go to artist"
 msgstr "Gå till artist"
 
-#: src/ui/widgets.rs:1240 src/ui/mcloud/player.rs:780
+#: src/ui/widgets.rs:1240
 msgid "Go to album"
 msgstr "Gå till album"
 
@@ -632,99 +631,99 @@ msgstr[0] "{name} + {count} till"
 msgstr[1] "{name} + {count} till"
 
 #. Translators: {column} is a column heading of a song list, such as Title.
-#: src/ui/widgets.rs:2540
+#: src/ui/widgets.rs:2545
 #, rust-format
 msgid "Sort by {column}"
 msgstr "Sortera efter {column}"
 
-#: src/ui/widgets.rs:2595
+#: src/ui/widgets.rs:2601
 msgid "Sort by playlist order"
 msgstr "Sortera efter spellistans ordning"
 
-#: src/ui/widgets.rs:2630
+#: src/ui/widgets.rs:2636
 msgid "Original order, reversed"
 msgstr "Ursprunglig ordning, omvänd"
 
-#: src/ui/widgets.rs:2643
+#: src/ui/widgets.rs:2649
 msgctxt "column heading"
 msgid "TITLE"
 msgstr "TITEL"
 
-#: src/ui/widgets.rs:2672
+#: src/ui/widgets.rs:2678
 msgctxt "column heading"
 msgid "ALBUM"
 msgstr "ALBUM"
 
-#: src/ui/widgets.rs:2681 src/ui/mcloud/pages.rs:366
+#: src/ui/widgets.rs:2687 src/ui/mcloud/pages.rs:366
 msgctxt "column heading"
 msgid "ADDED BY"
 msgstr "TILLAGD AV"
 
-#: src/ui/widgets.rs:2690
+#: src/ui/widgets.rs:2696
 msgctxt "column heading"
 msgid "DATE ADDED"
 msgstr "DATUM TILLAGD"
 
-#: src/ui/widgets.rs:2700
+#: src/ui/widgets.rs:2706
 msgctxt "column heading"
 msgid "PLAYS"
 msgstr "SPELNINGAR"
 
-#: src/ui/widgets.rs:2722 src/ui/widgets.rs:2752
+#: src/ui/widgets.rs:2728 src/ui/widgets.rs:2758
 msgid "Sort by duration"
 msgstr "Sortera efter längd"
 
-#: src/ui/widgets.rs:3019
+#: src/ui/widgets.rs:3025
 msgid "More options"
 msgstr "Fler alternativ"
 
-#: src/ui/widgets.rs:3284 src/app.rs:14310 src/app.rs:14324
+#: src/ui/widgets.rs:3360 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
 msgstr "Nätverksanslutningsfel. Kontrollera din anslutning."
 
-#: src/ui/widgets.rs:3548
+#: src/ui/widgets.rs:3624
 msgid "Cut"
 msgstr "Klipp ut"
 
-#: src/ui/widgets.rs:3553 src/ui/login.rs:560
+#: src/ui/widgets.rs:3629 src/ui/login.rs:560
 msgid "Copy"
 msgstr "Kopiera"
 
-#: src/ui/widgets.rs:3558
+#: src/ui/widgets.rs:3634
 msgid "Paste"
 msgstr "Klistra in"
 
-#: src/ui/widgets.rs:3575
+#: src/ui/widgets.rs:3651
 msgid "Select all"
 msgstr "Markera allt"
 
-#: src/ui/widgets.rs:3712 src/ui/mcloud/library.rs:135
+#: src/ui/widgets.rs:3788 src/ui/mcloud/library.rs:135
 msgid "Clear"
 msgstr "Rensa"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3757
+#: src/ui/widgets.rs:3833
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "Byggd med kärlek av {name}"
 
-#: src/ui/widgets.rs:3902
+#: src/ui/widgets.rs:3978
 msgid "Host"
 msgstr "Värd"
 
-#: src/ui/widgets.rs:3919
+#: src/ui/widgets.rs:3995
 msgid "Port"
 msgstr "Port"
 
-#: src/ui/widgets.rs:3937
+#: src/ui/widgets.rs:4013
 msgid "Username"
 msgstr "Användarnamn"
 
-#: src/ui/widgets.rs:3948
+#: src/ui/widgets.rs:4024
 msgid "Password"
 msgstr "Lösenord"
 
-#: src/ui/widgets.rs:3966
+#: src/ui/widgets.rs:4042
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
@@ -732,7 +731,7 @@ msgstr ""
 "Proxyinloggningen gäller webbförfrågningar. Lokal uppspelning använder bara "
 "proxyn om ingen inloggning anges."
 
-#: src/ui/widgets.rs:3970
+#: src/ui/widgets.rs:4046
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -1837,7 +1836,9 @@ msgstr "Mixomslag i Apple Music-stil"
 msgid ""
 "Draw Daily Mix and radio covers in Apple Music's Essentials and station "
 "style."
-msgstr "Ritar omslag för Daily Mix och radio i Apple Musics Essentials- och stationsstil."
+msgstr ""
+"Ritar omslag för Daily Mix och radio i Apple Musics Essentials- och "
+"stationsstil."
 
 #: src/ui/settings.rs:1391 src/ui/settings.rs:1617
 msgctxt "glass"
@@ -2533,8 +2534,7 @@ msgstr ""
 msgid "Popular"
 msgstr "Populärt"
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:292
-#: src/ui/mcloud/sidebar.rs:459
+#: src/ui/artist.rs:94
 msgid "Show less"
 msgstr "Visa mindre"
 
@@ -2554,7 +2554,7 @@ msgstr "Diskografi"
 msgid "Nothing in this category."
 msgstr "Inget i den här kategorin."
 
-#: src/ui/artist.rs:224 src/ui/mcloud/artist.rs:247
+#: src/ui/artist.rs:224
 msgid "Fans also like"
 msgstr "Fans gillar också"
 
@@ -3991,9 +3991,25 @@ msgstr ""
 "eller slå på GPU-acceleration för den virtuella maskinen. Öppna {url} för "
 "att läsa mer?"
 
+#: src/ui/mcloud/sidebar.rs:292 src/ui/mcloud/sidebar.rs:459
+msgid "Show Less"
+msgstr "Visa mindre"
+
+#: src/ui/mcloud/sidebar.rs:442
+msgid "New Playlist"
+msgstr "Ny spellista"
+
 #: src/ui/mcloud/sidebar.rs:703
-msgid "Show all"
+msgid "Show All"
 msgstr "Visa alla"
+
+#: src/ui/mcloud/player.rs:757 src/ui/mcloud/player.rs:763
+msgid "Go to Artist"
+msgstr "Gå till artist"
+
+#: src/ui/mcloud/player.rs:780
+msgid "Go to Album"
+msgstr "Gå till album"
 
 #: src/ui/mcloud/pages.rs:358 src/ui/mcloud/pages.rs:365
 #: src/ui/mcloud/pages.rs:428
@@ -4014,6 +4030,10 @@ msgstr "Musik"
 msgid "More by {artist}"
 msgstr "Mer av {artist}"
 
+#: src/ui/mcloud/artist.rs:247
+msgid "Similar Artists"
+msgstr "Liknande artister"
+
 #: src/ui/mcloud/artist.rs:706
 msgid "Monthly listeners"
 msgstr "Lyssnare per månad"
@@ -4027,7 +4047,7 @@ msgid "Top cities"
 msgstr "Toppstäder"
 
 #: src/ui/mcloud/artist.rs:1221
-msgid "Latest release"
+msgid "Latest Release"
 msgstr "Senaste släppet"
 
 #: src/ui/mcloud/artist.rs:1369
@@ -4064,251 +4084,3 @@ msgstr[1] "{count} objekt"
 msgctxt "search result"
 msgid "Song"
 msgstr "Låt"
-
-#~ msgid "Explore by genre and mood"
-#~ msgstr "Utforska efter genre och stämning"
-
-#~ msgid "Spotify's own player, with lossless support."
-#~ msgstr "Spotifys egen spelare med stöd för förlustfritt ljud."
-
-#~ msgid ""
-#~ "You'll need Spotify Premium, your personal Soloist key and one pairing in "
-#~ "Spotify. Spotifast handles the download and updates."
-#~ msgstr ""
-#~ "Du behöver Spotify Premium, din personliga Soloist-nyckel och en "
-#~ "engångsparkoppling i Spotify. Spotifast sköter nedladdning och "
-#~ "uppdateringar."
-
-#~ msgid ""
-#~ "For local files and full queue editing, use the built-in player. You can "
-#~ "switch later in Settings."
-#~ msgstr ""
-#~ "Använd den inbyggda spelaren för lokala filer och fullständig "
-#~ "köredigering. Du kan byta senare i Inställningar."
-
-#~ msgid ""
-#~ "Create a Soloist key in Spotify's developer dashboard. This is separate "
-#~ "from your Web API app's Client ID."
-#~ msgstr ""
-#~ "Skapa en Soloist-nyckel i Spotifys utvecklarpanel. Den är separat från "
-#~ "Client ID för din Web API-app."
-
-#~ msgid ""
-#~ "Soloist makes its own Spotify connections. Spotifast's proxy settings do "
-#~ "not route its audio traffic."
-#~ msgstr ""
-#~ "Soloist ansluter själv till Spotify. Spotifasts proxyinställningar styr "
-#~ "inte dess ljudtrafik."
-
-#~ msgid ""
-#~ "Downloads directly from Spotify and saves your key in the system "
-#~ "credential store. By enabling Soloist, you use Spotify's separate "
-#~ "software under its terms."
-#~ msgstr ""
-#~ "Hämtar direkt från Spotify och sparar nyckeln i systemets "
-#~ "inloggningslager. När du aktiverar Soloist använder du Spotifys separata "
-#~ "programvara enligt dess villkor."
-
-#~ msgid ""
-#~ "Open Spotify on the same network, using the account signed in here. In "
-#~ "the device picker, choose:"
-#~ msgstr ""
-#~ "Öppna Spotify i samma nätverk med kontot som är inloggat här. Välj "
-#~ "följande i enhetslistan:"
-
-#~ msgid ""
-#~ "Spotifast will notice when pairing finishes. Future starts reconnect "
-#~ "automatically."
-#~ msgstr ""
-#~ "Spotifast upptäcker när parkopplingen är klar. Vid kommande starter "
-#~ "återansluts spelaren automatiskt."
-
-#~ msgid ""
-#~ "If this takes a while, make sure Spotify is signed in to the same account "
-#~ "as Spotifast, then select this device there."
-#~ msgstr ""
-#~ "Om det tar lång tid, kontrollera att Spotify använder samma konto som "
-#~ "Spotifast och välj sedan den här enheten i Spotify."
-
-#~ msgid ""
-#~ "For EQ, visualizers, local files and queue editing, use the built-in "
-#~ "player. You can switch later in Settings."
-#~ msgstr ""
-#~ "Använd den inbyggda spelaren för EQ, visualiseringar, lokala filer och "
-#~ "köredigering. Du kan byta senare i Inställningar."
-
-#~ msgid ""
-#~ "Spotify manages audio quality. EQ, visualizers and local files use the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Spotify hanterar ljudkvaliteten. EQ, visualiseringar och lokala filer "
-#~ "använder den inbyggda spelaren."
-
-#~ msgid "Confirming your Spotify account…"
-#~ msgstr "Bekräftar ditt Spotify-konto…"
-
-#~ msgid "Details"
-#~ msgstr "Detaljer"
-
-#~ msgid ""
-#~ "Spotifast checks daily for a replacement during the last 30 days of each "
-#~ "build. Updates wait until Soloist is inactive."
-#~ msgstr ""
-#~ "Under varje versions sista 30 dagar söker Spotifast dagligen efter en "
-#~ "ersättare. Uppdateringar väntar tills Soloist är inaktivt."
-
-#~ msgid ""
-#~ "Soloist uses your system audio output. Turn it off to use the built-in "
-#~ "player's EQ, visualizers, local files and queue editing."
-#~ msgstr ""
-#~ "Soloist använder systemets ljudutgång. Stäng av det för att använda den "
-#~ "inbyggda spelarens equalizer, visualiseringar, lokala filer och "
-#~ "köredigering."
-
-#~ msgid ""
-#~ "Spotify chooses playback quality. Soloist does not report the delivered "
-#~ "audio format yet."
-#~ msgstr ""
-#~ "Spotify väljer uppspelningskvalitet. Soloist rapporterar ännu inte "
-#~ "ljudformatet som levereras."
-
-#~ msgid ""
-#~ "Audio quality, output, EQ and local-file settings below apply to the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Inställningarna för ljudkvalitet, utgång, EQ och lokala filer nedan "
-#~ "gäller den inbyggda spelaren."
-
-#~ msgid ""
-#~ "Spotify's own player, with support for lossless audio. Requires Premium, "
-#~ "your personal Soloist key, and one pairing in the Spotify app."
-#~ msgstr ""
-#~ "Spotifys egen spelare med stöd för förlustfritt ljud. Kräver Premium, din "
-#~ "personliga Soloist-nyckel och en parkoppling i Spotify-appen."
-
-#~ msgid ""
-#~ "Soloist plays through your system audio output. Spotifast's EQ, "
-#~ "visualizers, local files, and full queue editing are available with the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Soloist använder systemets ljudutgång. Spotifasts EQ, visualiseringar, "
-#~ "lokala filer och fullständiga köredigering finns i den inbyggda spelaren."
-
-#~ msgid "Soloist is ready"
-#~ msgstr "Soloist är redo"
-
-#~ msgid ""
-#~ "A fresh build is downloaded. It will be applied when Soloist is inactive "
-#~ "or Spotifast restarts."
-#~ msgstr ""
-#~ "En ny version har hämtats. Den används när Soloist är inaktivt eller "
-#~ "Spotifast startas om."
-
-#~ msgid "Soloist setup, privacy and limitations"
-#~ msgstr "Soloist: inställning, integritet och begränsningar"
-
-#~ msgid ""
-#~ "Use a personal Development Mode app for a separate API quota. The shared "
-#~ "app stays active."
-#~ msgstr ""
-#~ "Använd en personlig app i Development Mode för en egen API-kvot. Den "
-#~ "delade appen förblir aktiv."
-
-#~ msgid "Remove personal app"
-#~ msgstr "Ta bort personlig app"
-
-#~ msgid "Shared access remains signed in."
-#~ msgstr "Den delade åtkomsten förblir inloggad."
-
-#~ msgid "Spotify can be slow on the shared app"
-#~ msgstr "Spotify kan vara långsamt med den delade appen"
-
-#~ msgid ""
-#~ "Everyone using Spotifast shares one app, and Spotify slows it down when "
-#~ "it's busy. Set up your own personal Spotify app and you won't have to "
-#~ "wait. It's free and takes a few minutes."
-#~ msgstr ""
-#~ "Alla som använder Spotifast delar på en app, och Spotify saktar ner den "
-#~ "när det är hög belastning. Konfigurera en egen personlig Spotify-app så "
-#~ "slipper du vänta. Det är gratis och tar några minuter."
-
-#~ msgid "Use the shared Spotify app instead"
-#~ msgstr "Använd den delade Spotify-appen i stället"
-
-#~ msgid ""
-#~ "Set up your own personal Spotify app and you won't have to wait. It's "
-#~ "free and takes a few minutes."
-#~ msgstr ""
-#~ "Konfigurera en egen personlig Spotify-app så slipper du vänta. Det är "
-#~ "gratis och tar några minuter."
-
-#~ msgid ""
-#~ "Spotifast hides to the system tray. Quit from the tray menu or with Cmd+Q."
-#~ msgstr ""
-#~ "Spotifast göms i systemfältet. Avsluta från systemfältets meny eller med "
-#~ "Cmd+Q."
-
-#~ msgid "Your most-played tracks from the last four weeks."
-#~ msgstr "Dina mest spelade låtar de senaste fyra veckorna."
-
-#~ msgid "Spend less time waiting for Spotify"
-#~ msgstr "Vänta mindre på Spotify"
-
-#~ msgid ""
-#~ "Spotifast's default connection shares Spotify's request limit with other "
-#~ "listeners. When it gets busy, loading music and using playback controls "
-#~ "can take longer."
-#~ msgstr ""
-#~ "Spotifasts standardanslutning delar Spotifys gräns för förfrågningar med "
-#~ "andra lyssnare. Vid hög belastning kan det ta längre tid att läsa in "
-#~ "musik och använda uppspelningskontrollerna."
-
-#~ msgid ""
-#~ "Your Premium account lets you create a free personal Spotify app. Connect "
-#~ "it here to give supported requests your own allowance. Some pages still "
-#~ "use the shared connection."
-#~ msgstr ""
-#~ "Med ditt Premium-konto kan du skapa en gratis personlig Spotify-app. "
-#~ "Anslut den här för att ge förfrågningar som stöds en egen kvot. Vissa "
-#~ "sidor använder fortfarande den delade anslutningen."
-
-#~ msgid ""
-#~ "Setup takes a few minutes. You can also find it later in Settings under "
-#~ "Personal Spotify app."
-#~ msgstr ""
-#~ "Konfigurationen tar några minuter. Du hittar den också senare i "
-#~ "Inställningar under Personlig Spotify-app."
-
-#~ msgid "Keep shared app"
-#~ msgstr "Behåll delad app"
-
-#~ msgid ""
-#~ "Play the local files your playlists list from a folder on this computer. "
-#~ "Only 44.1 kHz files play."
-#~ msgstr ""
-#~ "Spela de lokala filerna i dina spellistor från en mapp på den här datorn. "
-#~ "Bara filer i 44,1 kHz spelas."
-
-#~ msgid "PulseAudio also covers PipeWire. Rodio talks to ALSA directly."
-#~ msgstr "PulseAudio täcker även PipeWire. Rodio pratar direkt med ALSA."
-
-#~ msgid "Couldn't load this shelf"
-#~ msgstr "Kunde inte läsa in den här sektionen"
-
-#~ msgid "Spotify does not let apps remove one queued song."
-#~ msgstr "Spotify låter inte appar ta bort en enskild låt ur kön."
-
-#~ msgid "MacBook notch interactive widget"
-#~ msgstr "Interaktiv MacBook-flärpwidget"
-
-#~ msgid "Scroll left"
-#~ msgstr "Rulla åt vänster"
-
-#~ msgid "Scroll right"
-#~ msgstr "Rulla åt höger"
-
-#~ msgid "Enable lyrics motion"
-#~ msgstr "Aktivera låttextrörelse"
-
-#~ msgid "Reduce lyrics motion"
-#~ msgstr "Minska låttextrörelse"

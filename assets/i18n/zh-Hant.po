@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-05 04:19+0300\n"
+"POT-Creation-Date: 2026-11-06 15:01+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Traditional Chinese\n"
@@ -372,7 +372,7 @@ msgstr "接下來播放"
 msgid "Next up"
 msgstr "後續曲目"
 
-#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3307
+#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3383
 #: src/ui/collection.rs:1279 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr "重試"
@@ -455,8 +455,8 @@ msgstr "純音樂"
 msgid "No timed lyrics for this track."
 msgstr "這首歌沒有同步歌詞。"
 
-#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3205 src/ui/widgets.rs:3245
-#: src/ui/widgets.rs:3273 src/app.rs:14101 src/ui/collection.rs:930
+#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3281 src/ui/widgets.rs:3321
+#: src/ui/widgets.rs:3349 src/app.rs:14101 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr "載入中…"
 
@@ -501,7 +501,7 @@ msgstr "從這個播放清單中移除"
 msgid "Filter playlists"
 msgstr "篩選播放清單"
 
-#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359 src/ui/mcloud/sidebar.rs:442
+#: src/ui/widgets.rs:954 src/ui/dialogs.rs:359
 msgid "New playlist"
 msgstr "新增播放清單"
 
@@ -541,12 +541,11 @@ msgstr "在這個播放清單中隱藏"
 msgid "Go to song radio"
 msgstr "前往歌曲電台"
 
-#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222 src/ui/mcloud/player.rs:757
-#: src/ui/mcloud/player.rs:763
+#: src/ui/widgets.rs:1215 src/ui/widgets.rs:1222
 msgid "Go to artist"
 msgstr "前往藝人"
 
-#: src/ui/widgets.rs:1240 src/ui/mcloud/player.rs:780
+#: src/ui/widgets.rs:1240
 msgid "Go to album"
 msgstr "前往專輯"
 
@@ -627,106 +626,106 @@ msgid_plural "{name} + {count} more"
 msgstr[0] "{name} 及其他 {count} 項"
 
 #. Translators: {column} is a column heading of a song list, such as Title.
-#: src/ui/widgets.rs:2540
+#: src/ui/widgets.rs:2545
 #, rust-format
 msgid "Sort by {column}"
 msgstr "依{column}排序"
 
-#: src/ui/widgets.rs:2595
+#: src/ui/widgets.rs:2601
 msgid "Sort by playlist order"
 msgstr "依播放清單順序排序"
 
-#: src/ui/widgets.rs:2630
+#: src/ui/widgets.rs:2636
 msgid "Original order, reversed"
 msgstr "原始順序，反向"
 
-#: src/ui/widgets.rs:2643
+#: src/ui/widgets.rs:2649
 msgctxt "column heading"
 msgid "TITLE"
 msgstr "標題"
 
-#: src/ui/widgets.rs:2672
+#: src/ui/widgets.rs:2678
 msgctxt "column heading"
 msgid "ALBUM"
 msgstr "專輯"
 
-#: src/ui/widgets.rs:2681 src/ui/mcloud/pages.rs:366
+#: src/ui/widgets.rs:2687 src/ui/mcloud/pages.rs:366
 msgctxt "column heading"
 msgid "ADDED BY"
 msgstr "新增者"
 
-#: src/ui/widgets.rs:2690
+#: src/ui/widgets.rs:2696
 msgctxt "column heading"
 msgid "DATE ADDED"
 msgstr "新增日期"
 
-#: src/ui/widgets.rs:2700
+#: src/ui/widgets.rs:2706
 msgctxt "column heading"
 msgid "PLAYS"
 msgstr "播放次數"
 
-#: src/ui/widgets.rs:2722 src/ui/widgets.rs:2752
+#: src/ui/widgets.rs:2728 src/ui/widgets.rs:2758
 msgid "Sort by duration"
 msgstr "依長度排序"
 
-#: src/ui/widgets.rs:3019
+#: src/ui/widgets.rs:3025
 msgid "More options"
 msgstr "更多選項"
 
-#: src/ui/widgets.rs:3284 src/app.rs:14310 src/app.rs:14324
+#: src/ui/widgets.rs:3360 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
 msgstr "網路連線錯誤。請檢查連線。"
 
-#: src/ui/widgets.rs:3548
+#: src/ui/widgets.rs:3624
 msgid "Cut"
 msgstr "剪下"
 
-#: src/ui/widgets.rs:3553 src/ui/login.rs:560
+#: src/ui/widgets.rs:3629 src/ui/login.rs:560
 msgid "Copy"
 msgstr "複製"
 
-#: src/ui/widgets.rs:3558
+#: src/ui/widgets.rs:3634
 msgid "Paste"
 msgstr "貼上"
 
-#: src/ui/widgets.rs:3575
+#: src/ui/widgets.rs:3651
 msgid "Select all"
 msgstr "全選"
 
-#: src/ui/widgets.rs:3712 src/ui/mcloud/library.rs:135
+#: src/ui/widgets.rs:3788 src/ui/mcloud/library.rs:135
 msgid "Clear"
 msgstr "清除"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3757
+#: src/ui/widgets.rs:3833
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "由 {name} 用心打造"
 
-#: src/ui/widgets.rs:3902
+#: src/ui/widgets.rs:3978
 msgid "Host"
 msgstr "主機"
 
-#: src/ui/widgets.rs:3919
+#: src/ui/widgets.rs:3995
 msgid "Port"
 msgstr "連接埠"
 
-#: src/ui/widgets.rs:3937
+#: src/ui/widgets.rs:4013
 msgid "Username"
 msgstr "使用者名稱"
 
-#: src/ui/widgets.rs:3948
+#: src/ui/widgets.rs:4024
 msgid "Password"
 msgstr "密碼"
 
-#: src/ui/widgets.rs:3966
+#: src/ui/widgets.rs:4042
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
 msgstr ""
 "Proxy 登入資訊僅套用於 Web 要求。本機播放只會在不需登入時使用這個 Proxy。"
 
-#: src/ui/widgets.rs:3970
+#: src/ui/widgets.rs:4046
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -2462,8 +2461,7 @@ msgstr "無法載入自訂主題。請執行 spotifast reload-themes 再試一�
 msgid "Popular"
 msgstr "熱門"
 
-#: src/ui/artist.rs:94 src/ui/mcloud/sidebar.rs:292
-#: src/ui/mcloud/sidebar.rs:459
+#: src/ui/artist.rs:94
 msgid "Show less"
 msgstr "顯示較少"
 
@@ -2483,7 +2481,7 @@ msgstr "音樂作品"
 msgid "Nothing in this category."
 msgstr "這個類別中沒有內容。"
 
-#: src/ui/artist.rs:224 src/ui/mcloud/artist.rs:247
+#: src/ui/artist.rs:224
 msgid "Fans also like"
 msgstr "粉絲也喜歡"
 
@@ -3890,9 +3888,25 @@ msgstr ""
 "器沒有提供。請安裝顯示卡驅動程式，或為虛擬機器開啟 GPU 加速。要開啟 {url} 了"
 "解更多嗎？"
 
+#: src/ui/mcloud/sidebar.rs:292 src/ui/mcloud/sidebar.rs:459
+msgid "Show Less"
+msgstr "顯示較少"
+
+#: src/ui/mcloud/sidebar.rs:442
+msgid "New Playlist"
+msgstr "新增播放清單"
+
 #: src/ui/mcloud/sidebar.rs:703
-msgid "Show all"
+msgid "Show All"
 msgstr "顯示全部"
+
+#: src/ui/mcloud/player.rs:757 src/ui/mcloud/player.rs:763
+msgid "Go to Artist"
+msgstr "前往藝人"
+
+#: src/ui/mcloud/player.rs:780
+msgid "Go to Album"
+msgstr "前往專輯"
 
 #: src/ui/mcloud/pages.rs:358 src/ui/mcloud/pages.rs:365
 #: src/ui/mcloud/pages.rs:428
@@ -3913,6 +3927,10 @@ msgstr "音樂"
 msgid "More by {artist}"
 msgstr "{artist}的更多作品"
 
+#: src/ui/mcloud/artist.rs:247
+msgid "Similar Artists"
+msgstr "類似藝人"
+
 #: src/ui/mcloud/artist.rs:706
 msgid "Monthly listeners"
 msgstr "每月聽眾"
@@ -3926,7 +3944,7 @@ msgid "Top cities"
 msgstr "熱門城市"
 
 #: src/ui/mcloud/artist.rs:1221
-msgid "Latest release"
+msgid "Latest Release"
 msgstr "最新發行"
 
 #: src/ui/mcloud/artist.rs:1369
@@ -3962,229 +3980,3 @@ msgstr[0] "{count} 個項目"
 msgctxt "search result"
 msgid "Song"
 msgstr "歌曲"
-
-#~ msgid "Explore by genre and mood"
-#~ msgstr "依曲風與情境探索"
-
-#~ msgid "Spotify's own player, with lossless support."
-#~ msgstr "Spotify 官方播放器，支援無損音訊。"
-
-#~ msgid ""
-#~ "You'll need Spotify Premium, your personal Soloist key and one pairing in "
-#~ "Spotify. Spotifast handles the download and updates."
-#~ msgstr ""
-#~ "需要 Spotify Premium、你的個人 Soloist 金鑰，以及在 Spotify 中完成一次配"
-#~ "對。Spotifast 會負責下載和更新。"
-
-#~ msgid ""
-#~ "For local files and full queue editing, use the built-in player. You can "
-#~ "switch later in Settings."
-#~ msgstr ""
-#~ "如需播放本機檔案和完整的佇列編輯功能，請使用內建播放器。稍後可在設定中切"
-#~ "換。"
-
-#~ msgid ""
-#~ "Create a Soloist key in Spotify's developer dashboard. This is separate "
-#~ "from your Web API app's Client ID."
-#~ msgstr ""
-#~ "在 Spotify 開發者控制台中建立 Soloist 金鑰。它與你的 Web API 應用程式的 "
-#~ "Client ID 不同。"
-
-#~ msgid ""
-#~ "Soloist makes its own Spotify connections. Spotifast's proxy settings do "
-#~ "not route its audio traffic."
-#~ msgstr ""
-#~ "Soloist 自行連線至 Spotify。Spotifast 的代理伺服器設定不適用於 Soloist 的"
-#~ "音訊流量。"
-
-#~ msgid ""
-#~ "Downloads directly from Spotify and saves your key in the system "
-#~ "credential store. By enabling Soloist, you use Spotify's separate "
-#~ "software under its terms."
-#~ msgstr ""
-#~ "直接從 Spotify 下載，並將金鑰儲存在系統認證儲存區。啟用 Soloist 即表示你使"
-#~ "用 Spotify 的獨立軟體，並遵守其條款。"
-
-#~ msgid ""
-#~ "Open Spotify on the same network, using the account signed in here. In "
-#~ "the device picker, choose:"
-#~ msgstr "在同一網路上開啟 Spotify，使用此處登入的帳號。在裝置清單中選擇："
-
-#~ msgid ""
-#~ "Spotifast will notice when pairing finishes. Future starts reconnect "
-#~ "automatically."
-#~ msgstr "Spotifast 會偵測到配對完成。日後啟動時會自動重新連線。"
-
-#~ msgid ""
-#~ "If this takes a while, make sure Spotify is signed in to the same account "
-#~ "as Spotifast, then select this device there."
-#~ msgstr ""
-#~ "如果等候較久，請確認 Spotify 與 Spotifast 登入的是同一個帳號，再於 "
-#~ "Spotify 中選取此裝置。"
-
-#~ msgid ""
-#~ "For EQ, visualizers, local files and queue editing, use the built-in "
-#~ "player. You can switch later in Settings."
-#~ msgstr ""
-#~ "如需使用等化器、視覺化、本機檔案和佇列編輯，請選擇內建播放器。之後可以在設"
-#~ "定中切換。"
-
-#~ msgid ""
-#~ "Spotify manages audio quality. EQ, visualizers and local files use the "
-#~ "built-in player."
-#~ msgstr "音質由 Spotify 管理。等化器、視覺效果和本機檔案使用內建播放器。"
-
-#~ msgid "Confirming your Spotify account…"
-#~ msgstr "正在確認你的 Spotify 帳號…"
-
-#~ msgid "Details"
-#~ msgstr "詳細資訊"
-
-#~ msgid ""
-#~ "Spotifast checks daily for a replacement during the last 30 days of each "
-#~ "build. Updates wait until Soloist is inactive."
-#~ msgstr ""
-#~ "在每個版本到期前的最後 30 天內，Spotifast 每天檢查是否有替代版本。更新會等"
-#~ "到 Soloist 處於非使用中狀態。"
-
-#~ msgid ""
-#~ "Soloist uses your system audio output. Turn it off to use the built-in "
-#~ "player's EQ, visualizers, local files and queue editing."
-#~ msgstr ""
-#~ "Soloist 使用系統音訊輸出。關閉它即可使用內建播放器的等化器、視覺效果、本機"
-#~ "檔案和佇列編輯功能。"
-
-#~ msgid ""
-#~ "Spotify chooses playback quality. Soloist does not report the delivered "
-#~ "audio format yet."
-#~ msgstr "Spotify 決定播放音質。Soloist 尚未回報實際接收的音訊格式。"
-
-#~ msgid ""
-#~ "Audio quality, output, EQ and local-file settings below apply to the "
-#~ "built-in player."
-#~ msgstr "下方的音質、輸出、等化器和本機檔案設定適用於內建播放器。"
-
-#~ msgid ""
-#~ "Spotify's own player, with support for lossless audio. Requires Premium, "
-#~ "your personal Soloist key, and one pairing in the Spotify app."
-#~ msgstr ""
-#~ "Spotify 自己的播放器，支援無損音訊。需要 Premium、你的個人 Soloist 金鑰，"
-#~ "以及在 Spotify 應用程式中配對一次。"
-
-#~ msgid ""
-#~ "Soloist plays through your system audio output. Spotifast's EQ, "
-#~ "visualizers, local files, and full queue editing are available with the "
-#~ "built-in player."
-#~ msgstr ""
-#~ "Soloist 使用系統音訊輸出。Spotifast 的等化器、視覺化、本機檔案和完整佇列編"
-#~ "輯功能可透過內建播放器使用。"
-
-#~ msgid "Soloist is ready"
-#~ msgstr "Soloist 已就緒"
-
-#~ msgid ""
-#~ "A fresh build is downloaded. It will be applied when Soloist is inactive "
-#~ "or Spotifast restarts."
-#~ msgstr ""
-#~ "新版本已下載。Soloist 處於非使用中狀態或 Spotifast 重新啟動時將套用更新。"
-
-#~ msgid "Soloist setup, privacy and limitations"
-#~ msgstr "Soloist 設定、隱私權與限制"
-
-#~ msgid ""
-#~ "Use a personal Development Mode app for a separate API quota. The shared "
-#~ "app stays active."
-#~ msgstr ""
-#~ "使用個人的開發模式應用程式，即可取得獨立的 API 配額。共用應用程式仍會保持"
-#~ "啟用。"
-
-#~ msgid "Remove personal app"
-#~ msgstr "移除個人應用程式"
-
-#~ msgid "Shared access remains signed in."
-#~ msgstr "共用存取會保持登入狀態。"
-
-#~ msgid "Spotify can be slow on the shared app"
-#~ msgstr "使用共用應用程式時 Spotify 可能會很慢"
-
-#~ msgid ""
-#~ "Everyone using Spotifast shares one app, and Spotify slows it down when "
-#~ "it's busy. Set up your own personal Spotify app and you won't have to "
-#~ "wait. It's free and takes a few minutes."
-#~ msgstr ""
-#~ "所有 Spotifast 使用者共用一個應用程式，Spotify 在忙碌時會降低它的速度。設"
-#~ "定你自己的個人 Spotify 應用程式，就不用再等了。完全免費，只需要幾分鐘。"
-
-#~ msgid "Use the shared Spotify app instead"
-#~ msgstr "改用共用的 Spotify 應用程式"
-
-#~ msgid ""
-#~ "Set up your own personal Spotify app and you won't have to wait. It's "
-#~ "free and takes a few minutes."
-#~ msgstr ""
-#~ "設定你自己的個人 Spotify 應用程式，就不用再等了。完全免費，只需要幾分鐘。"
-
-#~ msgid ""
-#~ "Spotifast hides to the system tray. Quit from the tray menu or with Cmd+Q."
-#~ msgstr "Spotifast 會隱藏到系統匣。可從系統匣選單或按 Cmd+Q 結束。"
-
-#~ msgid "Your most-played tracks from the last four weeks."
-#~ msgstr "過去四週你最常播放的歌曲。"
-
-#~ msgid "Spend less time waiting for Spotify"
-#~ msgstr "減少等待 Spotify 的時間"
-
-#~ msgid ""
-#~ "Spotifast's default connection shares Spotify's request limit with other "
-#~ "listeners. When it gets busy, loading music and using playback controls "
-#~ "can take longer."
-#~ msgstr ""
-#~ "Spotifast 的預設連線會與其他聽眾共用 Spotify 的要求上限。繁忙時，載入音樂"
-#~ "和使用播放控制項可能需要更久。"
-
-#~ msgid ""
-#~ "Your Premium account lets you create a free personal Spotify app. Connect "
-#~ "it here to give supported requests your own allowance. Some pages still "
-#~ "use the shared connection."
-#~ msgstr ""
-#~ "你的 Premium 帳戶可以免費建立個人 Spotify 應用程式。在這裡連線後，支援的要"
-#~ "求就會使用你自己的配額。部分頁面仍會使用共用連線。"
-
-#~ msgid ""
-#~ "Setup takes a few minutes. You can also find it later in Settings under "
-#~ "Personal Spotify app."
-#~ msgstr ""
-#~ "設定只需要幾分鐘。之後也可以在「設定」的「個人 Spotify 應用程式」中找到。"
-
-#~ msgid "Keep shared app"
-#~ msgstr "繼續使用共用應用程式"
-
-#~ msgid ""
-#~ "Play the local files your playlists list from a folder on this computer. "
-#~ "Only 44.1 kHz files play."
-#~ msgstr ""
-#~ "從這台電腦上的資料夾播放播放清單中的本機檔案。只能播放 44.1 kHz 的檔案。"
-
-#~ msgid "PulseAudio also covers PipeWire. Rodio talks to ALSA directly."
-#~ msgstr "PulseAudio 也支援 PipeWire。Rodio 會直接與 ALSA 溝通。"
-
-#~ msgid "Couldn't load this shelf"
-#~ msgstr "無法載入這個區塊"
-
-#~ msgid "Spotify does not let apps remove one queued song."
-#~ msgstr "Spotify 不允許應用程式從待播清單中移除單首歌曲。"
-
-#~ msgid "MacBook notch interactive widget"
-#~ msgstr "MacBook瀏海互動式小工具"
-
-#~ msgid "Scroll left"
-#~ msgstr "向左捲動"
-
-#~ msgid "Scroll right"
-#~ msgstr "向右捲動"
-
-#~ msgid "Enable lyrics motion"
-#~ msgstr "啟用歌詞動畫"
-
-#~ msgid "Reduce lyrics motion"
-#~ msgstr "減少歌詞動畫"
