@@ -665,7 +665,7 @@ pub(super) fn search_box(app: &mut App, ui: &mut egui::Ui, search_width: f32) {
     // Clear empties the field and hands it focus in the same frame.
     // Neither should leave the page: only typing a query does.
     let cleared = app.search.query.is_empty() && !before.is_empty();
-    if response.gained_focus() && !cleared && !matches!(app.page(), Page::Search) {
+    if response.gained_focus() && !cleared && !app.page().is_search() {
         app.actions.push(Action::Open(Page::Search));
     }
     if app.search.query != before {
@@ -675,7 +675,7 @@ pub(super) fn search_box(app: &mut App, ui: &mut egui::Ui, search_width: f32) {
             app.actions.push(Action::EndSearchRun);
         }
         app.search.typed_at = Some(std::time::Instant::now());
-        if !cleared && !matches!(app.page(), Page::Search) {
+        if !cleared && !app.page().is_search() {
             app.actions.push(Action::Open(Page::Search));
         }
     }

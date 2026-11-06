@@ -17,29 +17,42 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         recent(app, ui);
         return;
     }
-    // Under mcloud, Spotify's own search column, centred.
-    if super::mcloud::active(ui.ctx()) {
-        super::mcloud::search::column(ui, |ui| results_page(app, ui));
+    // mcloud's search page has no chips: its headings open each kind's page.
+    let filter = if super::mcloud::active(ui.ctx()) {
+        SearchFilter::All
     } else {
-        results_page(app, ui);
-    }
+        app.search.filter
+    };
+    results_page(app, ui, filter);
 }
 
-fn results_page(app: &mut App, ui: &mut egui::Ui) {
-    let palette = app.palette;
-    ui.add_space(4.0);
-    let labels: Vec<_> = SearchFilter::ALL
-        .iter()
-        .map(|f| (*f, f.label(app.locale)))
-        .collect();
-    let options: Vec<(SearchFilter, &str)> = labels
-        .iter()
-        .map(|(filter, label)| (*filter, label.as_ref()))
-        .collect();
-    if let Some(filter) = widgets::chips(ui, &palette, &options, app.search.filter) {
-        app.actions.push(Action::SetSearchFilter(filter));
+/// A kind's own page under mcloud, as Apple's "see all".
+pub fn show_kind(app: &mut App, ui: &mut egui::Ui, kind: SearchFilter) {
+    if app.search.committed.is_empty() && app.search.typed_at.is_none() {
+        recent(app, ui);
+        return;
     }
-    ui.add_space(12.0);
+    results_page(app, ui, kind);
+}
+
+fn results_page(app: &mut App, ui: &mut egui::Ui, filter: SearchFilter) {
+    let palette = app.palette;
+    let mcloud = super::mcloud::active(ui.ctx());
+    if !mcloud {
+        ui.add_space(4.0);
+        let labels: Vec<_> = SearchFilter::ALL
+            .iter()
+            .map(|f| (*f, f.label(app.locale)))
+            .collect();
+        let options: Vec<(SearchFilter, &str)> = labels
+            .iter()
+            .map(|(filter, label)| (*filter, label.as_ref()))
+            .collect();
+        if let Some(filter) = widgets::chips(ui, &palette, &options, app.search.filter) {
+            app.actions.push(Action::SetSearchFilter(filter));
+        }
+        ui.add_space(12.0);
+    }
     let pending = app.search.catalogue_pending || app.search.playlists_pending;
     if pending {
         widgets::loading_row(ui, &palette, app.locale);
@@ -78,7 +91,11 @@ fn results_page(app: &mut App, ui: &mut egui::Ui) {
         );
         return;
     }
-    match app.search.filter {
+    if mcloud {
+        super::mcloud::search::results(app, ui, &results, filter);
+        return;
+    }
+    match filter {
         SearchFilter::All => all(app, ui, &results),
         SearchFilter::Songs => songs(app, ui, &results, usize::MAX),
         SearchFilter::Artists => artists_grid(app, ui, &results),
@@ -137,15 +154,6 @@ fn recent(app: &mut App, ui: &mut egui::Ui) {
 fn all(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
     let palette = app.palette;
     let locale = app.locale;
-    if super::mcloud::active(ui.ctx()) {
-        super::mcloud::search::top(app, ui, results);
-        ui.add_space(24.0);
-        shelf_artists(app, ui, results);
-        shelf_albums(app, ui, results);
-        shelf_playlists(app, ui, results);
-        shelf_shows(app, ui, results);
-        return;
-    }
     let query = app.search.committed.to_lowercase();
     let top_artist = results
         .artists
@@ -497,17 +505,27 @@ fn songs(app: &mut App, ui: &mut egui::Ui, results: &SearchResults, limit: usize
     }
 }
 
-fn artist_card(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
+pub(in crate::ui) fn artist_card(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    artist: &Artist,
+    art: Option<f32>,
+) {
     let context_here = app.playing_context_uri().as_deref() == Some(artist.uri.as_str());
     let playing_here = context_here && app.believed_playing();
-    let card_art = app.art_px(widgets::CARD_ART);
+    let card_art = app.art_px(art.unwrap_or(widgets::CARD_ART));
     let card = widgets::card(
         ui,
         app,
         pick_image(&artist.images, card_art),
         &artist.name,
-        &gettext(app.locale, "Artist"),
-        widgets::CardCover::portrait(playing_here),
+        // Apple's artist cards carry the name alone.
+        &if art.is_some() {
+            std::borrow::Cow::Borrowed("")
+        } else {
+            gettext(app.locale, "Artist")
+        },
+        widgets::CardCover::portrait(playing_here).sized(art),
     );
     if card.play {
         if context_here {
@@ -548,7 +566,7 @@ fn shelf_artists(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
         &gettext(app.locale, "Artists"),
         |ui| {
             for artist in &page.items {
-                artist_card(app, ui, artist);
+                artist_card(app, ui, artist, None);
             }
         },
     );
@@ -558,27 +576,33 @@ fn artists_grid(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
     let Some(page) = &results.artists else { return };
     widgets::grid(ui, |ui| {
         for artist in &page.items {
-            artist_card(app, ui, artist);
+            artist_card(app, ui, artist, None);
         }
     });
 }
 
-fn album_card(app: &mut App, ui: &mut egui::Ui, album: &crate::api::models::Album) {
-    let subtitle = format!(
-        "{} • {}",
-        album.year().unwrap_or(""),
-        crate::api::models::join_names(album.artists.iter().map(|a| a.name.as_str()))
-    );
+pub(in crate::ui) fn album_card(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    album: &crate::api::models::Album,
+    art: Option<f32>,
+) {
+    let artists = crate::api::models::join_names(album.artists.iter().map(|a| a.name.as_str()));
+    let subtitle = if art.is_some() {
+        artists
+    } else {
+        format!("{} • {artists}", album.year().unwrap_or(""))
+    };
     let context_here = app.playing_context_uri().as_deref() == Some(album.uri.as_str());
     let playing_here = context_here && app.believed_playing();
-    let card_art = app.art_px(widgets::CARD_ART);
+    let card_art = app.art_px(art.unwrap_or(widgets::CARD_ART));
     let card = widgets::card(
         ui,
         app,
         pick_image(&album.images, card_art),
         &album.name,
         subtitle.trim_start_matches(" • "),
-        widgets::CardCover::square(playing_here),
+        widgets::CardCover::square(playing_here).sized(art),
     );
     if card.play {
         if context_here {
@@ -619,7 +643,7 @@ fn shelf_albums(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
         &gettext(app.locale, "Albums"),
         |ui| {
             for album in &page.items {
-                album_card(app, ui, album);
+                album_card(app, ui, album, None);
             }
         },
     );
@@ -629,23 +653,32 @@ fn albums_grid(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
     let Some(page) = &results.albums else { return };
     widgets::grid(ui, |ui| {
         for album in &page.items {
-            album_card(app, ui, album);
+            album_card(app, ui, album, None);
         }
     });
 }
 
-fn playlist_card(app: &mut App, ui: &mut egui::Ui, playlist: &crate::api::models::Playlist) {
+pub(in crate::ui) fn playlist_card(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    playlist: &crate::api::models::Playlist,
+    art: Option<f32>,
+) {
     let context_here = app.playing_context_uri().as_deref() == Some(playlist.uri.as_str());
     let playing_here = context_here && app.believed_playing();
-    let card_art = app.art_px(widgets::CARD_ART);
+    let card_art = app.art_px(art.unwrap_or(widgets::CARD_ART));
     let card = widgets::card(
         ui,
         app,
         pick_image(&playlist.images, card_art),
         &playlist.name,
         // Translators: {owner} is the name of the playlist's owner.
-        &gettext(app.locale, "By {owner}").replace("{owner}", playlist.owner_name()),
-        widgets::CardCover::square(playing_here),
+        &if art.is_some() {
+            playlist.owner_name().to_string()
+        } else {
+            gettext(app.locale, "By {owner}").replace("{owner}", playlist.owner_name())
+        },
+        widgets::CardCover::square(playing_here).sized(art),
     );
     if card.play {
         if context_here {
@@ -695,7 +728,7 @@ fn shelf_playlists(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
         &gettext(app.locale, "Playlists"),
         |ui| {
             for playlist in &page.items {
-                playlist_card(app, ui, playlist);
+                playlist_card(app, ui, playlist, None);
             }
         },
     );
@@ -707,20 +740,25 @@ fn playlists_grid(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
     };
     widgets::grid(ui, |ui| {
         for playlist in &page.items {
-            playlist_card(app, ui, playlist);
+            playlist_card(app, ui, playlist, None);
         }
     });
 }
 
-fn show_card(app: &mut App, ui: &mut egui::Ui, show: &crate::api::models::Show) {
-    let card_art = app.art_px(widgets::CARD_ART);
+pub(in crate::ui) fn show_card(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    show: &crate::api::models::Show,
+    art: Option<f32>,
+) {
+    let card_art = app.art_px(art.unwrap_or(widgets::CARD_ART));
     let card = widgets::card(
         ui,
         app,
         pick_image(&show.images, card_art),
         &show.name,
         &show.publisher,
-        widgets::CardCover::default(),
+        widgets::CardCover::default().sized(art),
     );
     if card.clicked {
         app.actions.push(Action::Open(Page::Show(show.id.clone())));
@@ -749,7 +787,7 @@ fn shelf_shows(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
         &gettext(app.locale, "Podcasts"),
         |ui| {
             for show in &page.items {
-                show_card(app, ui, show);
+                show_card(app, ui, show, None);
             }
         },
     );
@@ -759,12 +797,17 @@ fn shows_grid(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
     let Some(page) = &results.shows else { return };
     widgets::grid(ui, |ui| {
         for show in &page.items {
-            show_card(app, ui, show);
+            show_card(app, ui, show, None);
         }
     });
 }
 
-fn episodes(app: &mut App, ui: &mut egui::Ui, results: &SearchResults, limit: usize) {
+pub(in crate::ui) fn episodes(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    results: &SearchResults,
+    limit: usize,
+) {
     let Some(page) = &results.episodes else {
         return;
     };

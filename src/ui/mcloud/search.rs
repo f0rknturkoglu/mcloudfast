@@ -1,53 +1,271 @@
-//! Search results as Spotify draws them under mcloud, which leaves its
-//! search page alone: a column at most 1104pt wide, centred; the top result
-//! as a band across it, with Follow and Play; then songs, playlists and
-//! albums in one list, each row named by its kind.
+//! Search results as mcloud draws them, in Apple Music's sections: Top Results
+//! as plates, then a shelf for each kind, whose heading opens that kind's own
+//! page (Apple's "see all"): Songs as a table, the rest as a grid.
 
 use egui::{Color32, CornerRadius, Id, Rect, Sense, Vec2, pos2, vec2};
 
-use crate::api::models::{PlayableItem, SearchResults, join_names, pick_image};
+use crate::api::models::{
+    Album, Artist, PlayableItem, Playlist, SearchResults, Track, join_names, pick_image,
+};
 use crate::app::App;
 use crate::i18n::{gettext, pgettext};
-use crate::model::{Action, Page};
+use crate::model::{Action, Page, SearchFilter};
 use crate::theme::{self, Icon};
-use crate::ui::widgets;
+use crate::ui::{search, widgets};
 
-/// Spotify's search column.
-pub(in crate::ui) const MAX_WIDTH: f32 = 1104.0;
-const BAND_HEIGHT: f32 = 104.0;
-const BAND_ART: f32 = 72.0;
-const ROW_HEIGHT: f32 = 80.0;
-const ROW_ART: f32 = 64.0;
-/// Rows in the mixed list.
-const ROWS: usize = 10;
+/// The page's margin (user.css `--am-sp`).
+const SIDE: f32 = 34.0;
+const TOP_HEIGHT: f32 = 80.0;
+const TOP_ART: f32 = 42.0;
+const SONG_ROW: f32 = 56.0;
+const SONG_ART: f32 = 48.0;
+const TABLE_ART: f32 = 40.0;
+const TABLE_HEAD: f32 = 30.0;
+const SONGS_PER_COLUMN: usize = 3;
 
-/// Lays `add` out in the centred column.
-pub(in crate::ui) fn column(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui)) {
-    let width = ui.available_width().min(MAX_WIDTH);
-    let inset = ((ui.available_width() - width) / 2.0).max(0.0);
-    let rect = Rect::from_min_size(ui.cursor().min + vec2(inset, 0.0), vec2(width, 0.0));
-    let response = ui.scope_builder(
-        egui::UiBuilder::new().max_rect(rect.with_max_y(f32::INFINITY)),
-        |ui| {
-            ui.set_width(width);
-            add(ui);
-        },
-    );
-    let height = response.response.rect.height();
-    ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
+/// How many of each kind a row shows, and the gap between them, by the width
+/// beside the sidebar (user.css's container queries on `#am-search`, measured
+/// from Music). A shelf's step is its width over the count, so the next card
+/// starts at the right margin.
+#[derive(Debug, PartialEq)]
+struct Shelves {
+    gap: f32,
+    top: usize,
+    album: usize,
+    artist: usize,
+    song: usize,
 }
 
-/// One row of the mixed list.
-enum Row<'a> {
-    Song(&'a crate::api::models::Track),
-    Playlist(&'a crate::api::models::Playlist),
-    Album(&'a crate::api::models::Album),
+fn shelves(width: f32) -> Shelves {
+    let (gap, top, mut album, mut artist, mut song) = if width >= 1060.0 {
+        (20.0, 4, 5, 6, 3)
+    } else if width >= 640.0 {
+        (16.0, 3, 4, 5, 2)
+    } else {
+        (16.0, 2, 3, 4, 1)
+    };
+    if width >= 1250.0 {
+        (album, artist) = (6, 7);
+    }
+    if width >= 1450.0 {
+        (album, artist, song) = (7, 8, 4);
+    }
+    Shelves {
+        gap,
+        top,
+        album,
+        artist,
+        song,
+    }
 }
 
-/// The band and the mixed list.
-pub(in crate::ui) fn top(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
-    band(app, ui, results);
-    ui.add_space(24.0);
+/// Draws `add` across the whole width beside the sidebar, past the page's own
+/// margins: the sections keep mcloud's, and their rows run to the edges.
+fn full_width(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui)) {
+    let side = super::page_padding(ui.ctx());
+    let room = ui.available_rect_before_wrap();
+    let mut page = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_max(
+        pos2(room.left() - side, room.top()),
+        pos2(room.right() + side, room.bottom()),
+    )));
+    add(&mut page);
+    let bottom = page.min_rect().bottom();
+    ui.advance_cursor_after_rect(Rect::from_min_max(room.min, pos2(room.right(), bottom)));
+}
+
+/// The results under mcloud: every kind's section, or one kind's page.
+pub(in crate::ui) fn results(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    results: &SearchResults,
+    kind: SearchFilter,
+) {
+    full_width(ui, |ui| match kind {
+        SearchFilter::All => sections(app, ui, results),
+        kind => kind_page(app, ui, results, kind),
+    });
+}
+
+/// A section's heading, which opens the kind's page when it has one.
+fn heading(app: &mut App, ui: &mut egui::Ui, label: &str, kind: Option<SearchFilter>) {
+    let palette = app.palette;
+    ui.horizontal(|ui| {
+        ui.add_space(SIDE);
+        match kind {
+            Some(kind) => {
+                if theme::section_link(ui, &palette, label).clicked() {
+                    app.actions.push(Action::Open(Page::SearchKind(kind)));
+                }
+            }
+            None => {
+                theme::section_title(ui, &palette, label);
+            }
+        }
+    });
+    ui.add_space(13.0 - ui.spacing().item_spacing.y);
+}
+
+fn sections(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
+    let locale = app.locale;
+    let width = ui.available_width();
+    let counts = shelves(width);
+    let inner = width - 2.0 * SIDE;
+    ui.add_space(14.0);
+    top_results(app, ui, results, &counts);
+
+    let art = |count: usize| inner / count as f32 - counts.gap;
+    let artists = results
+        .artists
+        .as_ref()
+        .map(|page| page.items.as_slice())
+        .unwrap_or_default();
+    if !artists.is_empty() {
+        let size = art(counts.artist);
+        shelf(
+            app,
+            ui,
+            "search-artists",
+            &gettext(locale, "Artists"),
+            SearchFilter::Artists,
+            size + counts.gap,
+            counts.gap,
+            |app, ui| {
+                for artist in artists {
+                    search::artist_card(app, ui, artist, Some(size));
+                }
+            },
+        );
+    }
+    let albums = results
+        .albums
+        .as_ref()
+        .map(|page| page.items.as_slice())
+        .unwrap_or_default();
+    if !albums.is_empty() {
+        let size = art(counts.album);
+        shelf(
+            app,
+            ui,
+            "search-albums",
+            &gettext(locale, "Albums"),
+            SearchFilter::Albums,
+            size + counts.gap,
+            counts.gap,
+            |app, ui| {
+                for album in albums {
+                    search::album_card(app, ui, album, Some(size));
+                }
+            },
+        );
+    }
+    let tracks = results
+        .tracks
+        .as_ref()
+        .map(|page| page.items.as_slice())
+        .unwrap_or_default();
+    if !tracks.is_empty() {
+        let column = inner / counts.song as f32 - counts.gap;
+        shelf(
+            app,
+            ui,
+            "search-songs",
+            &gettext(locale, "Songs"),
+            SearchFilter::Songs,
+            column + counts.gap,
+            counts.gap,
+            |app, ui| {
+                for songs in tracks.chunks(SONGS_PER_COLUMN) {
+                    let (block, _) = ui.allocate_exact_size(
+                        vec2(column, SONG_ROW * SONGS_PER_COLUMN as f32),
+                        Sense::hover(),
+                    );
+                    for (index, track) in songs.iter().enumerate() {
+                        let rect = Rect::from_min_size(
+                            block.min + vec2(0.0, SONG_ROW * index as f32),
+                            vec2(column, SONG_ROW),
+                        );
+                        song_row(app, ui, rect, track, index + 1 < SONGS_PER_COLUMN);
+                    }
+                }
+            },
+        );
+    }
+    let playlists = results
+        .playlists
+        .as_ref()
+        .map(|page| page.items.as_slice())
+        .unwrap_or_default();
+    if !playlists.is_empty() {
+        let size = art(counts.album);
+        shelf(
+            app,
+            ui,
+            "search-playlists",
+            &gettext(locale, "Playlists"),
+            SearchFilter::Playlists,
+            size + counts.gap,
+            counts.gap,
+            |app, ui| {
+                for playlist in playlists {
+                    search::playlist_card(app, ui, playlist, Some(size));
+                }
+            },
+        );
+    }
+    let shows = results
+        .shows
+        .as_ref()
+        .map(|page| page.items.as_slice())
+        .unwrap_or_default();
+    if !shows.is_empty() {
+        let size = art(counts.album);
+        shelf(
+            app,
+            ui,
+            "search-shows",
+            &gettext(locale, "Podcasts & Shows"),
+            SearchFilter::Podcasts,
+            size + counts.gap,
+            counts.gap,
+            |app, ui| {
+                for show in shows {
+                    search::show_card(app, ui, show, Some(size));
+                }
+            },
+        );
+    }
+}
+
+#[expect(clippy::too_many_arguments)]
+fn shelf(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    id: &str,
+    title: &str,
+    kind: SearchFilter,
+    pitch: f32,
+    gap: f32,
+    add: impl FnOnce(&mut App, &mut egui::Ui),
+) {
+    ui.add_space(25.0);
+    heading(app, ui, title, Some(kind));
+    shelf_row(ui, id, pitch, gap, |ui| add(app, ui));
+}
+
+/// A shelf's row: the first card on the page's margin, and room for the last
+/// to scroll clear of the other. Space is added after an item, not before it.
+fn shelf_row(ui: &mut egui::Ui, id: &str, pitch: f32, gap: f32, add: impl FnOnce(&mut egui::Ui)) {
+    widgets::snapping_row(ui, id, pitch, |ui| {
+        ui.spacing_mut().item_spacing.x = gap;
+        ui.add_space(SIDE);
+        add(ui);
+        ui.add_space(SIDE - gap);
+    });
+}
+
+/// What Top Results lists: Spotify's own relevance order is not in the Web
+/// API's answer, so the best artist leads and the kinds take turns after it.
+fn top_items<'a>(results: &'a SearchResults, count: usize) -> Vec<Row<'a>> {
     let songs = results
         .tracks
         .as_ref()
@@ -63,24 +281,700 @@ pub(in crate::ui) fn top(app: &mut App, ui: &mut egui::Ui, results: &SearchResul
         .as_ref()
         .map(|page| page.items.as_slice())
         .unwrap_or_default();
-    for row in mix(songs, playlists, albums) {
-        list_row(app, ui, row);
+    let artist = results.artists.as_ref().and_then(|page| page.items.first());
+    artist
+        .map(Row::Artist)
+        .into_iter()
+        .chain(mix(songs, playlists, albums))
+        .take(count)
+        .collect()
+}
+
+/// Top Results: two rows of plates, with what a third would hold left out.
+fn top_results(app: &mut App, ui: &mut egui::Ui, results: &SearchResults, counts: &Shelves) {
+    let items = top_items(results, counts.top * 2);
+    if items.is_empty() {
+        return;
+    }
+    heading(app, ui, &gettext(app.locale, "Top Results"), None);
+    let inner = ui.available_width() - 2.0 * SIDE;
+    let plate = (inner - counts.gap * (counts.top as f32 - 1.0)) / counts.top as f32;
+    let rows = items.len().div_ceil(counts.top);
+    let (block, _) = ui.allocate_exact_size(
+        vec2(
+            ui.available_width(),
+            TOP_HEIGHT * rows as f32 + counts.gap * (rows as f32 - 1.0),
+        ),
+        Sense::hover(),
+    );
+    for (index, item) in items.iter().enumerate() {
+        let (row, column) = (index / counts.top, index % counts.top);
+        let rect = Rect::from_min_size(
+            block.min
+                + vec2(
+                    SIDE + (plate + counts.gap) * column as f32,
+                    (TOP_HEIGHT + counts.gap) * row as f32,
+                ),
+            vec2(plate, TOP_HEIGHT),
+        );
+        top_plate(app, ui, rect, item);
     }
 }
 
+/// One entry of Top Results: a song plays and has "…", the rest open and end
+/// in a chevron.
+fn top_plate(app: &mut App, ui: &mut egui::Ui, rect: Rect, item: &Row<'_>) {
+    let locale = app.locale;
+    let palette = app.palette;
+    let art_px = app.art_px(TOP_ART);
+    let (uri, name, kind, by, image, round, explicit) = match item {
+        Row::Artist(artist) => (
+            artist.uri.clone(),
+            artist.name.clone(),
+            gettext(locale, "Artist"),
+            String::new(),
+            pick_image(&artist.images, art_px).map(str::to_string),
+            true,
+            false,
+        ),
+        Row::Song(track) => (
+            track.uri.clone(),
+            track.name.clone(),
+            // Translators: The kind of a search result row.
+            pgettext(locale, "search result", "Song"),
+            join_names(track.artists.iter().map(|a| a.name.as_str())),
+            track.image(art_px).map(str::to_string),
+            false,
+            track.explicit,
+        ),
+        Row::Playlist(playlist) => (
+            playlist.uri.clone(),
+            playlist.name.clone(),
+            gettext(locale, "Playlist"),
+            playlist.owner_name().to_string(),
+            pick_image(&playlist.images, art_px).map(str::to_string),
+            false,
+            false,
+        ),
+        Row::Album(album) => (
+            album.uri.clone(),
+            album.name.clone(),
+            gettext(locale, "Album"),
+            join_names(album.artists.iter().map(|a| a.name.as_str())),
+            pick_image(&album.images, art_px).map(str::to_string),
+            false,
+            false,
+        ),
+    };
+    let id = Id::new(("mcloud-top-result", &uri));
+    let response = ui.interact(rect, id, Sense::click());
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name));
+    if let Row::Artist(artist) = item {
+        widgets::prefetch_artist_on_hover(ui.ctx(), &response, &artist.id, &mut app.actions);
+    }
+    let hovered = ui.rect_contains_pointer(rect);
+    let song = matches!(item, Row::Song(_));
+    ui.painter().rect_filled(
+        rect,
+        CornerRadius::same(12),
+        palette
+            .text
+            .gamma_multiply(if hovered { 0.1 } else { 0.071 }),
+    );
+    let art = Rect::from_center_size(
+        pos2(rect.left() + 14.0 + TOP_ART / 2.0, rect.center().y),
+        Vec2::splat(TOP_ART),
+    );
+    let radius = if round { TOP_ART / 2.0 } else { 5.0 };
+    widgets::paint_cover(
+        ui,
+        &palette,
+        image.as_deref(),
+        art,
+        radius,
+        if round { Icon::User } else { Icon::Music },
+        Some(app.backend.art()),
+    );
+    if song && hovered {
+        dim_with_play(ui, art, radius);
+    }
+    let end_room = if song {
+        10.0 + 28.0 + 4.0
+    } else {
+        14.0 + 14.0 + 8.0
+    };
+    let text_left = art.right() + 12.0;
+    let text_width = (rect.right() - end_room - text_left).max(20.0);
+    let top = rect.center().y - 19.0;
+    let playing = song && app.now_playing().is_some_and(|now| now.uri == uri);
+    let name_colour = if playing {
+        palette.accent
+    } else {
+        palette.text
+    };
+    name_line(
+        ui,
+        &name,
+        explicit,
+        theme::regular(15.0),
+        name_colour,
+        pos2(text_left, top),
+        text_width,
+        palette.window,
+        palette.text,
+    );
+    let sub = if by.is_empty() {
+        kind.to_string()
+    } else {
+        format!("{kind} · {by}")
+    };
+    let sub_colour = palette.text.gamma_multiply(0.6);
+    let subtitle = widgets::ellipsized(ui, &sub, theme::regular(13.0), sub_colour, text_width, 1);
+    ui.painter()
+        .galley(pos2(text_left, top + 21.0), subtitle, sub_colour);
+
+    let menu_id = ui.make_persistent_id(("mcloud-top-menu", &uri));
+    let mut more_clicked = false;
+    if song {
+        let more = Rect::from_center_size(
+            pos2(rect.right() - 10.0 - 14.0, rect.center().y),
+            Vec2::splat(28.0),
+        );
+        more_clicked = more_button(app, ui, more, id.with("more"), menu_id);
+    } else {
+        let chevron = Rect::from_center_size(
+            pos2(rect.right() - 14.0 - 7.0, rect.center().y),
+            Vec2::splat(14.0),
+        );
+        theme::paint_icon(ui, Icon::McloudChevron, chevron, 14.0, sub_colour);
+    }
+    theme::focus_ring(ui, &response);
+    if response.clicked() && !more_clicked {
+        match item {
+            // A search result plays on its own; Spotify continues after it.
+            Row::Song(_) => app.actions.push(Action::PlayUris {
+                uris: vec![uri.clone()],
+                index: 0,
+            }),
+            Row::Artist(artist) => app
+                .actions
+                .push(Action::Open(Page::Artist(artist.id.clone()))),
+            Row::Playlist(playlist) => app
+                .actions
+                .push(Action::Open(Page::Playlist(playlist.id.clone()))),
+            Row::Album(album) => app
+                .actions
+                .push(Action::Open(Page::Album(album.id.clone()))),
+        }
+    }
+    let menu = egui::Popup::context_menu(&response)
+        .id(menu_id)
+        .frame(widgets::menu_frame(&palette));
+    match item {
+        Row::Song(track) => {
+            let item = PlayableItem::Track((*track).clone());
+            menu.show(|ui| widgets::item_menu(ui, app, &item, None, None));
+        }
+        _ => {
+            menu.show(|ui| widgets::context_menu_items(ui, app, &uri, &name, None));
+        }
+    }
+}
+
+/// The artwork dimmed under a song's play glyph, on hover.
+fn dim_with_play(ui: &egui::Ui, art: Rect, radius: f32) {
+    ui.painter().rect_filled(
+        art,
+        CornerRadius::same(radius as u8),
+        Color32::from_black_alpha(102),
+    );
+    let glyph = Rect::from_center_size(art.center(), Vec2::splat(16.0));
+    theme::paint_icon(ui, Icon::PlayFilled, glyph, 16.0, Color32::WHITE);
+}
+
+/// A title on one line, then Apple's explicit mark: a small square in the
+/// text's grey with the page's colour for the letter.
+#[expect(clippy::too_many_arguments)]
+fn name_line(
+    ui: &egui::Ui,
+    name: &str,
+    explicit: bool,
+    font: egui::FontId,
+    colour: Color32,
+    at: egui::Pos2,
+    width: f32,
+    page: Color32,
+    ink: Color32,
+) {
+    let room = if explicit { width - 17.0 } else { width };
+    let galley = widgets::ellipsized(ui, name, font, colour, room.max(10.0), 1);
+    let end = at.x + galley.size().x;
+    let height = galley.size().y;
+    ui.painter().galley(at, galley, colour);
+    if explicit {
+        let mark = Rect::from_center_size(
+            pos2(end + 5.0 + 6.0, at.y + height / 2.0),
+            Vec2::splat(12.0),
+        );
+        ui.painter()
+            .rect_filled(mark, CornerRadius::same(3), ink.gamma_multiply(0.45));
+        ui.painter().text(
+            mark.center(),
+            egui::Align2::CENTER_CENTER,
+            "E",
+            theme::bold(9.0),
+            page,
+        );
+    }
+}
+
+/// A "…" that opens the menu `menu_id` names; true when it was clicked.
+fn more_button(app: &App, ui: &egui::Ui, rect: Rect, id: Id, menu_id: Id) -> bool {
+    let palette = app.palette;
+    let response = ui.interact(rect, id, Sense::click());
+    let label = gettext(app.locale, "More options");
+    response
+        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label.as_ref()));
+    let colour = if response.hovered() {
+        palette.accent
+    } else {
+        palette.text.gamma_multiply(0.753)
+    };
+    theme::paint_icon(ui, Icon::Ellipsis, rect, 16.0, colour);
+    theme::focus_ring(ui, &response);
+    let clicked = response.clicked();
+    if clicked {
+        egui::Popup::open_id(ui.ctx(), menu_id);
+    }
+    clicked
+}
+
+/// A song in the Songs shelf: 56pt, 48pt artwork, a rule from the text on
+/// under all but a column's last.
+fn song_row(app: &mut App, ui: &mut egui::Ui, rect: Rect, track: &Track, rule: bool) {
+    let palette = app.palette;
+    let art_px = app.art_px(SONG_ART);
+    let id = Id::new(("mcloud-search-song", &track.uri));
+    let response = ui.interact(rect, id, Sense::click());
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &track.name));
+    let hovered = ui.rect_contains_pointer(rect);
+    let art = Rect::from_center_size(
+        pos2(rect.left() + SONG_ART / 2.0, rect.center().y),
+        Vec2::splat(SONG_ART),
+    );
+    widgets::paint_cover(
+        ui,
+        &palette,
+        track.image(art_px),
+        art,
+        5.0,
+        Icon::Music,
+        Some(app.backend.art()),
+    );
+    if hovered {
+        dim_with_play(ui, art, 5.0);
+    }
+    let text_left = art.right() + 12.0;
+    let text_width = (rect.right() - 34.0 - text_left).max(20.0);
+    let top = rect.center().y - 19.0;
+    let playing = app.now_playing().is_some_and(|now| now.uri == track.uri);
+    name_line(
+        ui,
+        &track.name,
+        track.explicit,
+        theme::regular(15.0),
+        if playing {
+            palette.accent
+        } else {
+            palette.text
+        },
+        pos2(text_left, top),
+        text_width,
+        palette.window,
+        palette.text,
+    );
+    let artists = join_names(track.artists.iter().map(|a| a.name.as_str()));
+    let sub_colour = palette.text.gamma_multiply(0.6);
+    let subtitle = widgets::ellipsized(
+        ui,
+        &artists,
+        theme::regular(13.0),
+        sub_colour,
+        text_width,
+        1,
+    );
+    ui.painter()
+        .galley(pos2(text_left, top + 21.0), subtitle, sub_colour);
+    if rule {
+        ui.painter().hline(
+            text_left..=rect.right(),
+            rect.bottom() - 0.5,
+            egui::Stroke::new(1.0, palette.text.gamma_multiply(0.11)),
+        );
+    }
+    finish_song(app, ui, rect, &response, track, id);
+}
+
+/// What a song row does: "…", play on click, and its menu.
+fn finish_song(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    rect: Rect,
+    response: &egui::Response,
+    track: &Track,
+    id: Id,
+) {
+    let palette = app.palette;
+    let menu_id = ui.make_persistent_id(("mcloud-song-menu", &track.uri));
+    let more = Rect::from_center_size(
+        pos2(rect.right() - 14.0, rect.center().y),
+        Vec2::splat(28.0),
+    );
+    let more_clicked = more_button(app, ui, more, id.with("more"), menu_id);
+    theme::focus_ring(ui, response);
+    if response.clicked() && !more_clicked {
+        app.actions.push(Action::PlayUris {
+            uris: vec![track.uri.clone()],
+            index: 0,
+        });
+    }
+    let item = PlayableItem::Track(track.clone());
+    egui::Popup::context_menu(response)
+        .id(menu_id)
+        .frame(widgets::menu_frame(&palette))
+        .show(|ui| widgets::item_menu(ui, app, &item, None, None));
+}
+
+/// A kind's page: a large title, then the table or the grid.
+fn kind_page(app: &mut App, ui: &mut egui::Ui, results: &SearchResults, kind: SearchFilter) {
+    let palette = app.palette;
+    let title = match kind {
+        SearchFilter::Podcasts => gettext(app.locale, "Podcasts & Shows"),
+        kind => kind.label(app.locale),
+    };
+    ui.add_space(14.0);
+    ui.horizontal(|ui| {
+        ui.add_space(SIDE);
+        theme::text(ui, title.as_ref(), theme::bold(28.0), palette.text);
+    });
+    ui.add_space(14.0 - ui.spacing().item_spacing.y);
+    let counts = shelves(ui.available_width());
+    match kind {
+        SearchFilter::Songs => {
+            let tracks = results
+                .tracks
+                .as_ref()
+                .map(|page| page.items.as_slice())
+                .unwrap_or_default();
+            song_table(app, ui, tracks);
+        }
+        SearchFilter::Artists => {
+            let items = results
+                .artists
+                .as_ref()
+                .map(|page| page.items.as_slice())
+                .unwrap_or_default();
+            grid(ui, items, counts.artist, counts.gap, |ui, artist, art| {
+                search::artist_card(app, ui, artist, Some(art));
+            });
+        }
+        SearchFilter::Albums => {
+            let items = results
+                .albums
+                .as_ref()
+                .map(|page| page.items.as_slice())
+                .unwrap_or_default();
+            grid(ui, items, counts.album, counts.gap, |ui, album, art| {
+                search::album_card(app, ui, album, Some(art));
+            });
+        }
+        SearchFilter::Playlists => {
+            let items = results
+                .playlists
+                .as_ref()
+                .map(|page| page.items.as_slice())
+                .unwrap_or_default();
+            grid(ui, items, counts.album, counts.gap, |ui, playlist, art| {
+                search::playlist_card(app, ui, playlist, Some(art));
+            });
+        }
+        SearchFilter::Podcasts => {
+            let items = results
+                .shows
+                .as_ref()
+                .map(|page| page.items.as_slice())
+                .unwrap_or_default();
+            grid(ui, items, counts.album, counts.gap, |ui, show, art| {
+                search::show_card(app, ui, show, Some(art));
+            });
+        }
+        SearchFilter::Episodes => {
+            ui.horizontal_top(|ui| {
+                ui.add_space(SIDE);
+                ui.vertical(|ui| {
+                    ui.set_width(ui.available_width() - SIDE);
+                    search::episodes(app, ui, results, usize::MAX);
+                });
+            });
+        }
+        SearchFilter::All => {}
+    }
+    // The next page comes as this one nears its end.
+    if results.has_more(kind) {
+        let (end, _) = ui.allocate_exact_size(vec2(ui.available_width(), 1.0), Sense::hover());
+        if ui.is_rect_visible(end.expand2(vec2(0.0, 800.0))) {
+            app.actions.push(Action::SearchMore(kind));
+        }
+        if app.search.more_pending {
+            ui.horizontal(|ui| {
+                ui.add_space(SIDE);
+                widgets::loading_row(ui, &palette, app.locale);
+            });
+        }
+    }
+}
+
+/// The shelf's cards in rows of as many as the shelf shows.
+fn grid<T>(
+    ui: &mut egui::Ui,
+    items: &[T],
+    count: usize,
+    gap: f32,
+    mut card: impl FnMut(&mut egui::Ui, &T, f32),
+) {
+    let inner = ui.available_width() - 2.0 * SIDE;
+    let art = (inner - gap * (count as f32 - 1.0)) / count as f32;
+    for row in items.chunks(count) {
+        ui.horizontal_top(|ui| {
+            ui.spacing_mut().item_spacing.x = gap;
+            ui.add_space(SIDE);
+            for item in row {
+                card(ui, item, art);
+            }
+        });
+        ui.add_space(24.0 - 8.0 - ui.spacing().item_spacing.y);
+    }
+}
+
+/// The columns of Apple's Songs table, from the left edge of the table:
+/// Song, Artist, Album, Time and "…".
+fn table_columns(width: f32) -> [f32; 5] {
+    const TIME: f32 = 56.0;
+    const MORE: f32 = 28.0;
+    let room = (width - TIME - MORE).max(0.0);
+    let unit = room / (1.4 + 1.0 + 1.15);
+    [0.0, unit * 1.4, unit * 2.4, unit * 3.55, unit * 3.55 + TIME]
+}
+
+/// Apple's Songs table: hairline column marks in the header, a rule under
+/// each row; the song plays, the artist and the album open.
+fn song_table(app: &mut App, ui: &mut egui::Ui, tracks: &[Track]) {
+    let palette = app.palette;
+    let locale = app.locale;
+    let width = ui.available_width() - 2.0 * SIDE;
+    let columns = table_columns(width);
+    let (head, _) = ui.allocate_exact_size(vec2(ui.available_width(), TABLE_HEAD), Sense::hover());
+    let left = head.left() + SIDE;
+    let right = left + width;
+    ui.painter().hline(
+        left..=right,
+        head.bottom() - 0.5,
+        egui::Stroke::new(1.0, palette.text.gamma_multiply(0.11)),
+    );
+    let head_colour = palette.text.gamma_multiply(0.6);
+    let heads = [
+        pgettext(locale, "search result", "Song"),
+        gettext(locale, "Artist"),
+        gettext(locale, "Album"),
+    ];
+    for (index, label) in heads.iter().enumerate() {
+        let inset = if index == 0 { 0.0 } else { 12.0 };
+        let x = left + columns[index];
+        ui.painter().text(
+            pos2(x + inset, head.center().y),
+            egui::Align2::LEFT_CENTER,
+            label.as_ref(),
+            theme::semibold(12.0),
+            head_colour,
+        );
+        if index > 0 {
+            ui.painter().vline(
+                x,
+                (head.center().y - 7.0)..=(head.center().y + 7.0),
+                egui::Stroke::new(1.0, palette.text.gamma_multiply(0.16)),
+            );
+        }
+    }
+    ui.painter().vline(
+        left + columns[3],
+        (head.center().y - 7.0)..=(head.center().y + 7.0),
+        egui::Stroke::new(1.0, palette.text.gamma_multiply(0.16)),
+    );
+    ui.painter().text(
+        pos2(left + columns[4] - 6.0, head.center().y),
+        egui::Align2::RIGHT_CENTER,
+        gettext(locale, "Time").as_ref(),
+        theme::semibold(12.0),
+        head_colour,
+    );
+    let art_px = app.art_px(TABLE_ART);
+    for track in tracks {
+        let (row, _) = ui.allocate_exact_size(vec2(ui.available_width(), SONG_ROW), Sense::hover());
+        if !ui.is_rect_visible(row) {
+            continue;
+        }
+        let rect = Rect::from_min_max(pos2(left, row.top()), pos2(right, row.bottom()));
+        ui.painter().hline(
+            left..=right,
+            rect.bottom() - 0.5,
+            egui::Stroke::new(1.0, palette.text.gamma_multiply(0.08)),
+        );
+        let id = Id::new(("mcloud-search-table", &track.uri));
+        let song_cell = Rect::from_min_max(rect.min, pos2(left + columns[1], rect.bottom()));
+        let response = ui.interact(song_cell, id, Sense::click());
+        response
+            .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &track.name));
+        let art = Rect::from_center_size(
+            pos2(rect.left() + TABLE_ART / 2.0, rect.center().y),
+            Vec2::splat(TABLE_ART),
+        );
+        widgets::paint_cover(
+            ui,
+            &palette,
+            track.image(art_px),
+            art,
+            4.0,
+            Icon::Music,
+            Some(app.backend.art()),
+        );
+        if ui.rect_contains_pointer(song_cell) {
+            dim_with_play(ui, art, 4.0);
+        }
+        let text_left = art.right() + 12.0;
+        let playing = app.now_playing().is_some_and(|now| now.uri == track.uri);
+        let name_font = theme::regular(13.0);
+        name_line(
+            ui,
+            &track.name,
+            track.explicit,
+            name_font,
+            if playing {
+                palette.accent
+            } else {
+                palette.text
+            },
+            pos2(text_left, rect.center().y - 8.5),
+            (song_cell.right() - text_left - 8.0).max(20.0),
+            palette.window,
+            palette.text,
+        );
+        let artists = join_names(track.artists.iter().map(|a| a.name.as_str()));
+        let first_artist = track.artists.first().and_then(|artist| artist.id.clone());
+        if table_link(
+            app,
+            ui,
+            id.with("artist"),
+            &artists,
+            left + columns[1] + 12.0,
+            left + columns[2] - 8.0,
+            rect.center().y,
+        ) && let Some(artist) = first_artist
+        {
+            app.actions.push(Action::Open(Page::Artist(artist)));
+        }
+        if let Some(album) = &track.album
+            && table_link(
+                app,
+                ui,
+                id.with("album"),
+                &album.name,
+                left + columns[2] + 12.0,
+                left + columns[3] - 8.0,
+                rect.center().y,
+            )
+        {
+            app.actions
+                .push(Action::Open(Page::Album(album.id.clone())));
+        }
+        ui.painter().text(
+            pos2(left + columns[4] - 6.0, rect.center().y),
+            egui::Align2::RIGHT_CENTER,
+            crate::util::format_duration_ms(track.duration_ms),
+            theme::regular(13.0),
+            palette.text.gamma_multiply(0.6),
+        );
+        let menu_id = ui.make_persistent_id(("mcloud-table-menu", &track.uri));
+        let more = Rect::from_center_size(pos2(right - 14.0, rect.center().y), Vec2::splat(28.0));
+        let more_clicked = more_button(app, ui, more, id.with("more"), menu_id);
+        theme::focus_ring(ui, &response);
+        if response.clicked() && !more_clicked {
+            app.actions.push(Action::PlayUris {
+                uris: vec![track.uri.clone()],
+                index: 0,
+            });
+        }
+        let item = PlayableItem::Track(track.clone());
+        egui::Popup::context_menu(&response)
+            .id(menu_id)
+            .frame(widgets::menu_frame(&palette))
+            .show(|ui| widgets::item_menu(ui, app, &item, None, None));
+    }
+}
+
+/// A cell that opens what it names: quiet until the pointer is on it.
+fn table_link(
+    app: &App,
+    ui: &egui::Ui,
+    id: Id,
+    text: &str,
+    left: f32,
+    right: f32,
+    center_y: f32,
+) -> bool {
+    let palette = app.palette;
+    let width = (right - left).max(10.0);
+    let font = theme::regular(13.0);
+    let galley = widgets::ellipsized(ui, text, font, palette.text, width, 1);
+    let size = galley.size();
+    let rect = Rect::from_min_size(pos2(left, center_y - size.y / 2.0), size);
+    let response = ui
+        .interact(rect, id, Sense::click())
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Link, true, text));
+    let colour = if response.hovered() {
+        palette.text
+    } else {
+        palette.text.gamma_multiply(0.7)
+    };
+    ui.painter().galley(rect.min, galley, colour);
+    if response.hovered() {
+        ui.painter().hline(
+            rect.x_range(),
+            rect.bottom() - 1.0,
+            egui::Stroke::new(1.0, colour),
+        );
+    }
+    theme::focus_ring(ui, &response);
+    response.clicked()
+}
+
+/// One entry of Top Results.
+enum Row<'a> {
+    Artist(&'a Artist),
+    Song(&'a Track),
+    Playlist(&'a Playlist),
+    Album(&'a Album),
+}
+
 /// Songs and collections in turn, as Spotify alternates them: a song, a
-/// playlist, a song, an album, until the list is full.
-fn mix<'a>(
-    songs: &'a [crate::api::models::Track],
-    playlists: &'a [crate::api::models::Playlist],
-    albums: &'a [crate::api::models::Album],
-) -> Vec<Row<'a>> {
+/// playlist, a song, an album, until the kinds run out.
+fn mix<'a>(songs: &'a [Track], playlists: &'a [Playlist], albums: &'a [Album]) -> Vec<Row<'a>> {
     let mut songs = songs.iter().map(Row::Song);
     let mut playlists = playlists.iter().map(Row::Playlist);
     let mut albums = albums.iter().map(Row::Album);
-    let mut rows = Vec::with_capacity(ROWS);
+    let mut rows = Vec::new();
     let mut turn = 0;
-    while rows.len() < ROWS {
+    loop {
         let next = match turn % 4 {
             0 | 2 => songs
                 .next()
@@ -97,356 +991,9 @@ fn mix<'a>(
         };
         match next {
             Some(row) => rows.push(row),
-            None => break,
+            None => return rows,
         }
         turn += 1;
-    }
-    rows
-}
-
-/// The top result across the column: its picture, name and kind, then
-/// Follow (for an artist) and Play at the right.
-fn band(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
-    let locale = app.locale;
-    let palette = app.palette;
-    let art_px = app.art_px(BAND_ART);
-    let query = app.search.committed.to_lowercase();
-    let artist = results
-        .artists
-        .as_ref()
-        .and_then(|page| page.items.first())
-        .filter(|artist| {
-            artist.name.to_lowercase() == query
-                || results.tracks.as_ref().is_none_or(|t| t.items.is_empty())
-        });
-    let (uri, name, kind, image, page, round) = if let Some(artist) = artist {
-        (
-            artist.uri.clone(),
-            artist.name.clone(),
-            gettext(locale, "Artist").into_owned(),
-            pick_image(&artist.images, art_px).map(str::to_string),
-            Page::Artist(artist.id.clone()),
-            true,
-        )
-    } else if let Some(track) = results.tracks.as_ref().and_then(|page| page.items.first()) {
-        (
-            track.uri.clone(),
-            track.name.clone(),
-            join_names(track.artists.iter().map(|a| a.name.as_str())),
-            track.image(art_px).map(str::to_string),
-            track
-                .album
-                .as_ref()
-                .map(|album| Page::Album(album.id.clone()))
-                .unwrap_or(Page::Search),
-            false,
-        )
-    } else if let Some(album) = results.albums.as_ref().and_then(|page| page.items.first()) {
-        (
-            album.uri.clone(),
-            album.name.clone(),
-            gettext(locale, "Album").into_owned(),
-            pick_image(&album.images, art_px).map(str::to_string),
-            Page::Album(album.id.clone()),
-            false,
-        )
-    } else {
-        return;
-    };
-
-    let (rect, response) =
-        ui.allocate_exact_size(vec2(ui.available_width(), BAND_HEIGHT), Sense::click());
-    let fill = if response.hovered() { 31 } else { 20 };
-    ui.painter()
-        .rect_filled(rect, CornerRadius::same(8), Color32::from_white_alpha(fill));
-    let art = Rect::from_min_size(
-        pos2(rect.left() + 16.0, rect.center().y - BAND_ART / 2.0),
-        Vec2::splat(BAND_ART),
-    );
-    let radius = if round { BAND_ART / 2.0 } else { 4.0 };
-    let placeholder = if round { Icon::User } else { Icon::Music };
-    widgets::paint_cover(
-        ui,
-        &palette,
-        image.as_deref(),
-        art,
-        radius,
-        placeholder,
-        Some(app.backend.art()),
-    );
-
-    // Play at the right end, Follow before it.
-    let play = Rect::from_center_size(
-        pos2(rect.right() - 24.0 - 24.0, rect.center().y),
-        Vec2::splat(48.0),
-    );
-    let mut right = play.left() - 16.0;
-    let follow = round.then(|| {
-        let following = app.is_saved(&uri).unwrap_or(false);
-        let label = if following {
-            pgettext(locale, "artist", "Following")
-        } else {
-            pgettext(locale, "artist", "Follow")
-        };
-        let galley = crate::bidi::layout_line(
-            ui.painter(),
-            label.as_ref(),
-            theme::semibold(14.0),
-            Color32::WHITE,
-        );
-        let pill = Rect::from_min_max(
-            pos2(right - galley.size().x - 30.0, rect.center().y - 16.0),
-            pos2(right, rect.center().y + 16.0),
-        );
-        right = pill.left() - 16.0;
-        (pill, galley, label, following)
-    });
-
-    let text_left = art.right() + 16.0;
-    let text_width = (right - text_left).max(40.0);
-    let title = widgets::ellipsized(ui, &name, theme::bold(22.0), palette.text, text_width, 1);
-    let sub = widgets::ellipsized(
-        ui,
-        &kind,
-        theme::regular(14.0),
-        palette.secondary,
-        text_width,
-        1,
-    );
-    let top = rect.center().y - (title.size().y + 2.0 + sub.size().y) / 2.0;
-    ui.painter()
-        .galley(pos2(text_left, top), title.clone(), palette.text);
-    ui.painter().galley(
-        pos2(text_left, top + title.size().y + 2.0),
-        sub,
-        palette.secondary,
-    );
-
-    if let Some((pill, galley, label, following)) = follow {
-        let response = ui.interact(
-            pill,
-            Id::new(("mcloud-search-follow", &uri)),
-            Sense::click(),
-        );
-        let stroke = if response.hovered() { 255 } else { 128 };
-        ui.painter().rect_stroke(
-            pill,
-            CornerRadius::same(16),
-            egui::Stroke::new(1.0, Color32::from_white_alpha(stroke)),
-            egui::StrokeKind::Inside,
-        );
-        ui.painter()
-            .galley(pill.center() - galley.size() / 2.0, galley, Color32::WHITE);
-        response.widget_info(|| {
-            egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, following, label.as_ref())
-        });
-        theme::focus_ring(ui, &response);
-        if response.clicked() {
-            app.actions.push(Action::ToggleSaved(uri.clone()));
-        }
-    }
-
-    let context_here = app.playing_context_uri().as_deref() == Some(uri.as_str());
-    let playing_here = context_here && app.believed_playing();
-    let play_response = ui.interact(play, Id::new(("mcloud-search-play", &uri)), Sense::click());
-    let colour = if play_response.hovered() {
-        palette.accent_hover
-    } else {
-        palette.accent
-    };
-    ui.painter().circle_filled(play.center(), 24.0, colour);
-    let (icon, label) = if playing_here {
-        (Icon::McloudPause, gettext(locale, "Pause"))
-    } else {
-        (Icon::McloudPlay, gettext(locale, "Play"))
-    };
-    theme::paint_icon(ui, icon, play, 22.0, Color32::WHITE);
-    play_response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label.as_ref()));
-    theme::focus_ring(ui, &play_response);
-    if play_response.on_hover_text(label.as_ref()).clicked() {
-        if context_here {
-            app.actions.push(Action::TogglePlay);
-        } else if uri.starts_with("spotify:track:") {
-            app.actions.push(Action::PlayUris {
-                uris: vec![uri.clone()],
-                index: 0,
-            });
-        } else {
-            app.actions.push(Action::PlayContext {
-                uri: uri.clone(),
-                offset_uri: None,
-                offset_index: None,
-            });
-        }
-    } else if response.clicked() {
-        app.actions.push(Action::Open(page));
-    }
-    egui::Popup::context_menu(&response)
-        .id(ui.make_persistent_id(("mcloud-search-band-menu", &uri)))
-        .frame(widgets::menu_frame(&palette))
-        .show(|ui| widgets::context_menu_items(ui, app, &uri, &name, None));
-}
-
-/// A row of the mixed list: the cover, the name over its artists or owner,
-/// its kind, and + to save it.
-fn list_row(app: &mut App, ui: &mut egui::Ui, row: Row<'_>) {
-    let locale = app.locale;
-    let palette = app.palette;
-    let art_px = app.art_px(ROW_ART);
-    let (uri, name, sub, image, kind) = match &row {
-        Row::Song(track) => (
-            track.uri.clone(),
-            track.name.clone(),
-            join_names(track.artists.iter().map(|a| a.name.as_str())),
-            track.image(art_px).map(str::to_string),
-            // Translators: The kind of a search result row.
-            pgettext(locale, "search result", "Song"),
-        ),
-        Row::Playlist(playlist) => (
-            playlist.uri.clone(),
-            playlist.name.clone(),
-            playlist.owner_name().to_string(),
-            pick_image(&playlist.images, art_px).map(str::to_string),
-            gettext(locale, "Playlist"),
-        ),
-        Row::Album(album) => (
-            album.uri.clone(),
-            album.name.clone(),
-            join_names(album.artists.iter().map(|a| a.name.as_str())),
-            pick_image(&album.images, art_px).map(str::to_string),
-            gettext(locale, "Album"),
-        ),
-    };
-    let (rect, response) =
-        ui.allocate_exact_size(vec2(ui.available_width(), ROW_HEIGHT), Sense::click());
-    if !ui.is_rect_visible(rect) {
-        return;
-    }
-    if response.hovered() {
-        ui.painter()
-            .rect_filled(rect, CornerRadius::same(6), Color32::from_white_alpha(13));
-    }
-    let art = Rect::from_min_size(
-        pos2(rect.left() + 8.0, rect.center().y - ROW_ART / 2.0),
-        Vec2::splat(ROW_ART),
-    );
-    widgets::paint_cover(
-        ui,
-        &palette,
-        image.as_deref(),
-        art,
-        4.0,
-        Icon::Music,
-        Some(app.backend.art()),
-    );
-    let kind_x = rect.left() + rect.width() * 0.74;
-    let text_left = art.right() + 12.0;
-    let text_width = (kind_x - text_left - 24.0).max(40.0);
-    let current =
-        matches!(row, Row::Song(_)) && app.now_playing().is_some_and(|now| now.uri == uri);
-    let name_colour = if current {
-        palette.accent
-    } else {
-        palette.text
-    };
-    let title = widgets::ellipsized(ui, &name, theme::regular(16.0), name_colour, text_width, 1);
-    let subtitle = widgets::ellipsized(
-        ui,
-        &sub,
-        theme::regular(14.0),
-        palette.secondary,
-        text_width,
-        1,
-    );
-    let top = rect.center().y - (title.size().y + 2.0 + subtitle.size().y) / 2.0;
-    ui.painter()
-        .galley(pos2(text_left, top), title, name_colour);
-    ui.painter().galley(
-        pos2(text_left, top + 2.0 + 16.0 * 1.25),
-        subtitle,
-        palette.secondary,
-    );
-
-    // The kind, in Spotify's small grey label: 16pt tall, 4pt either side.
-    let badge = crate::bidi::layout_line(
-        ui.painter(),
-        kind.as_ref(),
-        theme::bold(12.5),
-        palette.secondary,
-    );
-    let badge_rect = Rect::from_min_size(
-        pos2(kind_x, rect.center().y - 8.0),
-        vec2(badge.size().x + 8.0, 16.0),
-    );
-    ui.painter().rect_filled(
-        badge_rect,
-        CornerRadius::same(3),
-        Color32::from_white_alpha(20),
-    );
-    ui.painter().galley(
-        badge_rect.center() - badge.size() / 2.0,
-        badge,
-        palette.secondary,
-    );
-
-    // + saves it; a saved one shows a tick in the accent.
-    let saved = app.is_saved(&uri).unwrap_or(false);
-    let plus = Rect::from_center_size(
-        pos2(rect.right() - 24.0, rect.center().y),
-        Vec2::splat(28.0),
-    );
-    let plus_response = ui.interact(plus, Id::new(("mcloud-search-save", &uri)), Sense::click());
-    let (icon, colour, label) = if saved {
-        (
-            Icon::CircleCheck,
-            palette.accent,
-            gettext(locale, "Remove from Your Library"),
-        )
-    } else {
-        let colour = if plus_response.hovered() {
-            palette.text
-        } else {
-            palette.secondary
-        };
-        (
-            Icon::CirclePlus,
-            colour,
-            gettext(locale, "Save to Your Library"),
-        )
-    };
-    theme::paint_icon(ui, icon, plus, 18.0, colour);
-    plus_response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label.as_ref()));
-    theme::focus_ring(ui, &plus_response);
-    if plus_response.on_hover_text(label.as_ref()).clicked() {
-        app.actions.push(Action::ToggleSaved(uri.clone()));
-    } else if response.clicked() {
-        match &row {
-            // A search result plays on its own; Spotify continues after it.
-            Row::Song(_) => app.actions.push(Action::PlayUris {
-                uris: vec![uri.clone()],
-                index: 0,
-            }),
-            Row::Playlist(playlist) => app
-                .actions
-                .push(Action::Open(Page::Playlist(playlist.id.clone()))),
-            Row::Album(album) => app
-                .actions
-                .push(Action::Open(Page::Album(album.id.clone()))),
-        }
-    }
-    let menu = egui::Popup::context_menu(&response)
-        .id(ui.make_persistent_id(("mcloud-search-row-menu", &uri)))
-        .frame(widgets::menu_frame(&palette));
-    match &row {
-        Row::Song(track) => {
-            let item = PlayableItem::Track((*track).clone());
-            menu.show(|ui| widgets::item_menu(ui, app, &item, None, None));
-        }
-        _ => {
-            menu.show(|ui| widgets::context_menu_items(ui, app, &uri, &name, None));
-        }
     }
 }
 
@@ -579,6 +1126,8 @@ fn collect_result_suggestions(
             break;
         }
         match row {
+            // The mix holds songs and collections; suggestions add artists apart.
+            Row::Artist(_) => {}
             Row::Song(track) => {
                 let artists = join_names(track.artists.iter().map(|a| a.name.as_str()));
                 out.push(SuggestionResult {
@@ -971,12 +1520,93 @@ mod tests {
         let kinds: Vec<char> = mix(&songs, &playlists, &albums)
             .iter()
             .map(|row| match row {
+                Row::Artist(_) => 'r',
                 Row::Song(_) => 's',
                 Row::Playlist(_) => 'p',
                 Row::Album(_) => 'a',
             })
             .collect();
         assert_eq!(kinds.iter().collect::<String>(), "spsasa");
+    }
+
+    /// Apple's counts at the widths measured in Music, and what a row of each
+    /// leaves: the next card starts at the right margin.
+    #[test]
+    fn shelves_follow_the_width_beside_the_sidebar() {
+        let counts = |w| {
+            let s = shelves(w);
+            (s.gap, s.top, s.album, s.artist, s.song)
+        };
+        assert_eq!(counts(600.0), (16.0, 2, 3, 4, 1));
+        assert_eq!(counts(800.0), (16.0, 3, 4, 5, 2));
+        assert_eq!(counts(1180.0), (20.0, 4, 5, 6, 3));
+        assert_eq!(counts(1300.0), (20.0, 4, 6, 7, 3));
+        assert_eq!(counts(1500.0), (20.0, 4, 7, 8, 4));
+    }
+
+    /// A row's first card starts on the page's margin, in a shelf and a grid.
+    #[test]
+    fn rows_start_on_the_pages_margin() {
+        let ctx = egui::Context::default();
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            let left = ui.cursor().left();
+            let mut first = None;
+            shelf_row(ui, "row", 100.0, 16.0, |ui| {
+                first = Some(ui.cursor().left())
+            });
+            assert_eq!(first, Some(left + SIDE));
+            let mut first = None;
+            grid(ui, &[()], 3, 16.0, |ui, (), _| {
+                first = Some(ui.cursor().left());
+            });
+            assert_eq!(first, Some(left + SIDE));
+        });
+        output.textures_delta.clear();
+    }
+
+    /// Top Results leads with the best artist and fills two rows at most.
+    #[test]
+    fn top_results_lead_with_the_artist_and_stop_at_the_count() {
+        fn page<T>(items: Vec<T>) -> crate::api::models::Page<T> {
+            crate::api::models::Page {
+                items,
+                total: 0,
+                limit: 0,
+                offset: 0,
+                next: None,
+            }
+        }
+        let results = SearchResults {
+            artists: Some(page(vec![Artist::default(), Artist::default()])),
+            tracks: Some(page(vec![Track::default(); 5])),
+            albums: Some(page(vec![Album::default(); 5])),
+            ..Default::default()
+        };
+        let kinds = top_items(&results, 4);
+        assert_eq!(kinds.len(), 4);
+        assert!(matches!(kinds[0], Row::Artist(_)));
+        assert!(matches!(kinds[1], Row::Song(_)));
+    }
+
+    /// A kind's page survives being saved and reopened.
+    #[test]
+    fn a_kinds_page_round_trips() {
+        for kind in SearchFilter::ALL {
+            let page = Page::SearchKind(kind);
+            assert_eq!(Page::decode(&page.encode()), Some(page));
+        }
+        assert_eq!(Page::decode("search:nope"), None);
+    }
+
+    /// The table's fractions fill what the time and "…" leave.
+    #[test]
+    fn the_song_table_splits_its_width_as_apples() {
+        let [song, artist, album, time, more] = table_columns(1084.0);
+        assert_eq!(song, 0.0);
+        assert!((artist - 394.4).abs() < 0.5);
+        assert!((album - 676.1).abs() < 0.5);
+        assert!((time - 1000.0).abs() < 0.5);
+        assert!((more - 1056.0).abs() < 0.5);
     }
 
     #[test]

@@ -169,7 +169,7 @@ Sayfaların hepsi güncel mcloud reposuna (bulutakbulutt/mcloud) göre eşitlend
   (`images::artwork_colours`).
 - Kütüphane ızgarası (`mcloud/library.rs`): Recently Added, Artists, Albums,
   All Playlists.
-- Arama: Spotify'ın yeni düzeni (`mcloud/search.rs`). Browse: "Browse all" düzeni.
+- Arama: Apple bölümleri (`mcloud/search.rs`): Top Results plakaları, tür rafları, başlıktan açılan "see all" sayfaları (`Page::SearchKind`). Web API Spotify'ın alaka sırasını vermediği için Top Results sanatçı + sırayla türlerden kuruluyor. Browse: "Browse all" düzeni.
 - Sayfa boşluğu `--am-pad`; kenar çubuğu `--am-side`
   (`settings.mcloud_sidebar_width`, yalnızca sürükleyince kaydediliyor).
 

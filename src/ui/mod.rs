@@ -359,7 +359,7 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
             let page = app.page().clone();
             let overview = matches!(
                 page,
-                Page::Home | Page::Search | Page::Settings | Page::Queue
+                Page::Home | Page::Search | Page::SearchKind(_) | Page::Settings | Page::Queue
             );
             // The wash belongs to the page's hero, so it scrolls away with
             // it. The page's offset is known once it has been laid out, so
@@ -477,6 +477,7 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                                 Page::TopSongs => collection::top_songs(app, ui),
                                 Page::NewReleases => new_releases::page(app, ui),
                                 Page::Search => search::show(app, ui),
+                                Page::SearchKind(kind) => search::show_kind(app, ui, kind),
                                 Page::LikedSongs => collection::liked(app, ui),
                                 Page::Albums
                                 | Page::Artists

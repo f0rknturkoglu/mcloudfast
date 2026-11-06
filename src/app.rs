@@ -3176,7 +3176,7 @@ impl App {
                     self.load_new_release_page(true);
                 }
             }
-            Page::Search => {}
+            Page::Search | Page::SearchKind(_) => {}
             Page::LikedSongs => {
                 if !self.liked_songs.cache_checked {
                     self.ensure_liked_songs();
@@ -5470,7 +5470,7 @@ impl App {
                     self.load_new_release_page(false);
                 }
             }
-            Page::Search => {}
+            Page::Search | Page::SearchKind(_) => {}
             Page::LikedSongs => self.ensure_liked_songs(),
             Page::Albums => {
                 if self.network_reachable && !self.library.albums.loaded_once {
@@ -6889,6 +6889,8 @@ impl App {
         self.search.error = None;
         self.search.catalogue_pending = !query.is_empty();
         self.search.playlists_pending = false;
+        self.search.more_pending = false;
+        self.search.more_failed = false;
         // Results and their query change together. In particular, a failed
         // new query must never inherit the previous query's songs.
         self.search.results = if query.is_empty() {
@@ -6951,6 +6953,27 @@ impl App {
         }
         self.settings.remember_search(query);
         self.settings_dirty = true;
+    }
+
+    /// Asks for the next page of a kind, once at a time.
+    fn load_more_search(&mut self, kind: SearchFilter) {
+        if self.search.more_pending || self.search.more_failed {
+            return;
+        }
+        let Some(results) = self.search.results.get() else {
+            return;
+        };
+        if !results.has_more(kind) {
+            return;
+        }
+        let offset = results.loaded(kind) as u32;
+        self.search.more_pending = true;
+        self.backend.api(ApiRequest::SearchMore {
+            query: self.search.committed.clone(),
+            serial: self.search.serial,
+            kind,
+            offset,
+        });
     }
 
     fn show_search_playlists(&mut self) {
@@ -8625,6 +8648,38 @@ impl App {
                         self.remember_search(&query);
                     }
                     Err(error) => self.search_failed(&gettext(self.locale, "Playlists"), error),
+                }
+            }
+            ApiResponse::SearchMore {
+                query,
+                serial,
+                kind,
+                result,
+            } => {
+                if serial != self.search.serial || query != self.search.committed {
+                    return;
+                }
+                self.search.more_pending = false;
+                let Ok(more) = result else {
+                    self.search.more_failed = true;
+                    return;
+                };
+                let uris = more
+                    .tracks
+                    .iter()
+                    .flat_map(|page| page.items.iter())
+                    .map(|track| track.uri.clone())
+                    .collect();
+                self.request_contains(uris);
+                if let Some(results) = self.search.results.get_mut() {
+                    results.append(kind, more);
+                    // Playlists can arrive apart and are shown from their own
+                    // copy, so it grows with what is on screen.
+                    if let (Some((_, held)), Some(shown)) =
+                        (self.search.playlists.as_mut(), results.playlists.as_ref())
+                    {
+                        held.clone_from(shown);
+                    }
                 }
             }
             ApiResponse::Search {
@@ -12301,11 +12356,12 @@ impl App {
                 self.settings_dirty = true;
             }
             Action::SetSearchFilter(filter) => self.search.filter = filter,
+            Action::SearchMore(kind) => self.load_more_search(kind),
             Action::SetTopPeriod(period) => self.set_top_period(period),
             Action::SetHomeFilter(filter) => self.home.category_filter = filter,
             Action::FocusSearch => {
                 self.search.focus_requested = true;
-                if !matches!(self.page(), Page::Search) {
+                if !self.page().is_search() {
                     self.open(Page::Search);
                 }
             }
@@ -20835,6 +20891,86 @@ mod tests {
             split: true,
         });
         serial
+    }
+
+    /// A kind's next page joins what is held without repeating it, one
+    /// request at a time, and a failed one does not ask again.
+    #[test]
+    fn a_kinds_next_page_appends_once_and_stops_on_failure() {
+        let mut app = test_app("search-more");
+        let serial = searching(&mut app, "radiohead");
+        let track = |uri: &str| crate::api::models::Track {
+            uri: uri.into(),
+            ..Default::default()
+        };
+        let page = |items, next: Option<&str>| crate::api::models::SearchResults {
+            tracks: Some(crate::api::models::Page {
+                items,
+                next: next.map(str::to_string),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        app.handle_api(ApiResponse::Search {
+            query: "radiohead".into(),
+            serial,
+            result: Ok(page(vec![track("a"), track("b")], Some("more"))),
+        });
+        app.load_more_search(SearchFilter::Songs);
+        assert!(app.search.more_pending);
+        app.search.more_pending = true;
+        app.handle_api(ApiResponse::SearchMore {
+            query: "radiohead".into(),
+            serial,
+            kind: SearchFilter::Songs,
+            result: Ok(page(vec![track("b"), track("c")], Some("more"))),
+        });
+        assert!(!app.search.more_pending);
+        let shown = app.search.results.get().unwrap();
+        let uris: Vec<_> = shown
+            .tracks
+            .as_ref()
+            .unwrap()
+            .items
+            .iter()
+            .map(|t| t.uri.as_str())
+            .collect();
+        assert_eq!(uris, ["a", "b", "c"]);
+        assert_eq!(shown.loaded(SearchFilter::Songs), 3);
+        assert!(shown.has_more(SearchFilter::Songs));
+
+        // A page that adds nothing ends the kind.
+        app.handle_api(ApiResponse::SearchMore {
+            query: "radiohead".into(),
+            serial,
+            kind: SearchFilter::Songs,
+            result: Ok(page(vec![track("c")], Some("more"))),
+        });
+        assert!(
+            !app.search
+                .results
+                .get()
+                .unwrap()
+                .has_more(SearchFilter::Songs)
+        );
+
+        // A failure stops asking until the next query.
+        let serial = searching(&mut app, "bonobo");
+        app.handle_api(ApiResponse::Search {
+            query: "bonobo".into(),
+            serial,
+            result: Ok(page(vec![track("a")], Some("more"))),
+        });
+        app.load_more_search(SearchFilter::Songs);
+        app.handle_api(ApiResponse::SearchMore {
+            query: "bonobo".into(),
+            serial,
+            kind: SearchFilter::Songs,
+            result: Err(crate::api::ApiError::RateLimited),
+        });
+        assert!(app.search.more_failed);
+        app.load_more_search(SearchFilter::Songs);
+        assert!(!app.search.more_pending);
     }
 
     #[test]

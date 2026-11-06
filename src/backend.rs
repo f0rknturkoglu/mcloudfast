@@ -311,6 +311,13 @@ pub enum ApiRequest {
         query: String,
         serial: u64,
     },
+    /// The next page of one kind of the results, for mcloud's "see all".
+    SearchMore {
+        query: String,
+        serial: u64,
+        kind: crate::model::SearchFilter,
+        offset: u32,
+    },
     /// Search for one kind of thing and report the best match, to play it:
     /// how `spotifast play-search` plays a song by its name.
     PlaySearch {
@@ -576,6 +583,12 @@ pub enum ApiResponse {
         query: String,
         serial: u64,
         result: ApiResult<Page<Playlist>>,
+    },
+    SearchMore {
+        query: String,
+        serial: u64,
+        kind: crate::model::SearchFilter,
+        result: ApiResult<SearchResults>,
     },
     /// The URI of the best match for a [`ApiRequest::PlaySearch`], or `None`
     /// when nothing matched.
@@ -5019,6 +5032,10 @@ fn operation_for(api: &ApiGateway, request: &ApiRequest) -> Operation {
             Operation::UserData
         }
         ApiRequest::SearchCatalogue { .. } => Operation::CatalogSearch,
+        ApiRequest::SearchMore { kind, .. } if *kind == crate::model::SearchFilter::Playlists => {
+            Operation::PlaylistSearch
+        }
+        ApiRequest::SearchMore { .. } => Operation::CatalogSearch,
         ApiRequest::Search { .. } => Operation::PlaylistSearch,
         ApiRequest::PlaySearch { kind, .. } if kind == "playlist" => Operation::PlaylistSearch,
         ApiRequest::PlaySearch { .. } => Operation::CatalogSearch,
@@ -5084,6 +5101,14 @@ fn observe_playlists(api: &ApiGateway, response: &ApiResponse) {
         ApiResponse::SearchPlaylists {
             result: Ok(page), ..
         } => api.observe_playlists(&page.items),
+        ApiResponse::SearchMore {
+            result: Ok(results),
+            ..
+        } => {
+            if let Some(playlists) = &results.playlists {
+                api.observe_playlists(&playlists.items);
+            }
+        }
         ApiResponse::PlaylistUpdated {
             id,
             result: Err(error),
@@ -5760,6 +5785,17 @@ async fn handle(
             )),
             query,
             serial,
+        },
+        ApiRequest::SearchMore {
+            query,
+            serial,
+            kind,
+            offset,
+        } => ApiResponse::SearchMore {
+            result: routed!(search_more(&query, kind.search_type(), offset)),
+            query,
+            serial,
+            kind,
         },
         ApiRequest::PlaySearch {
             kind,

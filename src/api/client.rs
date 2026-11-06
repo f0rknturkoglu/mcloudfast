@@ -1213,6 +1213,20 @@ impl ApiClient {
         .await
     }
 
+    /// The next page of one kind of a search, from `offset` on.
+    pub async fn search_more(&self, query: &str, kind: &str, offset: u32) -> Result<SearchResults> {
+        self.get(
+            "/search",
+            &[
+                ("q", query.to_string()),
+                ("type", kind.to_string()),
+                ("limit", self.search_limit.to_string()),
+                ("offset", offset.to_string()),
+            ],
+        )
+        .await
+    }
+
     pub async fn artist(&self, id: &str) -> Result<Artist> {
         self.get(&format!("/artists/{id}"), &[]).await
     }

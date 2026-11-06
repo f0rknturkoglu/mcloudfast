@@ -348,7 +348,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui, sticky_heading_y: &mut Option<f32>
         ui,
         Leading::Icon(Icon::Search),
         &gettext(locale, "Search"),
-        page == Page::Search,
+        page.is_search(),
         false,
     )
     .clicked()

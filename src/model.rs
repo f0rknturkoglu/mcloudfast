@@ -113,6 +113,9 @@ pub enum Page {
     /// The songs of the latest releases from followed artists.
     NewReleases,
     Search,
+    /// One kind of the search results on a page of its own, under mcloud:
+    /// what a shelf's heading opens, as Apple's "see all".
+    SearchKind(SearchFilter),
     LikedSongs,
     Albums,
     Artists,
@@ -133,12 +136,18 @@ pub enum Page {
 }
 
 impl Page {
+    /// The search page or one of its kinds.
+    pub fn is_search(&self) -> bool {
+        matches!(self, Page::Search | Page::SearchKind(_))
+    }
+
     pub fn encode(&self) -> String {
         match self {
             Page::Home => "home".into(),
             Page::TopSongs => "top-songs".into(),
             Page::NewReleases => "new-releases".into(),
             Page::Search => "search".into(),
+            Page::SearchKind(filter) => format!("search:{}", filter.slug()),
             Page::LikedSongs => "liked".into(),
             Page::Albums => "albums".into(),
             Page::Artists => "artists".into(),
@@ -176,6 +185,11 @@ impl Page {
             other => {
                 let (kind, id) = other.split_once(':')?;
                 match kind {
+                    "search" => Page::SearchKind(
+                        SearchFilter::ALL
+                            .into_iter()
+                            .find(|filter| filter.slug() == id)?,
+                    ),
                     "playlist" => Page::Playlist(id.into()),
                     "album" => Page::Album(id.into()),
                     "artist" => Page::Artist(id.into()),
@@ -794,7 +808,7 @@ pub struct HomeSnapshot {
     pub podcasts: Vec<(Show, Vec<Episode>)>,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum SearchFilter {
     #[default]
     All,
@@ -807,6 +821,31 @@ pub enum SearchFilter {
 }
 
 impl SearchFilter {
+    /// The name the Web API's search knows this kind by.
+    pub fn search_type(self) -> &'static str {
+        match self {
+            Self::All | Self::Songs => "track",
+            Self::Artists => "artist",
+            Self::Albums => "album",
+            Self::Playlists => "playlist",
+            Self::Podcasts => "show",
+            Self::Episodes => "episode",
+        }
+    }
+
+    /// The name a page of this kind goes by in a saved page or a link.
+    pub fn slug(self) -> &'static str {
+        match self {
+            Self::All => "all",
+            Self::Songs => "songs",
+            Self::Artists => "artists",
+            Self::Albums => "albums",
+            Self::Playlists => "playlists",
+            Self::Podcasts => "podcasts",
+            Self::Episodes => "episodes",
+        }
+    }
+
     pub const ALL: [SearchFilter; 7] = [
         Self::All,
         Self::Songs,
@@ -843,6 +882,11 @@ pub struct SearchState {
     pub playlists_pending: bool,
     pub error: Option<String>,
     pub filter: SearchFilter,
+    /// The next page of a kind is on its way.
+    pub more_pending: bool,
+    /// The next page of a kind failed: the query's other results stay, and
+    /// nothing asks again until the next query.
+    pub more_failed: bool,
     pub typed_at: Option<Instant>,
     /// Counts runs of typing in the search field. A run ends when the field
     /// is emptied, its selected text is typed over, or the query is
@@ -1328,6 +1372,8 @@ pub enum Action {
     EndSearchRun,
     ForgetSearch(String),
     SetSearchFilter(SearchFilter),
+    /// The page of this kind neared its end: ask for the next.
+    SearchMore(SearchFilter),
     SetTopPeriod(TopPeriod),
     SetHomeFilter(HomeFilter),
     FocusSearch,

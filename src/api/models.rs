@@ -794,6 +794,38 @@ pub struct Queue {
     pub queue: Vec<PlayableItem>,
 }
 
+fn more_after<T>(page: Option<&Page<T>>) -> bool {
+    page.is_some_and(|page| page.next.is_some())
+}
+
+fn loaded_in<T>(page: Option<&Page<T>>) -> usize {
+    page.map_or(0, |page| page.items.len())
+}
+
+/// Appends a page, skipping what is already held: results shift between two
+/// requests. A page that adds nothing ends the kind, so asking stops.
+fn append_page<T>(held: &mut Option<Page<T>>, more: Option<Page<T>>, uri: impl Fn(&T) -> &str) {
+    let (Some(held), Some(more)) = (held.as_mut(), more) else {
+        if let Some(held) = held {
+            held.next = None;
+        }
+        return;
+    };
+    let before = held.items.len();
+    let mut seen: std::collections::HashSet<String> = held
+        .items
+        .iter()
+        .map(|item| uri(item).to_string())
+        .collect();
+    held.items.extend(
+        more.items
+            .into_iter()
+            .filter(|item| seen.insert(uri(item).to_string())),
+    );
+    held.next = more.next.filter(|_| held.items.len() > before);
+    held.total = held.total.max(more.total);
+}
+
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 pub struct SearchResults {
     #[serde(default)]
@@ -811,6 +843,48 @@ pub struct SearchResults {
 }
 
 impl SearchResults {
+    /// Whether Spotify has more of this kind than the page holds.
+    pub fn has_more(&self, kind: crate::model::SearchFilter) -> bool {
+        use crate::model::SearchFilter as Kind;
+        match kind {
+            Kind::All => false,
+            Kind::Songs => more_after(self.tracks.as_ref()),
+            Kind::Artists => more_after(self.artists.as_ref()),
+            Kind::Albums => more_after(self.albums.as_ref()),
+            Kind::Playlists => more_after(self.playlists.as_ref()),
+            Kind::Podcasts => more_after(self.shows.as_ref()),
+            Kind::Episodes => more_after(self.episodes.as_ref()),
+        }
+    }
+
+    /// How many of this kind the page holds, which is where the next asks from.
+    pub fn loaded(&self, kind: crate::model::SearchFilter) -> usize {
+        use crate::model::SearchFilter as Kind;
+        match kind {
+            Kind::All => 0,
+            Kind::Songs => loaded_in(self.tracks.as_ref()),
+            Kind::Artists => loaded_in(self.artists.as_ref()),
+            Kind::Albums => loaded_in(self.albums.as_ref()),
+            Kind::Playlists => loaded_in(self.playlists.as_ref()),
+            Kind::Podcasts => loaded_in(self.shows.as_ref()),
+            Kind::Episodes => loaded_in(self.episodes.as_ref()),
+        }
+    }
+
+    /// Adds the next page of a kind after what is held.
+    pub fn append(&mut self, kind: crate::model::SearchFilter, more: SearchResults) {
+        use crate::model::SearchFilter as Kind;
+        match kind {
+            Kind::All => {}
+            Kind::Songs => append_page(&mut self.tracks, more.tracks, |t| &t.uri),
+            Kind::Artists => append_page(&mut self.artists, more.artists, |a| &a.uri),
+            Kind::Albums => append_page(&mut self.albums, more.albums, |a| &a.uri),
+            Kind::Playlists => append_page(&mut self.playlists, more.playlists, |p| &p.uri),
+            Kind::Podcasts => append_page(&mut self.shows, more.shows, |s| &s.uri),
+            Kind::Episodes => append_page(&mut self.episodes, more.episodes, |e| &e.uri),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         [
             self.tracks

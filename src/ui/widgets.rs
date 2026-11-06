@@ -2814,6 +2814,9 @@ pub struct CardCover {
     pub playable: bool,
     /// The card's context is the one playing, so the control pauses.
     pub playing: bool,
+    /// The artwork's size where a shelf sets it, as mcloud's search does. Such
+    /// a card has no padding of its own and one line under its title.
+    pub art: Option<f32>,
 }
 
 impl CardCover {
@@ -2832,6 +2835,11 @@ impl CardCover {
             circular: true,
             ..Self::square(playing)
         }
+    }
+
+    /// The same cover at the size the shelf gives it.
+    pub fn sized(self, art: Option<f32>) -> Self {
+        Self { art, ..self }
     }
 }
 
@@ -2902,9 +2910,10 @@ pub fn card(
         circular,
         playable,
         playing,
+        art,
     } = cover;
     let palette = app.palette;
-    let image_size = CARD_ART;
+    let image_size = art.unwrap_or(CARD_ART);
     let text_width = image_size;
     let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
     let (mix_photo, is_station) = if mcloud && app.settings.mcloud_mix_covers {
@@ -2917,7 +2926,14 @@ pub fn card(
     };
     let effective_circular = circular || is_station;
     let effective_image = mix_photo.as_deref().or(image);
-    let layout = card_layout(mcloud);
+    let mut layout = card_layout(mcloud);
+    let subtitle_lines = if art.is_some() {
+        layout.pad_x = 0.0;
+        layout.title_gap = 8.0;
+        1
+    } else {
+        2
+    };
     let title_font = layout.title_font.clone();
     let subtitle_font = layout.subtitle_font.clone();
     // Artists and profiles are circles with their names centred and no
@@ -2938,7 +2954,7 @@ pub fn card(
         + layout.title_gap
         + title_row
         + layout.subtitle_gap
-        + 2.0 * subtitle_row
+        + subtitle_lines as f32 * subtitle_row
         + layout.bottom_pad;
     let (rect, response) = ui.allocate_exact_size(
         vec2(image_size + 2.0 * layout.pad_x, height),
@@ -3074,11 +3090,11 @@ pub fn card(
             subtitle_font,
             palette.secondary,
             text_width,
-            2,
+            subtitle_lines,
         );
         let subtitle_rect = Rect::from_min_size(
             pos2(text_left, title_rect.bottom() + layout.subtitle_gap),
-            vec2(text_width, 2.0 * subtitle_row),
+            vec2(text_width, subtitle_lines as f32 * subtitle_row),
         );
         let subtitle_pos = if person {
             pos2(
@@ -3274,20 +3290,6 @@ fn mcloud_shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui))
     // How far past the page's margin the row is clipped.
     const CLIP: f32 = 12.0;
     let pad = card_layout(true).pad_x;
-    let pitch = CARD_ART + 2.0 * pad;
-    let state_id = ui.make_persistent_id(("shelf-snap", id));
-    let state = ui
-        .ctx()
-        .data(|d| d.get_temp::<ShelfSnap>(state_id))
-        .unwrap_or_default();
-
-    let mut area = egui::ScrollArea::horizontal()
-        .id_salt(id)
-        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden);
-    if let Some(next) = state.next {
-        area = area.horizontal_scroll_offset(next);
-    }
-
     // A child, not a scope: a scope past the page's left edge would move that
     // edge for everything drawn after it.
     let room = ui.available_rect_before_wrap();
@@ -3295,16 +3297,33 @@ fn mcloud_shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui))
         pos2(room.left() - CLIP, room.top()),
         pos2(room.right() + CLIP, room.bottom()),
     )));
-    let output = crate::autoscroll::show(&mut shelf, area, egui::Vec2b::new(true, false), |ui| {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 0.0;
-            ui.add_space(CLIP - pad);
-            add_contents(ui);
-            ui.add_space(CLIP - pad);
-        });
+    snapping_row(&mut shelf, id, CARD_ART + 2.0 * pad, |ui| {
+        ui.spacing_mut().item_spacing.x = 0.0;
+        ui.add_space(CLIP - pad);
+        add_contents(ui);
+        ui.add_space(CLIP - pad);
     });
     let height = shelf.min_rect().height();
     ui.advance_cursor_after_rect(Rect::from_min_size(room.min, vec2(room.width(), height)));
+}
+
+/// A row that scrolls sideways without a bar and settles every `pitch` when it
+/// comes to rest near a card.
+pub(crate) fn snapping_row(ui: &mut Ui, id: &str, pitch: f32, add_contents: impl FnOnce(&mut Ui)) {
+    let state_id = ui.make_persistent_id(("shelf-snap", id));
+    let state = ui
+        .ctx()
+        .data(|d| d.get_temp::<ShelfSnap>(state_id))
+        .unwrap_or_default();
+    let mut area = egui::ScrollArea::horizontal()
+        .id_salt(id)
+        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden);
+    if let Some(next) = state.next {
+        area = area.horizontal_scroll_offset(next);
+    }
+    let output = crate::autoscroll::show(ui, area, egui::Vec2b::new(true, false), |ui| {
+        ui.horizontal_top(add_contents);
+    });
 
     let now = ui.input(|i| i.time);
     let offset = output.state.offset.x;
