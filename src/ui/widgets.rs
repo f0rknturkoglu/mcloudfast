@@ -3106,67 +3106,137 @@ pub fn linked_shelf(
     clicked
 }
 
+/// How long a shelf must rest before it settles on a card, so that a swipe
+/// and its momentum are never pulled back while they are still moving.
+const SHELF_SNAP_IDLE: f64 = 0.12;
+/// How near a card a resting shelf must be to settle on it: mcloud's
+/// `scroll-snap-type: x proximity` leaves a shelf alone between two cards.
+const SHELF_SNAP_REACH: f32 = 40.0;
+
+/// A shelf's scroll position between frames, for settling on a card.
+#[derive(Clone, Copy, Default)]
+struct ShelfSnap {
+    offset: f32,
+    moved_at: f64,
+    /// Moved by something other than the settling itself, and not yet settled.
+    unsettled: bool,
+    /// Where this frame's settling step put it.
+    next: Option<f32>,
+}
+
+/// The next offset for a resting shelf settling on a card, or `None` once
+/// there is nothing left to do. The target stays within what the shelf can
+/// reach: a card past the end of the content would never be arrived at.
+fn shelf_snap_step(offset: f32, pitch: f32, max_offset: f32) -> Option<f32> {
+    let nearest = ((offset / pitch).round() * pitch).clamp(0.0, max_offset.max(0.0));
+    let distance = nearest - offset;
+    if distance.abs() <= 0.01 || distance.abs() >= SHELF_SNAP_REACH {
+        None
+    } else if distance.abs() <= 1.0 {
+        Some(nearest)
+    } else {
+        Some(offset + distance * 0.25)
+    }
+}
+
 pub(crate) fn shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui)) {
     let is_mcloud = crate::ui::mcloud::active(ui.ctx());
-    let card_space = if is_mcloud { 8.0 } else { 4.0 };
-    let bottom_space = if is_mcloud { 16.0 } else { 12.0 };
-    ui.add_space(card_space);
-
-    let snap_target_id = ui.make_persistent_id(("shelf-snap-target", id));
-    let card_pitch = CARD_WIDTH + CARD_GAP / 2.0;
-
-    let mut area = egui::ScrollArea::horizontal().id_salt(id);
     if is_mcloud {
-        area = area.scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden);
-        let pending = ui.ctx().data_mut(|d| d.get_temp::<f32>(snap_target_id));
-        if let Some(target) = pending {
-            area = area.horizontal_scroll_offset(target);
-        }
+        ui.add_space(8.0);
+        mcloud_shelf_cards(ui, id, add_contents);
+        ui.add_space(16.0);
+    } else {
+        ui.add_space(4.0);
+        crate::autoscroll::show(
+            ui,
+            egui::ScrollArea::horizontal().id_salt(id),
+            egui::Vec2b::new(true, false),
+            |ui| {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = CARD_GAP / 2.0;
+                    add_contents(ui);
+                });
+            },
+        );
+        ui.add_space(12.0);
+    }
+}
+
+/// mcloud's shelf: the artwork starts in line with the shelf's title, the row
+/// is clipped 12pt past the page's margin on both sides, and it settles on a
+/// card when it comes to rest near one.
+fn mcloud_shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui)) {
+    // A card's artwork sits this far inside the card.
+    const CARD_PAD: f32 = 12.0;
+    let pitch = CARD_WIDTH + CARD_GAP / 2.0;
+    let state_id = ui.make_persistent_id(("shelf-snap", id));
+    let state = ui
+        .ctx()
+        .data(|d| d.get_temp::<ShelfSnap>(state_id))
+        .unwrap_or_default();
+
+    let mut area = egui::ScrollArea::horizontal()
+        .id_salt(id)
+        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden);
+    if let Some(next) = state.next {
+        area = area.horizontal_scroll_offset(next);
     }
 
-    let output = crate::autoscroll::show(ui, area, egui::Vec2b::new(true, false), |ui| {
+    // A child, not a scope: a scope past the page's left edge would move that
+    // edge for everything drawn after it.
+    let room = ui.available_rect_before_wrap();
+    let mut shelf = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_max(
+        pos2(room.left() - CARD_PAD, room.top()),
+        pos2(room.right() + CARD_PAD, room.bottom()),
+    )));
+    let output = crate::autoscroll::show(&mut shelf, area, egui::Vec2b::new(true, false), |ui| {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = CARD_GAP / 2.0;
             add_contents(ui);
         });
     });
+    let height = shelf.min_rect().height();
+    ui.advance_cursor_after_rect(Rect::from_min_size(room.min, vec2(room.width(), height)));
 
-    if is_mcloud {
-        let pointer_in_shelf = ui.rect_contains_pointer(output.inner_rect);
-        let curr_x = output.state.offset.x;
-
-        if pointer_in_shelf {
-            let (shift, dy, dx) = ui.input(|i| {
-                (
-                    i.modifiers.shift,
-                    i.smooth_scroll_delta.y,
-                    i.smooth_scroll_delta.x,
-                )
-            });
-            if shift && dy.abs() > 0.0 && dx == 0.0 {
-                let target = (curr_x - dy).max(0.0);
-                ui.ctx().data_mut(|d| d.insert_temp(snap_target_id, target));
+    let now = ui.input(|i| i.time);
+    let offset = output.state.offset.x;
+    let expected = state.next.unwrap_or(state.offset);
+    let max_offset = output.content_size.x - output.inner_rect.width();
+    let mut next = None;
+    let mut moved_at = state.moved_at;
+    let mut unsettled = state.unsettled;
+    if (offset - expected).abs() > 0.01 {
+        moved_at = now;
+        unsettled = true;
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_secs_f64(SHELF_SNAP_IDLE));
+    } else if unsettled {
+        let rested = now - moved_at;
+        if rested < SHELF_SNAP_IDLE {
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_secs_f64(
+                    SHELF_SNAP_IDLE - rested,
+                ));
+        } else {
+            next = shelf_snap_step(offset, pitch, max_offset);
+            if next.is_some() {
                 ui.ctx().request_repaint();
-            }
-        }
-
-        let scrolling = ui.input(|i| {
-            i.smooth_scroll_delta.x != 0.0 || (i.modifiers.shift && i.smooth_scroll_delta.y != 0.0)
-        });
-        if !scrolling {
-            let nearest = (curr_x / card_pitch).round() * card_pitch;
-            let diff = nearest - curr_x;
-            if diff.abs() > 0.5 && diff.abs() < 40.0 {
-                let step = curr_x + diff * 0.25;
-                ui.ctx().data_mut(|d| d.insert_temp(snap_target_id, step));
-                ui.ctx().request_repaint();
-            } else if diff.abs() <= 0.5 {
-                ui.ctx().data_mut(|d| d.remove::<f32>(snap_target_id));
+            } else {
+                unsettled = false;
             }
         }
     }
-
-    ui.add_space(bottom_space);
+    ui.ctx().data_mut(|d| {
+        d.insert_temp(
+            state_id,
+            ShelfSnap {
+                offset,
+                moved_at,
+                unsettled,
+                next,
+            },
+        );
+    });
 }
 
 /// A wrapping grid of cards.
@@ -4024,6 +4094,47 @@ mod tests {
     use crate::model::{Action, Page};
     use crate::paths::AppDirs;
     use crate::settings::Settings;
+
+    /// A resting shelf settles on a near card and stops. At the shelf's end,
+    /// where the nearest card lies past what it can reach, it settles on the
+    /// end instead of asking for frames forever.
+    #[test]
+    fn a_resting_shelf_settles_on_what_it_can_reach() {
+        let settle = |mut offset: f32, max: f32| {
+            let mut steps = 0;
+            while let Some(next) = shelf_snap_step(offset, 179.0, max) {
+                offset = next;
+                steps += 1;
+                assert!(steps < 100, "still moving at {offset}");
+            }
+            offset
+        };
+        assert_eq!(settle(190.0, 2000.0), 179.0);
+        assert_eq!(settle(350.0, 2000.0), 358.0);
+        assert_eq!(settle(340.0, 345.0), 345.0);
+        assert_eq!(settle(0.0, 0.0), 0.0);
+        // Between two cards it stays where the user left it.
+        assert_eq!(settle(90.0, 2000.0), 90.0);
+    }
+
+    /// mcloud's shelf starts a card's padding left of the page, so the
+    /// artwork lines up with the title, and leaves the page's edge alone.
+    #[test]
+    fn an_mcloud_shelf_lines_its_artwork_up_with_the_title() {
+        let ctx = egui::Context::default();
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            crate::ui::mcloud::set_active(ui.ctx(), true);
+            let left = ui.cursor().left();
+            let mut first = None;
+            shelf_cards(ui, "shelf", |ui| {
+                first = Some(ui.cursor().left());
+                ui.allocate_exact_size(vec2(CARD_WIDTH, 100.0), Sense::hover());
+            });
+            assert_eq!(first, Some(left - 12.0));
+            assert_eq!(ui.cursor().left(), left);
+        });
+        output.textures_delta.clear();
+    }
 
     #[test]
     fn editing_a_proxy_endpoint_clears_its_password_but_password_entry_is_preserved() {
