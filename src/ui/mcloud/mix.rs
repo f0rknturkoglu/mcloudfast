@@ -58,6 +58,15 @@ pub(crate) enum MixStyle {
     Band,
     Station,
     Gradient,
+    Photo,
+}
+
+/// What is kept about a mix across launches.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct KnownMix {
+    pub url: String,
+    pub photo: Option<String>,
+    pub colour: [u8; 3],
 }
 
 /// Everything a mix's cover needs once it is known.
@@ -138,6 +147,17 @@ pub(in crate::ui) fn paint(
     let round = CornerRadius::same(radius.min(127.0) as u8);
     let width = rect.width();
     match (cover.style, cover.photo.as_deref()) {
+        (MixStyle::Photo, Some(photo)) => {
+            widgets::paint_cover(
+                ui,
+                &app.palette,
+                Some(photo),
+                rect,
+                radius,
+                theme::Icon::Music,
+                Some(app.backend.art()),
+            );
+        }
         (MixStyle::Band, Some(photo)) => {
             ui.painter().rect_filled(rect, round, cover.band);
             widgets::paint_cover(

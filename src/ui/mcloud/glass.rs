@@ -44,6 +44,12 @@ const TONE: [f32; 33] = [
 ];
 /// Menu output luminance (0–255) at each 1/32 of input luminance: compresses
 /// bright highlights (white -> 146) while preserving hue.
+/// The tone by luminance in light mode, as a straight line: Music's play bar
+/// measures 108 + .56 x the page, its panels lighter still.
+fn light_tone(base: f32, slope: f32) -> [f32; 33] {
+    std::array::from_fn(|index| base + slope * index as f32 * 255.0 / 32.0)
+}
+
 const MENU_TONE: [f32; 33] = [
     32.0, 38.25, 44.5, 50.75, 57.0, 62.5, 68.0, 73.5, 79.0, 81.75, 84.5, 87.25, 90.0, 93.75, 97.5,
     101.25, 105.0, 110.75, 116.5, 122.25, 128.0, 132.5, 137.0, 141.5, 145.0, 145.25, 145.5, 145.75,
@@ -664,9 +670,19 @@ impl Resources {
             gl.uniform_1_f32(uniforms.ppp.as_ref(), ppp);
             let is_menu = matches!(quality.kind, SurfaceKind::Menu);
             gl.uniform_1_i32(uniforms.mode.as_ref(), i32::from(is_menu));
+            let light_tones = light_tone(
+                if is_menu { 180.0 } else { 108.0 },
+                if is_menu { 0.29 } else { 0.56 },
+            );
             gl.uniform_1_f32_slice(
                 uniforms.tone.as_ref(),
-                if is_menu { &MENU_TONE } else { &TONE },
+                if !super::is_dark() {
+                    &light_tones
+                } else if is_menu {
+                    &MENU_TONE
+                } else {
+                    &TONE
+                },
             );
             gl.uniform_1_f32_slice(uniforms.gain.as_ref(), &GAIN);
             gl.uniform_1_f32_slice(uniforms.highlight.as_ref(), &HIGHLIGHT);
@@ -802,6 +818,13 @@ mod tests {
         assert_eq!(lyrics_balanced.iterations, 0);
         assert_eq!(lyrics_balanced.reach_px(2.0), 4);
         assert_eq!(Quality::for_surface(GlassEffect::Full, true), Some(full));
+    }
+
+    #[test]
+    fn the_light_tone_keeps_a_white_page_nearly_white() {
+        let tone = light_tone(108.0, 0.56);
+        assert_eq!(tone[0], 108.0);
+        assert!((tone[32] - 250.8).abs() < 0.01);
     }
 
     #[test]

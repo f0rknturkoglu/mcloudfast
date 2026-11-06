@@ -146,15 +146,98 @@ const MAX_WIDTH: f32 = 1104.0;
 const MIN_TILE: f32 = 240.0;
 const GAP: f32 = 24.0;
 const ASPECT: f32 = 0.56;
+/// mcloud's tiles, from Apple Music's Browse Categories (user.css): at least
+/// 180pt, 16:9 and 16pt apart, across the whole page.
+const MCLOUD_MIN_TILE: f32 = 180.0;
+const MCLOUD_GAP: f32 = 16.0;
+const MCLOUD_ASPECT: f32 = 9.0 / 16.0;
 
 /// How many tiles fit across `width`, and how wide each is.
 fn columns(width: f32) -> (usize, f32) {
-    let count = (((width + GAP) / (MIN_TILE + GAP)).floor() as usize).max(2);
-    let tile = (width - GAP * (count as f32 - 1.0)) / count as f32;
+    columns_of(width, MIN_TILE, GAP)
+}
+
+fn columns_of(width: f32, min_tile: f32, gap: f32) -> (usize, f32) {
+    let count = (((width + gap) / (min_tile + gap)).floor() as usize).max(2);
+    let tile = (width - gap * (count as f32 - 1.0)) / count as f32;
     (count, tile)
 }
 
+/// Apple Music's Browse Categories under mcloud: the name small at the bottom
+/// left, a faint rim, a small heading. Spotify's pictures on these tiles are
+/// not in any API this app may ask, so the tiles stay flat colours.
+fn mcloud_grid(app: &mut App, ui: &mut egui::Ui) {
+    let palette = app.palette;
+    let locale = app.locale;
+    ui.add_space(14.0);
+    theme::text(
+        ui,
+        gettext(locale, "Browse all").as_ref(),
+        theme::bold(15.0),
+        palette.text,
+    );
+    ui.add_space(10.0);
+    let width = ui.available_width();
+    let (count, tile_width) = columns_of(width, MCLOUD_MIN_TILE, MCLOUD_GAP);
+    let tile_height = tile_width * MCLOUD_ASPECT;
+    let rows = CATEGORIES.len().div_ceil(count);
+    let (block, _) = ui.allocate_exact_size(
+        vec2(width, (tile_height + MCLOUD_GAP) * rows as f32 - MCLOUD_GAP),
+        Sense::hover(),
+    );
+    let rim = if palette.dark {
+        Color32::from_white_alpha(82)
+    } else {
+        Color32::from_rgba_unmultiplied(112, 112, 112, 54)
+    };
+    for (index, category) in CATEGORIES.iter().enumerate() {
+        let rect = Rect::from_min_size(
+            block.min
+                + vec2(
+                    (tile_width + MCLOUD_GAP) * (index % count) as f32,
+                    (tile_height + MCLOUD_GAP) * (index / count) as f32,
+                ),
+            vec2(tile_width, tile_height),
+        );
+        let response = ui.interact(rect, ui.id().with(("browse-tile", index)), Sense::click());
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(egui::WidgetType::Button, true, category.name)
+        });
+        let fill = if response.hovered() {
+            category.colour.lerp_to_gamma(Color32::WHITE, 0.08)
+        } else {
+            category.colour
+        };
+        ui.painter().rect_filled(rect, CornerRadius::same(8), fill);
+        ui.painter().rect_stroke(
+            rect,
+            CornerRadius::same(8),
+            egui::Stroke::new(0.5, rim),
+            egui::StrokeKind::Inside,
+        );
+        let name = crate::ui::widgets::ellipsized(
+            ui,
+            category.name,
+            theme::bold(13.0),
+            Color32::WHITE,
+            tile_width - 24.0,
+            2,
+        );
+        let at = pos2(rect.left() + 12.0, rect.bottom() - 12.0 - name.size().y);
+        ui.painter().galley(at, name, Color32::WHITE);
+        theme::focus_ring(ui, &response);
+        if response.clicked() {
+            app.actions.push(Action::Search(category.query.to_string()));
+            app.actions.push(Action::Open(Page::Search));
+        }
+    }
+}
+
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
+    if super::mcloud::active(ui.ctx()) {
+        mcloud_grid(app, ui);
+        return;
+    }
     let palette = app.palette;
     let locale = app.locale;
     ui.add_space(56.0);
@@ -240,5 +323,9 @@ mod tests {
         assert_eq!(count, 4);
         assert!((tile - 258.0).abs() < 0.01);
         assert_eq!(super::columns(700.0).0, 2);
+        // mcloud's, at least 180pt across the page.
+        let (count, tile) = super::columns_of(1108.0, 180.0, 16.0);
+        assert_eq!(count, 5);
+        assert!((tile - 208.8).abs() < 0.01);
     }
 }

@@ -668,7 +668,7 @@ fn submenu<R>(
         style.visuals.window_fill = Color32::TRANSPARENT;
         style.visuals.menu_corner_radius =
             CornerRadius::same(super::mcloud::glass::MENU_CORNER_RADIUS as u8);
-        style.visuals.window_stroke = Stroke::new(1.0, Color32::from_white_alpha(33));
+        style.visuals.window_stroke = Stroke::new(1.0, crate::ui::mcloud::ink(33));
         config = config.style(style);
     }
     if is_in_menu {
@@ -705,7 +705,7 @@ pub fn menu_frame(palette: &Palette) -> egui::Frame {
     if mcloud_palette {
         egui::Frame::new()
             .fill(Color32::TRANSPARENT)
-            .stroke(Stroke::new(1.0, Color32::from_white_alpha(33)))
+            .stroke(Stroke::new(1.0, crate::ui::mcloud::ink(33)))
             .corner_radius(CornerRadius::same(
                 super::mcloud::glass::MENU_CORNER_RADIUS as u8,
             ))
@@ -1658,7 +1658,7 @@ fn track_row_contents(
         ui.painter().hline(
             x_range,
             rect.bottom() - 0.5,
-            Stroke::new(1.0, Color32::from_white_alpha(23)),
+            Stroke::new(1.0, crate::ui::mcloud::ink(23)),
         );
     }
     // Start a sidebar drag only after egui's drag threshold.
@@ -2512,7 +2512,7 @@ pub fn table_header(
         theme::regular(12.0)
     };
     let color = if mcloud {
-        Color32::from_white_alpha(128)
+        crate::ui::mcloud::ink(128)
     } else {
         palette.secondary
     };
@@ -2766,7 +2766,7 @@ pub fn table_header(
         Stroke::new(
             1.0,
             if mcloud {
-                Color32::from_white_alpha(23)
+                crate::ui::mcloud::ink(23)
             } else {
                 palette.outline
             },
@@ -3213,6 +3213,8 @@ struct ShelfSnap {
     unsettled: bool,
     /// Where this frame's settling step put it.
     next: Option<f32>,
+    /// Where an arrow is taking it.
+    paging_to: Option<f32>,
 }
 
 /// The next offset for a resting shelf settling on a card, or `None` once
@@ -3267,7 +3269,11 @@ fn mcloud_shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui))
         pos2(room.left() - CLIP, room.top()),
         pos2(room.right() + CLIP, room.bottom()),
     )));
-    snapping_row(&mut shelf, id, CARD_ART + 2.0 * pad, |ui| {
+    let arrows = ShelfArrows {
+        inset: CLIP - 8.0,
+        middle: CARD_ART / 2.0,
+    };
+    snapping_row(&mut shelf, id, CARD_ART + 2.0 * pad, arrows, |ui| {
         ui.spacing_mut().item_spacing.x = 0.0;
         ui.add_space(CLIP - pad);
         add_contents(ui);
@@ -3277,9 +3283,59 @@ fn mcloud_shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui))
     ui.advance_cursor_after_rect(Rect::from_min_size(room.min, vec2(room.width(), height)));
 }
 
-/// A row that scrolls sideways without a bar and settles every `pitch` when it
-/// comes to rest near a card.
-pub(crate) fn snapping_row(ui: &mut Ui, id: &str, pitch: f32, add_contents: impl FnOnce(&mut Ui)) {
+/// Where a shelf's arrows stand: how far in from the row's edges, and how far
+/// down the row the middle of its covers is.
+#[derive(Clone, Copy)]
+pub(crate) struct ShelfArrows {
+    pub inset: f32,
+    pub middle: f32,
+}
+
+/// A shelf's arrow, mcloud's 22×40 frosted capsule with a thin chevron, shown
+/// while the pointer is on the row; true when it was clicked.
+fn shelf_arrow(ui: &Ui, rect: Rect, id: egui::Id, forward: bool, label: &str) -> bool {
+    let response = ui.interact(rect, id, Sense::click());
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
+    let (fill, ink) = if ui.visuals().dark_mode {
+        (
+            Color32::from_rgba_unmultiplied(0x2a, 0x2a, 0x2a, 214),
+            Color32::WHITE,
+        )
+    } else {
+        (
+            Color32::from_rgba_unmultiplied(0xf5, 0xf5, 0xf5, 224),
+            Color32::from_gray(0x1d),
+        )
+    };
+    let round = CornerRadius::same(11);
+    ui.painter().rect_filled(rect, round, fill);
+    ui.painter().rect_stroke(
+        rect,
+        round,
+        egui::Stroke::new(1.0, ink.gamma_multiply(0.1)),
+        egui::StrokeKind::Inside,
+    );
+    let color = ink.gamma_multiply(if response.hovered() { 1.0 } else { 0.9 });
+    let image = Icon::McloudChevron.image(color, 14.0);
+    let image = if forward {
+        image
+    } else {
+        image.rotate(std::f32::consts::PI, Vec2::splat(0.5))
+    };
+    image.paint_at(ui, Rect::from_center_size(rect.center(), Vec2::splat(14.0)));
+    theme::focus_ring(ui, &response);
+    response.clicked()
+}
+
+/// A row that scrolls sideways without a bar, settles every `pitch` when it
+/// comes to rest near a card, and shows paging arrows under the pointer.
+pub(crate) fn snapping_row(
+    ui: &mut Ui,
+    id: &str,
+    pitch: f32,
+    arrows: ShelfArrows,
+    add_contents: impl FnOnce(&mut Ui),
+) {
     let state_id = ui.make_persistent_id(("shelf-snap", id));
     let state = ui
         .ctx()
@@ -3302,7 +3358,46 @@ pub(crate) fn snapping_row(ui: &mut Ui, id: &str, pitch: f32, add_contents: impl
     let mut next = None;
     let mut moved_at = state.moved_at;
     let mut unsettled = state.unsettled;
-    if (offset - expected).abs() > 0.01 {
+    let mut paging_to = state.paging_to;
+
+    // The arrows, on the covers' middle, while the pointer is on the row.
+    let inner = output.inner_rect;
+    if ui.rect_contains_pointer(inner) {
+        let y = inner.top() + arrows.middle;
+        let size = vec2(22.0, 40.0);
+        let page = ((inner.width() / pitch).floor().max(1.0) - 1.0).max(1.0) * pitch;
+        if offset > 0.5 {
+            let rect =
+                Rect::from_center_size(pos2(inner.left() + arrows.inset + size.x / 2.0, y), size);
+            if shelf_arrow(ui, rect, state_id.with("back"), false, "Previous") {
+                paging_to = Some(((offset - page) / pitch).round().max(0.0) * pitch);
+            }
+        }
+        if offset < max_offset - 0.5 {
+            let rect =
+                Rect::from_center_size(pos2(inner.right() - arrows.inset - size.x / 2.0, y), size);
+            if shelf_arrow(ui, rect, state_id.with("forward"), true, "Next") {
+                paging_to = Some((((offset + page) / pitch).round() * pitch).min(max_offset));
+            }
+        }
+    }
+
+    if (offset - expected).abs() > 0.01 && state.next.is_some() && state.paging_to.is_some() {
+        // The user took over from the arrow.
+        paging_to = None;
+    }
+    if let Some(target) = paging_to {
+        let distance = target - offset;
+        if distance.abs() < 1.0 || crate::motion::reduced(ui.ctx()) {
+            next = Some(target);
+            paging_to = None;
+            unsettled = false;
+        } else {
+            next = Some(offset + distance * 0.2);
+            unsettled = false;
+        }
+        ui.ctx().request_repaint();
+    } else if (offset - expected).abs() > 0.01 {
         moved_at = now;
         unsettled = true;
         ui.ctx()
@@ -3331,6 +3426,7 @@ pub(crate) fn snapping_row(ui: &mut Ui, id: &str, pitch: f32, add_contents: impl
                 moved_at,
                 unsettled,
                 next,
+                paging_to,
             },
         );
     });

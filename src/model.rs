@@ -876,6 +876,9 @@ pub struct SearchState {
     pub committed: String,
     pub serial: u64,
     pub results: Loadable<SearchResults>,
+    /// What the last query found, which mcloud keeps on screen until the new
+    /// query's own results arrive, as Apple's does. A failed search clears it.
+    pub previous: Option<SearchResults>,
     pub results_serial: u64,
     pub playlists: Option<(u64, crate::api::models::Page<Playlist>)>,
     pub catalogue_pending: bool,

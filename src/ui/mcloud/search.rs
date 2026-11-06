@@ -255,7 +255,11 @@ fn shelf(
 /// A shelf's row: the first card on the page's margin, and room for the last
 /// to scroll clear of the other. Space is added after an item, not before it.
 fn shelf_row(ui: &mut egui::Ui, id: &str, pitch: f32, gap: f32, add: impl FnOnce(&mut egui::Ui)) {
-    widgets::snapping_row(ui, id, pitch, |ui| {
+    let arrows = widgets::ShelfArrows {
+        inset: SIDE - 8.0,
+        middle: (pitch - gap) / 2.0,
+    };
+    widgets::snapping_row(ui, id, pitch, arrows, |ui| {
         ui.spacing_mut().item_spacing.x = gap;
         ui.add_space(SIDE);
         add(ui);
@@ -1240,13 +1244,23 @@ pub(crate) fn suggestions_popup(app: &mut App, ctx: &egui::Context, field_rect: 
             let (rect, _) = ui.allocate_exact_size(popup_rect.size(), Sense::hover());
             let glass = super::glass::paint(ui, rect, app.settings.mcloud_glass);
             // Glass brightness 44 + 0.044*L, saturation 1.14x
-            let fill = Color32::from_rgba_unmultiplied(46, 46, 49, if glass { 198 } else { 242 });
+            let (popup_r, popup_g, popup_b) = if super::is_dark() {
+                (46, 46, 49)
+            } else {
+                (246, 246, 246)
+            };
+            let fill = Color32::from_rgba_unmultiplied(
+                popup_r,
+                popup_g,
+                popup_b,
+                if glass { 198 } else { 242 },
+            );
             ui.painter()
                 .rect_filled(rect, CornerRadius::same(POPUP_RADIUS), fill);
             ui.painter().rect_stroke(
                 rect,
                 CornerRadius::same(POPUP_RADIUS),
-                egui::Stroke::new(0.5, Color32::from_white_alpha(38)),
+                egui::Stroke::new(0.5, super::ink(38)),
                 egui::StrokeKind::Inside,
             );
 
@@ -1262,29 +1276,20 @@ pub(crate) fn suggestions_popup(app: &mut App, ctx: &egui::Context, field_rect: 
                         pos2(row_rect.left() + 17.5 + 6.25, row_rect.center().y),
                         Vec2::splat(12.5),
                     );
-                    theme::paint_icon(
-                        ui,
-                        Icon::Search,
-                        icon_rect,
-                        12.5,
-                        Color32::from_white_alpha(90),
-                    );
+                    theme::paint_icon(ui, Icon::Search, icon_rect, 12.5, super::ink(90));
                     let bar = Rect::from_min_size(
                         pos2(row_rect.left() + 38.5, row_rect.center().y - 5.0),
                         vec2((rect.width() * 0.42).clamp(80.0, 180.0), 10.0),
                     );
-                    ui.painter().rect_filled(
-                        bar,
-                        CornerRadius::same(4),
-                        Color32::from_white_alpha(28),
-                    );
+                    ui.painter()
+                        .rect_filled(bar, CornerRadius::same(4), super::ink(28));
                     y += QUERY_ROW_HEIGHT;
                 }
                 let sep_y = y + SEPARATOR_HEIGHT / 2.0;
                 ui.painter().hline(
                     (rect.left() + 16.0)..=(rect.right() - 16.0),
                     sep_y,
-                    egui::Stroke::new(1.0, Color32::from_white_alpha(77)),
+                    egui::Stroke::new(1.0, super::ink(77)),
                 );
                 y += SEPARATOR_HEIGHT;
                 for _ in 0..3 {
@@ -1296,11 +1301,8 @@ pub(crate) fn suggestions_popup(app: &mut App, ctx: &egui::Context, field_rect: 
                         pos2(row_rect.left() + 17.0, row_rect.center().y - 23.0),
                         Vec2::splat(46.0),
                     );
-                    ui.painter().rect_filled(
-                        cover,
-                        CornerRadius::same(5),
-                        Color32::from_white_alpha(28),
-                    );
+                    ui.painter()
+                        .rect_filled(cover, CornerRadius::same(5), super::ink(28));
                     let title_bar = Rect::from_min_size(
                         pos2(cover.right() + 10.0, row_rect.center().y - 12.0),
                         vec2((rect.width() * 0.48).clamp(90.0, 200.0), 10.0),
@@ -1309,16 +1311,10 @@ pub(crate) fn suggestions_popup(app: &mut App, ctx: &egui::Context, field_rect: 
                         pos2(cover.right() + 10.0, row_rect.center().y + 3.0),
                         vec2((rect.width() * 0.32).clamp(60.0, 140.0), 8.0),
                     );
-                    ui.painter().rect_filled(
-                        title_bar,
-                        CornerRadius::same(4),
-                        Color32::from_white_alpha(28),
-                    );
-                    ui.painter().rect_filled(
-                        sub_bar,
-                        CornerRadius::same(4),
-                        Color32::from_white_alpha(18),
-                    );
+                    ui.painter()
+                        .rect_filled(title_bar, CornerRadius::same(4), super::ink(28));
+                    ui.painter()
+                        .rect_filled(sub_bar, CornerRadius::same(4), super::ink(18));
                     y += RESULT_ROW_HEIGHT;
                 }
                 return;
@@ -1355,7 +1351,7 @@ pub(crate) fn suggestions_popup(app: &mut App, ctx: &egui::Context, field_rect: 
                     if selected {
                         Color32::WHITE
                     } else {
-                        Color32::from_white_alpha(160)
+                        super::ink(160)
                     },
                 );
                 let (prefix, suffix) = split_query_completion(&query, q);
@@ -1368,7 +1364,7 @@ pub(crate) fn suggestions_popup(app: &mut App, ctx: &egui::Context, field_rect: 
                         color: if selected {
                             Color32::WHITE
                         } else {
-                            Color32::from_white_alpha(217)
+                            super::ink(217)
                         },
                         ..Default::default()
                     },
@@ -1382,7 +1378,7 @@ pub(crate) fn suggestions_popup(app: &mut App, ctx: &egui::Context, field_rect: 
                             color: if selected {
                                 Color32::WHITE
                             } else {
-                                Color32::from_white_alpha(140)
+                                super::ink(140)
                             },
                             ..Default::default()
                         },
@@ -1405,7 +1401,7 @@ pub(crate) fn suggestions_popup(app: &mut App, ctx: &egui::Context, field_rect: 
                 ui.painter().hline(
                     (rect.left() + 16.0)..=(rect.right() - 16.0),
                     sep_y,
-                    egui::Stroke::new(1.0, Color32::from_white_alpha(77)),
+                    egui::Stroke::new(1.0, super::ink(77)),
                 );
                 y += SEPARATOR_HEIGHT;
             }

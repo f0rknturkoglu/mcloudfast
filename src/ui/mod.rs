@@ -45,6 +45,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         app.settings.interface == crate::settings::Interface::Mcloud,
     );
     mcloud::set_glass_effect(ctx, app.settings.mcloud_glass);
+    mcloud::set_palette(&app.palette);
     keys::handle(app, ctx);
     for path in winamp::dropped_skins(ctx) {
         app.actions.push(Action::InstallSkin(path));
@@ -115,8 +116,11 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         if app.show_queue_panel {
             queue::side_panel(app, ui);
         }
-        if app.show_lyrics_panel {
+        if app.show_lyrics_panel && !mcloud {
             lyrics::side_panel(app, ui);
+        }
+        if app.show_lyrics_panel && mcloud && mcloud::now_playing::docked(app) {
+            mcloud::now_playing::docked_panel(app, ui);
         }
         if app.show_friends_panel {
             friends::side_panel(app, ui);
@@ -128,6 +132,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         central(app, ui);
     }
     if mcloud {
+        mcloud::now_playing::card(app, ui, content);
         mcloud::player::show(app, ui, content);
     }
     keep_room_for_panels(app, ctx);
@@ -178,7 +183,9 @@ fn keep_room_for_panels(app: &App, ctx: &Context) {
         panels && app.settings.sidebar_visible,
         panels
             && (app.show_queue_panel
-                || app.show_lyrics_panel
+                || (app.show_lyrics_panel
+                    && (app.settings.interface != crate::settings::Interface::Mcloud
+                        || mcloud::now_playing::docked(app)))
                 || app.show_friends_panel
                 || mcloud_devices),
     )
@@ -847,7 +854,7 @@ fn toasts(app: &mut App, ctx: &egui::Context, bottom_offset: f32) {
                         ToastKind::Info => (Icon::CircleCheck, palette.accent),
                         ToastKind::Error => (Icon::CircleAlert, palette.danger),
                     };
-                    let text_color = Color32::from_rgb(0xe8, 0xe8, 0xe8);
+                    let text_color = palette.text;
                     let galley = ui.painter().layout(
                         toast.message.clone(),
                         theme::medium(13.0),

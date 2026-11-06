@@ -173,6 +173,9 @@ Sayfaların hepsi güncel mcloud reposuna (bulutakbulutt/mcloud) göre eşitlend
 - Sayfa boşluğu `--am-pad`; kenar çubuğu `--am-side`
   (`settings.mcloud_sidebar_width`, yalnızca sürükleyince kaydediliyor).
 
+Şimdi Çalan paneli (`mcloud/now_playing.rs`): cam kart ya da kenara yapışık;
+kapak, başlık, yıldız, "…" ve altında sözler. Ayarlar: stil, arka plan, sözler.
+
 Lyrics'te kalanlar (Spicy'den alınabilecekler):
 - **Pasif satırlarda uzaklık bulanıklığı** (`applyBlur`: aktif satırdan
   uzaklık × 1.25 px, ~6.8 px tavan). egui'de metin blur'u yok; N adet soluk

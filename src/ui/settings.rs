@@ -1332,6 +1332,50 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             ),
         )
         .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Recent playlists"),
+            gettext(
+                locale,
+                "How many recently played playlists the sidebar lists under the pinned ones.",
+            ),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Playlists shown"),
+            gettext(locale, "Which playlists the sidebar lists."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Player buttons"),
+            gettext(
+                locale,
+                "The buttons the player shows. Play, the title and the progress bar always stay.",
+            ),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Shortcuts at the top"),
+            gettext(locale, "Show Home's shortcuts above its shelves."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Now Playing style"),
+            gettext(
+                locale,
+                "A glass card over the page, or docked at the window's edge.",
+            ),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Now Playing background"),
+            gettext(locale, "Plain shows only the lyrics, as Apple Music's pane."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Lyrics under the artwork"),
+            gettext(locale, "Off leaves the lyrics for full screen."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
     ];
     for index in [8, 9, 10] {
         appearance_rows[index].available &= visualizers;
@@ -1474,11 +1518,248 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     &appearance,
                     &appearance_rows[16],
                     |ui| {
+                        use crate::settings::McloudMixStyle as Style;
+                        let styles = [
+                            (Some(Style::Apple), gettext(locale, "As Apple Music")),
+                            (Some(Style::Band), gettext(locale, "Band (Essentials)")),
+                            (
+                                Some(Style::Gradient),
+                                gettext(locale, "Gradient (personal mix)"),
+                            ),
+                            (
+                                Some(Style::Station),
+                                gettext(locale, "Round photo (station)"),
+                            ),
+                            (Some(Style::Photo), gettext(locale, "Photo only")),
+                            (None, std::borrow::Cow::Borrowed("Spotify")),
+                        ];
+                        let current = app
+                            .settings
+                            .mcloud_mix_covers
+                            .then_some(app.settings.mcloud_mix_style);
+                        let selected = styles
+                            .iter()
+                            .find(|(style, _)| *style == current)
+                            .map_or("", |(_, label)| label.as_ref());
+                        egui::ComboBox::from_id_salt("mcloud_mix_style")
+                            .selected_text(selected)
+                            .width(200.0_f32.min(ui.available_width()))
+                            .show_ui(ui, |ui| {
+                                for (style, label) in &styles {
+                                    if ui
+                                        .selectable_label(*style == current, label.as_ref())
+                                        .clicked()
+                                    {
+                                        app.settings.mcloud_mix_covers = style.is_some();
+                                        if let Some(style) = style {
+                                            app.settings.mcloud_mix_style = *style;
+                                        }
+                                        changed = true;
+                                    }
+                                }
+                            });
+                    },
+                );
+                filtered_row(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[17],
+                    |ui| {
+                        let current = app.settings.mcloud_recent_playlists;
+                        let name = |count: u8| {
+                            if count == 0 {
+                                gettext(locale, "None").into_owned()
+                            } else {
+                                count.to_string()
+                            }
+                        };
+                        egui::ComboBox::from_id_salt("mcloud_recent_playlists")
+                            .selected_text(name(current))
+                            .width(120.0_f32.min(ui.available_width()))
+                            .show_ui(ui, |ui| {
+                                for count in [0, 3, 5, 10, 20] {
+                                    if ui.selectable_label(count == current, name(count)).clicked()
+                                    {
+                                        app.settings.mcloud_recent_playlists = count;
+                                        changed = true;
+                                    }
+                                }
+                            });
+                    },
+                );
+                filtered_row(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[18],
+                    |ui| {
+                        use crate::settings::McloudSideLists as Lists;
+                        let options = [
+                            (Lists::All, gettext(locale, "All Playlists")),
+                            (Lists::Own, gettext(locale, "By You")),
+                            (Lists::Spotify, gettext(locale, "By Spotify")),
+                        ];
+                        let current = app.settings.mcloud_side_lists;
+                        let selected = options
+                            .iter()
+                            .find(|(option, _)| *option == current)
+                            .map_or("", |(_, label)| label.as_ref());
+                        egui::ComboBox::from_id_salt("mcloud_side_lists")
+                            .selected_text(selected)
+                            .width(200.0_f32.min(ui.available_width()))
+                            .show_ui(ui, |ui| {
+                                for (option, label) in &options {
+                                    if ui
+                                        .selectable_label(*option == current, label.as_ref())
+                                        .clicked()
+                                    {
+                                        app.settings.mcloud_side_lists = *option;
+                                        changed = true;
+                                    }
+                                }
+                            });
+                    },
+                );
+                filtered_row(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[19],
+                    |ui| {
+                        use crate::ui::mcloud::player::HIDEABLE_BUTTONS as BUTTONS;
+                        let shown = BUTTONS.len()
+                            - BUTTONS
+                                .iter()
+                                .filter(|(id, _)| {
+                                    app.settings.mcloud_player_hidden.iter().any(|h| h == id)
+                                })
+                                .count();
+                        egui::ComboBox::from_id_salt("mcloud_player_buttons")
+                            .selected_text(format!("{shown} / {}", BUTTONS.len()))
+                            .width(160.0_f32.min(ui.available_width()))
+                            .show_ui(ui, |ui| {
+                                for (id, name) in BUTTONS {
+                                    let mut on = !app
+                                        .settings
+                                        .mcloud_player_hidden
+                                        .iter()
+                                        .any(|hidden| hidden == id);
+                                    if ui
+                                        .checkbox(&mut on, gettext(locale, name).as_ref())
+                                        .changed()
+                                    {
+                                        app.settings.mcloud_player_hidden.retain(|h| h != id);
+                                        if !on {
+                                            app.settings.mcloud_player_hidden.push(id.to_string());
+                                        }
+                                        changed = true;
+                                    }
+                                }
+                            });
+                    },
+                );
+                filtered_row(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[20],
+                    |ui| {
                         if widgets::switch(
                             ui,
                             &palette,
-                            &appearance_rows[16].title,
-                            &mut app.settings.mcloud_mix_covers,
+                            &appearance_rows[20].title,
+                            &mut app.settings.mcloud_home_shortcuts,
+                        )
+                        .changed()
+                        {
+                            changed = true;
+                        }
+                    },
+                );
+                filtered_row(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[21],
+                    |ui| {
+                        use crate::settings::McloudNpLayout as Layout;
+                        let options = [
+                            (Layout::Card, gettext(locale, "Glass card")),
+                            (Layout::Docked, gettext(locale, "Docked")),
+                        ];
+                        let current = app.settings.mcloud_np_layout;
+                        let selected = options
+                            .iter()
+                            .find(|(option, _)| *option == current)
+                            .map_or("", |(_, label)| label.as_ref());
+                        egui::ComboBox::from_id_salt("mcloud_np_layout")
+                            .selected_text(selected)
+                            .width(160.0_f32.min(ui.available_width()))
+                            .show_ui(ui, |ui| {
+                                for (option, label) in &options {
+                                    if ui
+                                        .selectable_label(*option == current, label.as_ref())
+                                        .clicked()
+                                    {
+                                        app.settings.mcloud_np_layout = *option;
+                                        changed = true;
+                                    }
+                                }
+                            });
+                    },
+                );
+                filtered_row(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[22],
+                    |ui| {
+                        use crate::settings::McloudNpBackground as Background;
+                        let options = [
+                            (Background::Artwork, gettext(locale, "Artwork colours")),
+                            (Background::Glass, gettext(locale, "Glass")),
+                            (Background::Plain, gettext(locale, "Plain")),
+                        ];
+                        let current = app.settings.mcloud_np_background;
+                        let selected = options
+                            .iter()
+                            .find(|(option, _)| *option == current)
+                            .map_or("", |(_, label)| label.as_ref());
+                        egui::ComboBox::from_id_salt("mcloud_np_background")
+                            .selected_text(selected)
+                            .width(160.0_f32.min(ui.available_width()))
+                            .show_ui(ui, |ui| {
+                                for (option, label) in &options {
+                                    if ui
+                                        .selectable_label(*option == current, label.as_ref())
+                                        .clicked()
+                                    {
+                                        app.settings.mcloud_np_background = *option;
+                                        changed = true;
+                                    }
+                                }
+                            });
+                    },
+                );
+                filtered_row(
+                    ui,
+                    &palette,
+                    &needle,
+                    &appearance,
+                    &appearance_rows[23],
+                    |ui| {
+                        if widgets::switch(
+                            ui,
+                            &palette,
+                            &appearance_rows[23].title,
+                            &mut app.settings.mcloud_np_lyrics,
                         )
                         .changed()
                         {

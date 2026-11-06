@@ -230,6 +230,9 @@ pub(in crate::ui) fn loaded(
             ui.add_space(SHELF_GAP);
         }
     }
+    if let Some(concerts) = app.artist_concerts.get(&artist.uri).cloned() {
+        concert_list(app, ui, &concerts);
+    }
     if let Some(list) = page.albums.get(DiscographyFilter::AppearsOn.groups()) {
         let appears: Vec<&Album> = list.items.iter().collect();
         album_shelf(
@@ -245,7 +248,7 @@ pub(in crate::ui) fn loaded(
         && !related.is_empty()
     {
         let title = gettext(app.locale, "Similar Artists");
-        shelf(ui, "artist-related", &title, |ui| {
+        shelf(ui, "artist-related", &title, ARTIST_CARD, |ui| {
             for artist in related {
                 let image = pick_image(&artist.images, app.art_px(ARTIST_CARD));
                 let response = card(app, ui, image, &artist.name, None, ARTIST_CARD, true);
@@ -1099,23 +1102,101 @@ fn title(ui: &mut egui::Ui, title: &str) {
     ui.add_space(10.0);
 }
 
+/// Upcoming concerts: the day on a small square, the place, the venue and date.
+fn concert_list(app: &App, ui: &mut egui::Ui, concerts: &[crate::session_reads::Concert]) {
+    const MIN_COLUMN: f32 = 280.0;
+    const COLUMN_GAP: f32 = 30.0;
+    const ROW: f32 = 49.0;
+    const DAY: f32 = 36.0;
+    ui.horizontal(|ui| {
+        ui.add_space(INSET - PAGE_PADDING);
+        title(ui, &gettext(app.locale, "Upcoming Concerts"));
+    });
+    let inset = INSET - PAGE_PADDING;
+    let width = ui.available_width() - 2.0 * inset;
+    let columns = (((width + COLUMN_GAP) / (MIN_COLUMN + COLUMN_GAP)).floor() as usize).max(1);
+    let column = (width - COLUMN_GAP * (columns as f32 - 1.0)) / columns as f32;
+    let rows = concerts.len().div_ceil(columns);
+    let (block, _) = ui.allocate_exact_size(
+        vec2(ui.available_width(), ROW * rows as f32),
+        Sense::hover(),
+    );
+    let ink = Color32::WHITE;
+    for (index, concert) in concerts.iter().enumerate() {
+        let rect = Rect::from_min_size(
+            block.min
+                + vec2(
+                    inset + (column + COLUMN_GAP) * (index % columns) as f32,
+                    ROW * (index / columns) as f32,
+                ),
+            vec2(column, ROW),
+        );
+        let day = Rect::from_center_size(
+            pos2(rect.left() + DAY / 2.0, rect.center().y),
+            Vec2::splat(DAY),
+        );
+        ui.painter()
+            .rect_filled(day, CornerRadius::same(7), ink.gamma_multiply(0.122));
+        ui.painter().text(
+            day.center(),
+            egui::Align2::CENTER_CENTER,
+            concert
+                .date
+                .get(8..10)
+                .unwrap_or("")
+                .trim_start_matches('0'),
+            theme::semibold(17.0),
+            ink,
+        );
+        let text_left = day.right() + 12.0;
+        let text_width = (rect.right() - text_left).max(20.0);
+        let place =
+            widgets::ellipsized(ui, &concert.place, theme::medium(13.0), ink, text_width, 1);
+        let detail = crate::util::format_date(app.locale, &concert.date);
+        let detail = if concert.venue.is_empty() {
+            detail
+        } else {
+            format!("{} · {detail}", concert.venue)
+        };
+        let sub = ink.gamma_multiply(0.6);
+        let detail = widgets::ellipsized(ui, &detail, theme::regular(11.0), sub, text_width, 1);
+        let top = rect.center().y - (place.size().y + detail.size().y) / 2.0;
+        let place_height = place.size().y;
+        ui.painter().galley(pos2(text_left, top), place, ink);
+        ui.painter()
+            .galley(pos2(text_left, top + place_height), detail, sub);
+        ui.painter().hline(
+            rect.x_range(),
+            rect.bottom() - 0.5,
+            egui::Stroke::new(1.0, ink.gamma_multiply(0.11)),
+        );
+    }
+    ui.add_space(SHELF_GAP);
+}
+
 /// A titled row of cards that scrolls sideways.
-fn shelf(ui: &mut egui::Ui, id: &str, label: &str, add_contents: impl FnOnce(&mut egui::Ui)) {
+fn shelf(
+    ui: &mut egui::Ui,
+    id: &str,
+    label: &str,
+    card_side: f32,
+    add_contents: impl FnOnce(&mut egui::Ui),
+) {
     ui.horizontal(|ui| {
         ui.add_space(INSET - PAGE_PADDING);
         title(ui, label);
     });
-    egui::ScrollArea::horizontal()
-        .id_salt(id)
-        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-        .show(ui, |ui| {
-            ui.horizontal_top(|ui| {
-                ui.add_space(INSET - PAGE_PADDING);
-                ui.spacing_mut().item_spacing.x = CARD_GAP;
-                add_contents(ui);
-                ui.add_space(INSET - PAGE_PADDING);
-            });
-        });
+    let inset = INSET - PAGE_PADDING;
+    let arrows = widgets::ShelfArrows {
+        inset: inset - 8.0,
+        middle: card_side / 2.0,
+    };
+    widgets::snapping_row(ui, id, card_side + CARD_GAP, arrows, |ui| {
+        ui.add_space(inset);
+        ui.spacing_mut().item_spacing.x = CARD_GAP;
+        add_contents(ui);
+        ui.add_space(inset - CARD_GAP);
+    });
     ui.add_space(SHELF_GAP);
 }
 
@@ -1130,7 +1211,7 @@ fn album_shelf(
     if albums.is_empty() {
         return;
     }
-    shelf(ui, id, label, |ui| {
+    shelf(ui, id, label, card_side, |ui| {
         for album in albums {
             let image = pick_image(&album.images, app.art_px(card_side));
             let year = album.year().unwrap_or("").to_string();

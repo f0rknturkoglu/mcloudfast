@@ -94,24 +94,76 @@ pub enum McloudAccent {
     Green,
     Blue,
     Purple,
+    Teal,
+    Spotify,
+    /// No longer offered: mcloud has none. A saved choice keeps it.
     Graphite,
 }
 
+/// How mix covers are drawn (mcloud's `mixCovers`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum McloudMixStyle {
+    /// Apple's own pairing: radios as stations, other mixes as Essentials.
+    #[default]
+    Apple,
+    Band,
+    Gradient,
+    Station,
+    Photo,
+}
+
+/// Where mcloud's Now Playing sits (its `npLayout`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum McloudNpLayout {
+    /// A floating glass card over the page.
+    #[default]
+    Card,
+    /// Full height at the window's edge, taking room from the page.
+    Docked,
+}
+
+/// What Now Playing draws behind itself (its `npBg`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum McloudNpBackground {
+    /// The cover's colours, blurred.
+    #[default]
+    Artwork,
+    Glass,
+    /// Apple's plain lyrics pane: no artwork or title, only the lyrics.
+    Plain,
+}
+
+/// Which playlists mcloud's sidebar lists (its `sideLists`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum McloudSideLists {
+    #[default]
+    All,
+    Own,
+    Spotify,
+}
+
 impl McloudAccent {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Red,
         Self::Pink,
         Self::Orange,
         Self::Yellow,
         Self::Green,
+        Self::Teal,
         Self::Blue,
         Self::Purple,
-        Self::Graphite,
+        Self::Spotify,
     ];
 
     pub fn color(self, dark: bool) -> egui::Color32 {
         if dark {
             match self {
+                Self::Teal => egui::Color32::from_rgb(0x40, 0xc8, 0xe0),
+                Self::Spotify => egui::Color32::from_rgb(0x1e, 0xd7, 0x60),
                 Self::Red => egui::Color32::from_rgb(0xfa, 0x2d, 0x48),
                 Self::Pink => egui::Color32::from_rgb(0xff, 0x37, 0x5f),
                 Self::Orange => egui::Color32::from_rgb(0xff, 0x9f, 0x0a),
@@ -123,6 +175,8 @@ impl McloudAccent {
             }
         } else {
             match self {
+                Self::Teal => egui::Color32::from_rgb(0x00, 0xa5, 0xc8),
+                Self::Spotify => egui::Color32::from_rgb(0x1d, 0xb9, 0x54),
                 Self::Red => egui::Color32::from_rgb(0xfa, 0x23, 0x3b),
                 Self::Pink => egui::Color32::from_rgb(0xff, 0x2d, 0x55),
                 Self::Orange => egui::Color32::from_rgb(0xff, 0x8d, 0x28),
@@ -144,6 +198,8 @@ impl McloudAccent {
             Self::Green => "Green",
             Self::Blue => "Blue",
             Self::Purple => "Purple",
+            Self::Teal => "Teal",
+            Self::Spotify => "Spotify Green",
             Self::Graphite => "Graphite",
         }
     }
@@ -414,6 +470,19 @@ pub struct Settings {
     /// Mix covers drawn in Apple Music style in mcloud (`mixCovers`).
     #[serde(default = "default_true")]
     pub mcloud_mix_covers: bool,
+    /// How mix covers are drawn while `mcloud_mix_covers` is on.
+    pub mcloud_mix_style: McloudMixStyle,
+    /// How many recently played playlists follow the pinned ones.
+    pub mcloud_recent_playlists: u8,
+    pub mcloud_side_lists: McloudSideLists,
+    /// The player buttons turned off, by name.
+    pub mcloud_player_hidden: Vec<String>,
+    /// Home's shortcuts above its shelves.
+    pub mcloud_home_shortcuts: bool,
+    pub mcloud_np_layout: McloudNpLayout,
+    pub mcloud_np_background: McloudNpBackground,
+    /// Lyrics under Now Playing's artwork; off leaves them for full screen.
+    pub mcloud_np_lyrics: bool,
     /// The interface language; older files without it follow the system.
     pub language: LanguageChoice,
     /// Filename selected from the local themes directory.
@@ -633,6 +702,14 @@ impl Default for Settings {
             mcloud_page_tint: McloudPageTint::Off,
             mcloud_accent: None,
             mcloud_mix_covers: true,
+            mcloud_mix_style: McloudMixStyle::Apple,
+            mcloud_recent_playlists: 5,
+            mcloud_side_lists: McloudSideLists::All,
+            mcloud_player_hidden: Vec::new(),
+            mcloud_home_shortcuts: true,
+            mcloud_np_layout: McloudNpLayout::Card,
+            mcloud_np_background: McloudNpBackground::Artwork,
+            mcloud_np_lyrics: true,
             language: LanguageChoice::System,
             custom_theme: None,
             custom_theme_cache: None,

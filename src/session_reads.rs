@@ -395,6 +395,45 @@ pub struct PageExtras {
     pub header_sources: Vec<Image>,
     /// What an artist's About sheet shows.
     pub about: Option<ArtistAbout>,
+    /// The artist's upcoming concerts, soonest first.
+    pub concerts: Vec<Concert>,
+}
+
+/// A concert on an artist's page.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Concert {
+    /// `YYYY-MM-DD`.
+    pub date: String,
+    pub place: String,
+    pub venue: String,
+}
+
+/// The concerts an artist overview lists, at most six, as mcloud shows.
+fn concerts_from(body: &serde_json::Value) -> Vec<Concert> {
+    let text = |value: &serde_json::Value, path: &str| {
+        value
+            .pointer(path)
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string)
+    };
+    body.pointer("/data/artistUnion/goods/events/concerts/items")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|item| {
+            let concert = item.get("data").unwrap_or(item);
+            let date = text(concert, "/date/isoString")
+                .or_else(|| text(concert, "/startDateIsoString"))?;
+            let date = date.get(..10)?.to_string();
+            let place = text(concert, "/venue/location/name")
+                .or_else(|| text(concert, "/location/name"))
+                .or_else(|| text(concert, "/title"))
+                .unwrap_or_default();
+            let venue = text(concert, "/venue/name").unwrap_or_default();
+            Some(Concert { date, place, venue })
+        })
+        .take(6)
+        .collect()
 }
 
 /// An artist's About sheet: a photo, listener and follower counts, the
@@ -426,6 +465,7 @@ pub async fn play_counts(
     let mut header_image = None;
     let mut header_sources = Vec::new();
     let mut about = None;
+    let mut concerts = Vec::new();
     match crate::util::uri_kind(uri) {
         Some("album") => {
             let mut offset = 0;
@@ -474,6 +514,7 @@ pub async fn play_counts(
             header_sources = header_sources_from(&body);
             header_image = hero_source(&header_sources, u32::MAX).map(str::to_string);
             about = about_from(&body);
+            concerts = concerts_from(&body);
         }
         _ => anyhow::bail!("Spotify counts plays only for album and artist songs"),
     }
@@ -482,6 +523,7 @@ pub async fn play_counts(
         header_image,
         header_sources,
         about,
+        concerts,
     })
 }
 
@@ -2151,6 +2193,26 @@ fn iso8601(timestamp_ms: i64) -> Option<String> {
 mod tests {
 
     /// The header picture is the overview's widest source.
+    #[test]
+    fn concerts_come_from_the_overviews_goods_at_most_six() {
+        let item = serde_json::json!({"data": {
+            "date": {"isoString": "2026-12-05T20:00:00+03:00"},
+            "title": "Tour",
+            "venue": {"name": "Hall", "location": {"name": "Istanbul"}},
+        }});
+        let items: Vec<_> = (0..8)
+            .map(|_| item.clone())
+            .chain([serde_json::json!({"data": {}})])
+            .collect();
+        let body = serde_json::json!({"data": {"artistUnion": {"goods": {"events": {"concerts": {"items": items}}}}}});
+        let concerts = super::concerts_from(&body);
+        assert_eq!(concerts.len(), 6);
+        assert_eq!(concerts[0].date, "2026-12-05");
+        assert_eq!(concerts[0].place, "Istanbul");
+        assert_eq!(concerts[0].venue, "Hall");
+        assert!(super::concerts_from(&serde_json::json!({})).is_empty());
+    }
+
     #[test]
     fn the_widest_header_source_wins() {
         let body = serde_json::json!({"data": {"artistUnion": {"visuals": {"headerImage": {

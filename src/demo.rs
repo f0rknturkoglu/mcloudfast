@@ -506,6 +506,31 @@ pub fn populate(app: &mut App) {
         .albums
         .insert(DiscographyFilter::All.groups().to_string(), albums);
     app.artist_pages.insert("art0".into(), artist_page);
+    // What the overview would add: the wide header picture and the concerts.
+    let header = Image {
+        url: "https://picsum.photos/seed/spotifast900/2660/1140".into(),
+        width: Some(2660),
+        height: Some(1140),
+    };
+    app.artist_headers
+        .insert("spotify:artist:art0".into(), header.url.clone());
+    app.artist_header_sources
+        .insert("spotify:artist:art0".into(), vec![header]);
+    app.artist_concerts.insert(
+        "spotify:artist:art0".into(),
+        vec![
+            crate::session_reads::Concert {
+                date: "2026-12-05".into(),
+                place: "Istanbul".into(),
+                venue: "Zorlu PSM".into(),
+            },
+            crate::session_reads::Concert {
+                date: "2026-12-12".into(),
+                place: "Berlin".into(),
+                venue: "Columbiahalle".into(),
+            },
+        ],
+    );
     app.saved.insert("spotify:artist:art0".into(), true);
 
     // Play counts for the album's songs and the artist's popular ones.
@@ -8302,13 +8327,14 @@ mod tests {
     fn the_lyrics_name_their_writers() {
         let (ctx, mut app) = accessible_app("lyrics-writers");
         apply_flags(&mut app, None, Some("mcloud,lyrics"));
+        // Tall enough that the Now Playing card shows the lyrics to their end.
         let mut texts = Vec::new();
         for frame in 0..6 {
             let input = egui::RawInput {
                 time: Some(f64::from(frame) / 30.0),
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
-                    egui::vec2(1440.0, 900.0),
+                    egui::vec2(1440.0, 2400.0),
                 )),
                 ..Default::default()
             };

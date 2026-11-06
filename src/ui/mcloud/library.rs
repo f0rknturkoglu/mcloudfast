@@ -84,13 +84,13 @@ pub(in crate::ui) fn show(
             ui.painter().rect(
                 frame,
                 CornerRadius::same(15),
-                Color32::from_white_alpha(if has_focus { 16 } else { 10 }),
+                crate::ui::mcloud::ink(if has_focus { 16 } else { 10 }),
                 egui::Stroke::new(
                     1.0,
                     if has_focus {
                         palette.accent
                     } else {
-                        Color32::from_white_alpha(20)
+                        crate::ui::mcloud::ink(20)
                     },
                 ),
                 egui::StrokeKind::Inside,
@@ -151,8 +151,8 @@ pub(in crate::ui) fn show(
             ui.painter().rect(
                 sort,
                 CornerRadius::same(15),
-                Color32::from_rgb(0x2b, 0x2b, 0x2b),
-                egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+                super::tone(Color32::from_rgb(0x2b, 0x2b, 0x2b), Color32::WHITE),
+                egui::Stroke::new(1.0, crate::ui::mcloud::ink(20)),
                 egui::StrokeKind::Inside,
             );
             ui.painter().galley(
@@ -230,13 +230,13 @@ pub(in crate::ui) fn show(
                 ui.painter().rect(
                     f_btn,
                     CornerRadius::same(15),
-                    Color32::from_rgb(0x2b, 0x2b, 0x2b),
+                    super::tone(Color32::from_rgb(0x2b, 0x2b, 0x2b), Color32::WHITE),
                     egui::Stroke::new(
                         1.0,
                         if is_filtered {
                             palette.accent
                         } else {
-                            Color32::from_white_alpha(20)
+                            crate::ui::mcloud::ink(20)
                         },
                     ),
                     egui::StrokeKind::Inside,
@@ -458,7 +458,10 @@ fn cover_card(app: &mut App, ui: &mut egui::Ui, entry: &Entry, cell: Rect, side:
     ui.painter().rect_filled(
         art,
         CornerRadius::same(radius.min(255.0) as u8),
-        Color32::from_rgb(0x30, 0x30, 0x30),
+        super::tone(
+            Color32::from_rgb(0x30, 0x30, 0x30),
+            Color32::from_rgb(0xec, 0xec, 0xec),
+        ),
     );
     let placeholder = if entry.round {
         Icon::McloudArtist
@@ -478,7 +481,7 @@ fn cover_card(app: &mut App, ui: &mut egui::Ui, entry: &Entry, cell: Rect, side:
         ui.painter().rect_filled(
             art,
             CornerRadius::same(radius.min(255.0) as u8),
-            Color32::from_white_alpha(14),
+            crate::ui::mcloud::ink(14),
         );
     }
     let text_width = cell.width();

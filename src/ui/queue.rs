@@ -61,7 +61,7 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
             ui.painter().vline(
                 sheet.left(),
                 sheet.y_range(),
-                egui::Stroke::new(1.0, egui::Color32::from_white_alpha(26)),
+                egui::Stroke::new(1.0, crate::ui::mcloud::ink(26)),
             );
         }
         let window_controls = super::window_controls_reservation(

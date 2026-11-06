@@ -41,8 +41,20 @@ const VOLUME: Vec2 = Vec2::new(110.0, 38.0);
 /// How long the pointer rests on the speaker before the volume capsule opens.
 const VOLUME_HOVER_DELAY: f64 = 0.5;
 
-const NORMAL: Color32 = Color32::from_rgb(0xe8, 0xe8, 0xe8);
-const DIM: Color32 = Color32::from_rgb(0x8d, 0x8d, 0x8d);
+/// The player's icons, mcloud's `--am-icon` and `--am-dim`.
+fn normal() -> Color32 {
+    super::tone(
+        Color32::from_rgb(0xe8, 0xe8, 0xe8),
+        Color32::from_rgb(0x2b, 0x2b, 0x2b),
+    )
+}
+
+fn dim() -> Color32 {
+    super::tone(
+        Color32::from_rgb(0x8d, 0x8d, 0x8d),
+        Color32::from_rgb(0xa1, 0xa1, 0xa6),
+    )
+}
 
 /// Room a page leaves at its end so its last rows can scroll clear of the
 /// capsule.
@@ -126,13 +138,13 @@ pub(in crate::ui) fn solid_capsule(ui: &egui::Ui, rect: Rect) {
     painter.rect_stroke(
         rect,
         corner,
-        Stroke::new(1.0, Color32::from_white_alpha(18)),
+        Stroke::new(1.0, crate::ui::mcloud::ink(18)),
         StrokeKind::Inside,
     );
     painter.hline(
         (rect.left() + half)..=(rect.right() - half),
         rect.top() + 1.0,
-        Stroke::new(1.0, Color32::from_white_alpha(38)),
+        Stroke::new(1.0, crate::ui::mcloud::ink(38)),
     );
 }
 
@@ -152,8 +164,8 @@ fn button(
         Sense::click(),
     );
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
-    let color = if response.hovered() && color == NORMAL {
-        Color32::WHITE
+    let color = if response.hovered() && color == normal() {
+        super::tone(Color32::WHITE, Color32::BLACK)
     } else {
         color
     };
@@ -203,22 +215,27 @@ fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlayi
     let shuffle = now.map_or_else(|| app.playing_context_shuffle(), |now| now.shuffle);
     let repeat = now.map(|now| now.repeat).unwrap_or_default();
     let narrow = rect.width() < NARROW_CAPSULE;
-    let slots = row(
-        rect.left() + PADDING_LEFT,
-        rect.center().y,
-        if narrow { 3 } else { 5 },
+    let ids = shown_buttons(
+        if narrow {
+            &["previous", "play", "next"]
+        } else {
+            &["shuffle", "previous", "play", "next", "repeat"]
+        },
+        &app.settings.mcloud_player_hidden,
     );
-    let (back_slot, play_slot, next_slot) = if narrow {
-        (slots[0], slots[1], slots[2])
-    } else {
-        (slots[1], slots[2], slots[3])
+    let slots = row(rect.left() + PADDING_LEFT, rect.center().y, ids.len());
+    let slot = |id: &str| {
+        ids.iter()
+            .position(|shown| *shown == id)
+            .map(|index| slots[index])
     };
+    let play_slot = slot("play").expect("play is never hidden");
 
-    if !narrow {
-        let color = if shuffle { palette.accent } else { DIM };
+    if let Some(shuffle_slot) = slot("shuffle") {
+        let color = if shuffle { palette.accent } else { dim() };
         let response = button(
             ui,
-            slots[0],
+            shuffle_slot,
             Icon::McloudShuffle,
             DIM_ICON,
             color,
@@ -229,15 +246,16 @@ fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlayi
         }
     }
 
-    if button(
-        ui,
-        back_slot,
-        Icon::McloudBack,
-        ICON,
-        NORMAL,
-        &gettext(locale, "Previous"),
-    )
-    .clicked()
+    if let Some(back_slot) = slot("previous")
+        && button(
+            ui,
+            back_slot,
+            Icon::McloudBack,
+            ICON,
+            normal(),
+            &gettext(locale, "Previous"),
+        )
+        .clicked()
     {
         app.actions.push(Action::Previous);
     }
@@ -248,34 +266,35 @@ fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlayi
                 .max_rect(play_slot)
                 .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
         );
-        theme::spinner(&mut cell, 18.0, NORMAL);
+        theme::spinner(&mut cell, 18.0, normal());
     } else {
         let (icon, label) = if playing {
             (Icon::McloudPause, gettext(locale, "Pause"))
         } else {
             (Icon::McloudPlay, gettext(locale, "Play"))
         };
-        if button(ui, play_slot, icon, PLAY_ICON, NORMAL, &label).clicked() {
+        if button(ui, play_slot, icon, PLAY_ICON, normal(), &label).clicked() {
             app.actions.push(Action::TogglePlay);
         }
     }
 
-    if button(
-        ui,
-        next_slot,
-        Icon::McloudNext,
-        ICON,
-        NORMAL,
-        &gettext(locale, "Next"),
-    )
-    .clicked()
+    if let Some(next_slot) = slot("next")
+        && button(
+            ui,
+            next_slot,
+            Icon::McloudNext,
+            ICON,
+            normal(),
+            &gettext(locale, "Next"),
+        )
+        .clicked()
     {
         app.actions.push(Action::Next);
     }
 
-    if !narrow {
+    if let Some(repeat_slot) = slot("repeat") {
         let (icon, color, label) = match repeat {
-            RepeatMode::Off => (Icon::McloudRepeat, DIM, gettext(locale, "Repeat")),
+            RepeatMode::Off => (Icon::McloudRepeat, dim(), gettext(locale, "Repeat")),
             RepeatMode::Context => (
                 Icon::McloudRepeat,
                 palette.accent,
@@ -283,13 +302,33 @@ fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlayi
             ),
             RepeatMode::Track => (Icon::Repeat1, palette.accent, gettext(locale, "Repeat off")),
         };
-        if button(ui, slots[4], icon, DIM_ICON, color, &label).clicked() {
+        if button(ui, repeat_slot, icon, DIM_ICON, color, &label).clicked() {
             app.actions.push(Action::CycleRepeat);
         }
-        slots[4].right()
-    } else {
-        next_slot.right()
     }
+    slots.last().map_or(rect.left(), |last| last.right())
+}
+
+/// The player buttons a user can turn off, for Settings.
+pub(in crate::ui) const HIDEABLE_BUTTONS: [(&str, &str); 9] = [
+    ("shuffle", "Shuffle"),
+    ("previous", "Previous"),
+    ("next", "Next"),
+    ("repeat", "Repeat"),
+    ("mini", "Mini player"),
+    ("lyrics", "Lyrics"),
+    ("devices", "Connect to a device"),
+    ("queue", "Queue"),
+    ("volume", "Mute"),
+];
+
+/// The buttons of a group left once the turned-off ones go. Play always stays.
+fn shown_buttons(group: &[&'static str], hidden: &[String]) -> Vec<&'static str> {
+    group
+        .iter()
+        .copied()
+        .filter(|id| *id == "play" || !hidden.iter().any(|name| name == id))
+        .collect()
 }
 
 /// Mini player, lyrics, devices, queue and volume, from the capsule's
@@ -298,10 +337,27 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
     let palette = app.palette;
     let locale = app.locale;
     let narrow = rect.width() < NARROW_CAPSULE;
-    let count = if narrow { 3 } else { 5 };
+    let ids = shown_buttons(
+        if narrow {
+            &["lyrics", "queue", "volume"]
+        } else {
+            &["mini", "lyrics", "devices", "queue", "volume"]
+        },
+        &app.settings.mcloud_player_hidden,
+    );
+    let count = ids.len();
+    if count == 0 {
+        return rect.right() - PADDING_RIGHT;
+    }
     let left = rect.right() - PADDING_RIGHT - row_width(count);
     let slots = row(left, rect.center().y, count);
-    let speaker = slots[count - 1];
+    let slot = |id: &str| {
+        ids.iter()
+            .position(|shown| *shown == id)
+            .map(|index| slots[index])
+    };
+    let speaker_slot = slot("volume");
+    let speaker = speaker_slot.unwrap_or(slots[count - 1]);
 
     let volume = now
         .map(|now| now.volume_percent)
@@ -310,7 +366,9 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
         Some(fraction) => (fraction * 100.0).round() as u8,
         None => volume,
     };
-    let adjustable = !app.soloist_waiting() && now.is_none_or(|now| now.can_set_volume);
+    let adjustable = speaker_slot.is_some()
+        && !app.soloist_waiting()
+        && now.is_none_or(|now| now.can_set_volume);
     // The capsule grows leftward out of the speaker, 8 points past it.
     let capsule = Rect::from_min_size(
         pos2(
@@ -324,7 +382,7 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
     let open_id = Id::new("mcloud-volume-open");
     let hover_start_id = Id::new("mcloud-volume-hover-start");
     let was_open = ui.data(|data| data.get_temp::<bool>(open_id).unwrap_or(false));
-    let on_speaker = pointer.is_some_and(|at| speaker.contains(at));
+    let on_speaker = speaker_slot.is_some() && pointer.is_some_and(|at| speaker.contains(at));
     let speaker_ready = if on_speaker {
         if was_open {
             true
@@ -367,65 +425,76 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
     let faded = |color: Color32| color.gamma_multiply(1.0 - reveal);
     if reveal < 1.0 {
         let enabled = !open;
-        let (lyrics_slot, queue_slot) = if narrow {
-            (slots[0], slots[1])
-        } else {
+        if let Some(mini_slot) = slot("mini") {
             let mini = app.settings.winamp_window;
             let response = button(
                 ui,
-                slots[0],
+                mini_slot,
                 Icon::McloudPopup,
                 ICON,
-                faded(if mini { palette.accent } else { NORMAL }),
+                faded(if mini { palette.accent } else { normal() }),
                 &gettext(locale, "Mini player"),
             );
             if response.clicked() && enabled {
                 app.actions.push(Action::ToggleWinampWindow);
             }
+        }
 
+        if let Some(devices_slot) = slot("devices") {
             let remote = now.is_some_and(|now| !now.local) && !app.targets_own_soloist();
             let devices_open = remote || app.show_devices;
             let response = button(
                 ui,
-                slots[2],
+                devices_slot,
                 Icon::McloudDevices,
                 ICON,
-                faded(if devices_open { palette.accent } else { NORMAL }),
+                faded(if devices_open {
+                    palette.accent
+                } else {
+                    normal()
+                }),
                 &gettext(locale, "Connect to a device"),
             );
             ui.ctx().data_mut(|data| {
-                data.insert_temp(Id::new(crate::ui::devices::BUTTON_RECT_ID), response.rect)
+                data.insert_temp(Id::new(crate::ui::devices::BUTTON_RECT_ID), response.rect);
             });
             if response.clicked() && enabled {
                 app.actions.push(Action::ToggleDevicesPopup);
             }
-            (slots[1], slots[3])
-        };
-
-        let lyrics_open = app.show_lyrics_panel || app.lyrics_fullscreen.is_some();
-        let response = button(
-            ui,
-            lyrics_slot,
-            Icon::McloudLyrics,
-            ICON,
-            faded(if lyrics_open { palette.accent } else { NORMAL }),
-            &gettext(locale, "Lyrics"),
-        );
-        if response.clicked() && enabled {
-            app.actions.push(Action::ToggleLyricsPanel);
         }
 
-        let queue_open = app.show_queue_panel || matches!(app.page(), Page::Queue);
-        let response = button(
-            ui,
-            queue_slot,
-            Icon::McloudQueue,
-            ICON,
-            faded(if queue_open { palette.accent } else { NORMAL }),
-            &gettext(locale, "Queue"),
-        );
-        if response.clicked() && enabled {
-            app.actions.push(Action::ToggleQueuePanel);
+        if let Some(lyrics_slot) = slot("lyrics") {
+            let lyrics_open = app.show_lyrics_panel || app.lyrics_fullscreen.is_some();
+            let response = button(
+                ui,
+                lyrics_slot,
+                Icon::McloudLyrics,
+                ICON,
+                faded(if lyrics_open {
+                    palette.accent
+                } else {
+                    normal()
+                }),
+                &gettext(locale, "Lyrics"),
+            );
+            if response.clicked() && enabled {
+                app.actions.push(Action::ToggleLyricsPanel);
+            }
+        }
+
+        if let Some(queue_slot) = slot("queue") {
+            let queue_open = app.show_queue_panel || matches!(app.page(), Page::Queue);
+            let response = button(
+                ui,
+                queue_slot,
+                Icon::McloudQueue,
+                ICON,
+                faded(if queue_open { palette.accent } else { normal() }),
+                &gettext(locale, "Queue"),
+            );
+            if response.clicked() && enabled {
+                app.actions.push(Action::ToggleQueuePanel);
+            }
         }
     }
 
@@ -433,6 +502,9 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
         volume_capsule(app, ui, capsule, reveal, shown, now);
     }
 
+    if speaker_slot.is_none() {
+        return left;
+    }
     let icon = match shown {
         0 => Icon::VolumeX,
         1..=33 => Icon::McloudVolume1,
@@ -444,7 +516,7 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
     } else {
         gettext(locale, "Mute")
     };
-    let response = button(ui, speaker, icon, ICON, NORMAL, &label);
+    let response = button(ui, speaker, icon, ICON, normal(), &label);
     if adjustable {
         // The wheel steps the volume as the ear hears it: in equal steps of
         // its square root, never less than a point.
@@ -491,18 +563,18 @@ fn volume_capsule(
     painter.rect_filled(
         visible,
         corner,
-        Color32::from_white_alpha((26.0 * reveal) as u8),
+        crate::ui::mcloud::ink((26.0 * reveal) as u8),
     );
     painter.rect_stroke(
         visible,
         corner,
-        Stroke::new(1.0, Color32::from_white_alpha((31.0 * reveal) as u8)),
+        Stroke::new(1.0, crate::ui::mcloud::ink((31.0 * reveal) as u8)),
         StrokeKind::Inside,
     );
     painter.hline(
         (visible.left() + VOLUME.y / 2.0)..=(visible.right() - VOLUME.y / 2.0),
         visible.top() + 1.0,
-        Stroke::new(1.0, Color32::from_white_alpha((71.0 * reveal) as u8)),
+        Stroke::new(1.0, crate::ui::mcloud::ink((71.0 * reveal) as u8)),
     );
     // The track, between 16 points from the left and 40 from the right.
     let track = Rect::from_min_max(
@@ -547,21 +619,27 @@ fn volume_capsule(
     painter.rect_filled(
         track,
         track_corner,
-        Color32::from_white_alpha((77.0 * reveal) as u8),
+        crate::ui::mcloud::ink((77.0 * reveal) as u8),
     );
     let mut filled = track;
     filled.set_right(track.left() + track.width() * level);
-    painter.rect_filled(filled, track_corner, Color32::WHITE.gamma_multiply(reveal));
+    painter.rect_filled(
+        filled,
+        track_corner,
+        super::tone(Color32::WHITE, Color32::from_rgb(0x33, 0x33, 0x33)).gamma_multiply(reveal),
+    );
 }
 
 /// Words over the glass carry mcloud's soft shadow (0 1px 6px #0008),
 /// approximated by a faint copy a point lower.
 fn shadowed(ui: &egui::Ui, pos: Pos2, galley: std::sync::Arc<egui::Galley>, color: Color32) {
-    ui.painter().galley(
-        pos + vec2(0.0, 1.0),
-        galley.clone(),
-        Color32::from_black_alpha(90),
-    );
+    if super::is_dark() {
+        ui.painter().galley(
+            pos + vec2(0.0, 1.0),
+            galley.clone(),
+            Color32::from_black_alpha(90),
+        );
+    }
     ui.painter().galley(pos, galley, color);
 }
 
@@ -607,7 +685,7 @@ fn display(
 
     let side = inner.height();
     let art = Rect::from_min_size(inner.min, Vec2::splat(side));
-    let art_response = ui.interact(art, Id::new("mcloud-player-art"), Sense::click());
+    let art_response = ui.interact(art, Id::new("mcloud-player-art"), Sense::click_and_drag());
     ui.painter().add(
         egui::epaint::Shadow {
             offset: [0, 1],
@@ -638,6 +716,7 @@ fn display(
             .rect_filled(art, CornerRadius::same(5), Color32::from_black_alpha(140));
         theme::paint_icon(ui, Icon::McloudExpand, art, side * 0.55, Color32::WHITE);
     }
+    let art_dragged = art_response.drag_started_by(egui::PointerButton::Primary);
     if art_response
         .on_hover_text(gettext(locale, "Full screen lyrics"))
         .clicked()
@@ -653,7 +732,11 @@ fn display(
             more,
             Icon::McloudMore,
             20.0,
-            Color32::from_rgb(0xe0, 0xe0, 0xe0).gamma_multiply(fade),
+            super::tone(
+                Color32::from_rgb(0xe0, 0xe0, 0xe0),
+                Color32::from_rgb(0x33, 0x33, 0x33),
+            )
+            .gamma_multiply(fade),
             &gettext(locale, "More"),
         );
         let context = app.editable_context_playlist();
@@ -666,7 +749,11 @@ fn display(
     let text_left = art.right() + 9.0;
     let text_right = more.left() - 4.0;
     let width = (text_right - text_left).max(0.0);
-    let title_color = Color32::from_rgb(0xf5, 0xf5, 0xf5).gamma_multiply(fade);
+    let title_color = super::tone(
+        Color32::from_rgb(0xf5, 0xf5, 0xf5),
+        Color32::from_rgb(0x1d, 0x1d, 0x1f),
+    )
+    .gamma_multiply(fade);
     let title = widgets::ellipsized(
         ui,
         &now.title,
@@ -680,8 +767,27 @@ fn display(
         title.size(),
     );
     let title_response = ui
-        .interact(title_rect, Id::new("mcloud-player-title"), Sense::click())
+        .interact(
+            title_rect,
+            Id::new("mcloud-player-title"),
+            Sense::click_and_drag(),
+        )
         .on_hover_cursor(egui::CursorIcon::PointingHand);
+    // The artwork and the title drag the playing song to a playlist or the queue.
+    if (art_dragged || title_response.drag_started_by(egui::PointerButton::Primary))
+        && let Some(item) = app.now_playing_item()
+    {
+        egui::DragAndDrop::set_payload(
+            ui.ctx(),
+            crate::model::DragTrack {
+                title: item.name().to_string(),
+                image: app.item_image(&item, 64),
+                items: vec![item],
+                from: None,
+                source_playlist: None,
+            },
+        );
+    }
     shadowed(ui, title_rect.min, title, title_color);
     if title_response.clicked() {
         if let Some(id) = &now.album_id {
@@ -704,7 +810,10 @@ fn display(
             let color = if saved {
                 palette.accent
             } else {
-                Color32::from_rgb(0x9a, 0x9a, 0x9a)
+                super::tone(
+                    Color32::from_rgb(0x9a, 0x9a, 0x9a),
+                    Color32::from_rgb(0x8e, 0x8e, 0x93),
+                )
             };
             let star_icon = if saved {
                 Icon::McloudStarFilled
@@ -738,7 +847,7 @@ fn display(
         ui,
         &subtitle(now),
         subtitle_rect,
-        Color32::from_white_alpha(208).gamma_multiply(fade),
+        crate::ui::mcloud::ink(208).gamma_multiply(fade),
         ui.rect_contains_pointer(lcd),
     );
     let artists_with_id: Vec<_> = now.artists.iter().filter(|a| a.id.is_some()).collect();
@@ -797,23 +906,31 @@ fn display(
         .seek_preview
         .map_or(position, |fraction| (fraction * duration as f32) as u32);
     if scrubbing > 0.0 {
-        let color = Color32::from_rgb(0xd4, 0xd4, 0xd4).gamma_multiply(scrubbing);
+        let color = super::tone(
+            Color32::from_rgb(0xd4, 0xd4, 0xd4),
+            Color32::from_rgb(0x3d, 0x3d, 0x3d),
+        )
+        .gamma_multiply(scrubbing);
         let y = lcd.bottom() - 19.0 - 8.0;
-        ui.painter().text(
-            pos2(lcd.left() + 1.0, y),
-            Align2::LEFT_CENTER,
-            util::format_duration_ms(shown_position),
-            theme::semibold(13.0),
+        rolling_time(
+            ui,
+            Id::new("mcloud-time-elapsed"),
+            &util::format_duration_ms(shown_position),
+            lcd.left() + 1.0,
+            false,
+            y,
             color,
         );
-        ui.painter().text(
-            pos2(lcd.right() - 1.0, y),
-            Align2::RIGHT_CENTER,
-            format!(
+        rolling_time(
+            ui,
+            Id::new("mcloud-time-remaining"),
+            &format!(
                 "-{}",
                 util::format_duration_ms(duration.saturating_sub(shown_position))
             ),
-            theme::semibold(13.0),
+            lcd.right() - 1.0,
+            true,
+            y,
             color,
         );
     }
@@ -838,6 +955,116 @@ fn subtitle(now: &NowPlaying) -> String {
     } else {
         format!("{lead} — {}", now.album_name)
     }
+}
+
+/// How far along its 0.32s a changing digit is, and how far it has moved
+/// (mcloud's `cubic-bezier(.2,.8,.2,1)`, approximated by an ease-out).
+fn digit_progress(elapsed: f64) -> f32 {
+    let t = (elapsed / 0.32).clamp(0.0, 1.0) as f32;
+    1.0 - (1.0 - t).powi(3)
+}
+
+/// The digits that changed between two times, with which way they roll: up as
+/// time grows, down when it shrinks.
+fn changed_digits(old: &str, new: &str) -> Vec<bool> {
+    let (old_len, new_len) = (old.chars().count(), new.chars().count());
+    new.chars()
+        .enumerate()
+        .map(|(index, ch)| {
+            // Aligned at the end, so 9:59 to 10:00 keeps its columns.
+            let back = new_len - index;
+            old_len < back || old.chars().nth(old_len - back) != Some(ch)
+        })
+        .collect()
+}
+
+/// A time whose changing digits roll: the new one rises into place while the
+/// old one leaves, as in Apple Music.
+fn rolling_time(
+    ui: &egui::Ui,
+    id: Id,
+    text: &str,
+    x: f32,
+    from_right: bool,
+    y: f32,
+    color: Color32,
+) {
+    #[derive(Clone)]
+    struct Roll {
+        shown: String,
+        before: String,
+        changed_at: f64,
+    }
+    let now = ui.input(|input| input.time);
+    let mut roll = ui
+        .data(|data| data.get_temp::<Roll>(id))
+        .unwrap_or_else(|| Roll {
+            shown: text.to_string(),
+            before: text.to_string(),
+            changed_at: f64::NEG_INFINITY,
+        });
+    if roll.shown != text {
+        roll.before = std::mem::replace(&mut roll.shown, text.to_string());
+        roll.changed_at = now;
+    }
+    let elapsed = now - roll.changed_at;
+    let progress = if crate::motion::reduced(ui.ctx()) {
+        1.0
+    } else {
+        digit_progress(elapsed)
+    };
+    if progress < 1.0 {
+        ui.ctx().request_repaint();
+    }
+    let font = theme::semibold(13.0);
+    let digit_width = |ch: char| {
+        ui.painter()
+            .layout_no_wrap(ch.to_string(), font.clone(), color)
+            .size()
+            .x
+    };
+    let widths: Vec<f32> = text.chars().map(digit_width).collect();
+    let total: f32 = widths.iter().sum();
+    let mut left = if from_right { x - total } else { x };
+    let height = ui
+        .painter()
+        .layout_no_wrap("0".into(), font.clone(), color)
+        .size()
+        .y;
+    let changed = changed_digits(&roll.before, text);
+    let (old_len, new_len) = (roll.before.chars().count(), text.chars().count());
+    // Elapsed grows and remaining shrinks: a down-counting time rolls down.
+    let direction = if from_right { -1.0 } else { 1.0 };
+    for (index, (ch, width)) in text.chars().zip(widths).enumerate() {
+        let center = pos2(left + width / 2.0, y);
+        if changed[index] && progress < 1.0 {
+            let shift = height * 0.6 * direction;
+            ui.painter().text(
+                center + vec2(0.0, shift * (1.0 - progress)),
+                Align2::CENTER_CENTER,
+                ch,
+                font.clone(),
+                color.gamma_multiply(progress),
+            );
+            let back = new_len - index;
+            if old_len >= back
+                && let Some(old) = roll.before.chars().nth(old_len - back)
+            {
+                ui.painter().text(
+                    center - vec2(0.0, shift * progress),
+                    Align2::CENTER_CENTER,
+                    old,
+                    font.clone(),
+                    color.gamma_multiply(1.0 - progress),
+                );
+            }
+        } else {
+            ui.painter()
+                .text(center, Align2::CENTER_CENTER, ch, font.clone(), color);
+        }
+        left += width;
+    }
+    ui.data_mut(|data| data.insert_temp(id, roll));
 }
 
 /// Text that fits stands still; text that does not scrolls while the
@@ -925,11 +1152,18 @@ fn scrubber(
     let track = Rect::from_min_max(pos2(lcd.left(), bottom - height), pos2(lcd.right(), bottom));
     let corner = CornerRadius::same((height / 2.0).round() as u8);
     let painter = ui.painter();
-    painter.rect_filled(track, corner, Color32::from_white_alpha(51));
+    painter.rect_filled(track, corner, crate::ui::mcloud::ink(51));
     let ppp = ui.ctx().pixels_per_point().max(1.0);
     let mut filled = track;
     filled.set_right(track.left() + (track.width() * fraction * ppp).round() / ppp);
-    painter.rect_filled(filled, corner, Color32::from_rgb(0xe9, 0xe9, 0xe9));
+    painter.rect_filled(
+        filled,
+        corner,
+        super::tone(
+            Color32::from_rgb(0xe9, 0xe9, 0xe9),
+            Color32::from_rgb(0x3d, 0x3d, 0x3d),
+        ),
+    );
     response.widget_info(|| {
         egui::WidgetInfo::slider(
             ui.is_enabled(),

@@ -277,6 +277,9 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) -> bool {
         return false;
     }
     if crate::ui::mcloud::active(ui.ctx()) {
+        if !app.settings.mcloud_home_shortcuts {
+            return false;
+        }
         mcloud_shortcuts(app, ui, &tiles);
         return true;
     }

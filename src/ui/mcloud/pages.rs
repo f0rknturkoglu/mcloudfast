@@ -50,7 +50,7 @@ pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
     } else {
         (page_width - size - gap).max(120.0)
     };
-    let half_white = Color32::from_white_alpha(128);
+    let half_white = crate::ui::mcloud::ink(128);
     let title = widgets::ellipsized(
         ui,
         hero.title,
@@ -560,10 +560,9 @@ pub(crate) fn liked_genre_chips(
 /// A filter chip as Spotify draws them under mcloud: 32pt tall, white at
 /// 7%, white with black text when chosen.
 pub(crate) fn chip(ui: &mut egui::Ui, label: &str, active: bool) -> egui::Response {
-    let colour = if active {
-        Color32::BLACK
-    } else {
-        Color32::WHITE
+    let colour = match (active, super::is_dark()) {
+        (true, true) | (false, false) => Color32::BLACK,
+        (true, false) | (false, true) => Color32::WHITE,
     };
     let galley = crate::bidi::layout_line(ui.painter(), label, theme::regular(14.0), colour);
     let size = vec2(galley.size().x + 24.0, 32.0);
@@ -573,10 +572,13 @@ pub(crate) fn chip(ui: &mut egui::Ui, label: &str, active: bool) -> egui::Respon
     });
     if ui.is_rect_visible(rect) {
         let fill = match (active, response.hovered()) {
-            (true, false) => Color32::from_rgb(0xf0, 0xf0, 0xf2),
-            (true, true) => Color32::WHITE,
-            (false, false) => Color32::from_white_alpha(18),
-            (false, true) => Color32::from_white_alpha(31),
+            (true, false) => super::tone(
+                Color32::from_rgb(0xf0, 0xf0, 0xf2),
+                Color32::from_rgb(0x1d, 0x1d, 0x1f),
+            ),
+            (true, true) => super::tone(Color32::WHITE, Color32::from_rgb(0x33, 0x33, 0x33)),
+            (false, false) => crate::ui::mcloud::ink(18),
+            (false, true) => crate::ui::mcloud::ink(31),
         };
         ui.painter().rect_filled(rect, CornerRadius::same(16), fill);
         ui.painter()
@@ -808,9 +810,9 @@ fn pill(
     });
     if ui.is_rect_visible(rect) {
         let fill = if response.hovered() {
-            Color32::from_white_alpha(38)
+            crate::ui::mcloud::ink(38)
         } else {
-            Color32::from_white_alpha(26)
+            crate::ui::mcloud::ink(26)
         };
         let color = if ui.is_enabled() {
             palette.accent
@@ -857,15 +859,15 @@ fn round_button(
     if ui.is_rect_visible(rect) {
         let (fill, color) = if response.hovered() {
             (
-                Color32::from_white_alpha(33),
+                crate::ui::mcloud::ink(33),
                 if color == palette.secondary {
-                    Color32::WHITE
+                    palette.text
                 } else {
                     color
                 },
             )
         } else {
-            (Color32::from_white_alpha(20), color)
+            (crate::ui::mcloud::ink(20), color)
         };
         ui.painter()
             .circle_filled(rect.center(), BUTTON / 2.0, fill);
@@ -877,6 +879,22 @@ fn round_button(
     } else {
         response.on_hover_text(label)
     }
+}
+
+/// The album's one copyright line: the recording's (℗), or else the first.
+fn copyright_line(copyrights: &[crate::api::models::Copyright]) -> Option<String> {
+    let copyright = copyrights
+        .iter()
+        .find(|copyright| copyright.kind == "P")
+        .or_else(|| copyrights.first())?;
+    let core = copyright
+        .text
+        .trim_start_matches(['©', '℗'])
+        .trim_start_matches("(C)")
+        .trim_start_matches("(P)")
+        .trim();
+    let mark = if copyright.kind == "P" { "℗" } else { "©" };
+    Some(format!("{mark} {core}"))
 }
 
 /// The bottom of an album page as mcloud / Apple Music draws it:
@@ -901,7 +919,7 @@ pub(in crate::ui) fn album_footer(
         ui,
         format!("{count_text}, {length_text}"),
         theme::medium(13.0),
-        Color32::from_white_alpha(153),
+        crate::ui::mcloud::ink(153),
     );
 
     // Release date.
@@ -911,38 +929,14 @@ pub(in crate::ui) fn album_footer(
             ui,
             crate::util::format_date(app.locale, date),
             theme::regular(12.0),
-            Color32::from_white_alpha(128),
+            crate::ui::mcloud::ink(128),
         );
     }
 
-    // Copyright lines.
-    let mut credits: Vec<(String, Vec<&str>)> = Vec::new();
-    for copyright in &album.copyrights {
-        let core = copyright
-            .text
-            .trim_start_matches(['©', '℗'])
-            .trim_start_matches("(C)")
-            .trim_start_matches("(P)")
-            .trim()
-            .to_string();
-        let mark = if copyright.kind == "P" { "℗" } else { "©" };
-        match credits.iter_mut().find(|(held, _)| *held == core) {
-            Some((_, marks)) => {
-                if !marks.contains(&mark) {
-                    marks.push(mark);
-                }
-            }
-            None => credits.push((core, vec![mark])),
-        }
-    }
-    for (core, marks) in credits {
+    // One copyright line, the ℗ one, as Music.
+    if let Some(line) = copyright_line(&album.copyrights) {
         ui.add_space(2.0);
-        theme::text(
-            ui,
-            format!("{} {core}", marks.join(" ")),
-            theme::regular(11.0),
-            palette.dim,
-        );
+        theme::text(ui, line, theme::regular(11.0), palette.dim);
     }
 
     // More by artist shelf.
@@ -985,7 +979,7 @@ fn more_by_shelf(
     ui.add_space(32.0);
     // Translators: Heading for other albums by this artist below an album page.
     let title = gettext(app.locale, "More by {artist}").replace("{artist}", artist_name);
-    theme::text(ui, &title, theme::bold(20.0), Color32::WHITE);
+    theme::text(ui, &title, theme::bold(20.0), app.palette.text);
     ui.add_space(12.0);
 
     const CARD_SIZE: f32 = 160.0;
@@ -1068,6 +1062,23 @@ mod tests {
         let top: Vec<String> = sorted.into_iter().map(|(g, _)| g).collect();
 
         assert_eq!(top, vec!["electronic", "ambient", "rock"]);
+    }
+
+    #[test]
+    fn the_album_keeps_one_copyright_line_the_recordings() {
+        let of = |kind: &str, text: &str| crate::api::models::Copyright {
+            kind: kind.into(),
+            text: text.into(),
+        };
+        assert_eq!(
+            super::copyright_line(&[of("C", "(C) 2020 Label"), of("P", "(P) 2020 Label")]),
+            Some("℗ 2020 Label".to_string())
+        );
+        assert_eq!(
+            super::copyright_line(&[of("C", "© 2020 Label")]),
+            Some("© 2020 Label".to_string())
+        );
+        assert_eq!(super::copyright_line(&[]), None);
     }
 
     #[test]

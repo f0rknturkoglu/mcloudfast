@@ -10,6 +10,7 @@ pub mod glass;
 pub mod library;
 pub mod lyrics;
 pub mod mix;
+pub mod now_playing;
 pub mod pages;
 pub mod player;
 pub mod search;
@@ -22,6 +23,46 @@ pub mod topbar;
 pub fn active(ctx: &egui::Context) -> bool {
     ctx.data(|data| data.get_temp::<bool>(active_id()))
         .unwrap_or(false)
+}
+
+/// The appearance and accent of this frame, for the many small colours drawn
+/// where no palette is at hand.
+static DARK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+static ACCENT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0x00fa_2d48);
+
+/// Records the frame's appearance and accent.
+pub(super) fn set_palette(palette: &crate::theme::Palette) {
+    use std::sync::atomic::Ordering::Relaxed;
+    DARK.store(palette.dark, Relaxed);
+    let [r, g, b, _] = palette.accent.to_srgba_unmultiplied();
+    ACCENT.store(u32::from_be_bytes([0, r, g, b]), Relaxed);
+}
+
+/// The accent of this frame.
+pub fn accent() -> egui::Color32 {
+    let [_, r, g, b] = ACCENT
+        .load(std::sync::atomic::Ordering::Relaxed)
+        .to_be_bytes();
+    egui::Color32::from_rgb(r, g, b)
+}
+
+/// Whether this frame is dark.
+pub fn is_dark() -> bool {
+    DARK.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// mcloud's `--am-ink` at `alpha`: white in dark, black in light.
+pub fn ink(alpha: u8) -> egui::Color32 {
+    if is_dark() {
+        egui::Color32::from_white_alpha(alpha)
+    } else {
+        egui::Color32::from_black_alpha(alpha)
+    }
+}
+
+/// A colour with its light counterpart, as mcloud's `--am-*` variables.
+pub fn tone(dark: egui::Color32, light: egui::Color32) -> egui::Color32 {
+    if is_dark() { dark } else { light }
 }
 
 pub(super) fn set_active(ctx: &egui::Context, active: bool) {

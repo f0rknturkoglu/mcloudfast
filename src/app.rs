@@ -585,6 +585,8 @@ pub struct App {
     /// lookup found none, which draws the gradient.
     pub(crate) mix_photos: HashMap<String, Option<String>>,
     mix_photo_pending: HashSet<String>,
+    /// Mix covers worked out before, kept across launches.
+    mix_covers: Vec<crate::ui::mcloud::mix::KnownMix>,
     artwork_colour_order: std::collections::VecDeque<String>,
     accent_pending: HashSet<String>,
 
@@ -743,6 +745,7 @@ pub struct App {
     /// Artists' wide header pictures by artist URI, read with their play
     /// counts.
     pub artist_headers: HashMap<String, String>,
+    pub artist_concerts: HashMap<String, Vec<crate::session_reads::Concert>>,
     /// All sources of each artist's wide header picture by artist URI.
     pub artist_header_sources: HashMap<String, Vec<crate::api::models::Image>>,
     /// Each artist's About sheet, by artist URI.
@@ -990,6 +993,10 @@ fn link_recording(
 
 impl App {
     pub fn new(waker: &Waker, dirs: AppDirs, mut settings: Settings, options: AppOptions) -> Self {
+        let mix_covers = std::fs::read(dirs.cache.join("mix-covers.json"))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default();
         // The legacy password file has no endpoint of its own. Keep the old
         // settings beside it until migration binds that password in the store.
         settings.proxy_password_legacy |= dirs.proxy_secret_file().try_exists().unwrap_or(true);
@@ -1236,6 +1243,7 @@ impl App {
             artwork_colours: HashMap::new(),
             mix_photos: HashMap::new(),
             mix_photo_pending: HashSet::new(),
+            mix_covers,
             artwork_colour_order: std::collections::VecDeque::new(),
             accent_pending: HashSet::new(),
             dialog: None,
@@ -1323,6 +1331,7 @@ impl App {
             user_names: HashMap::new(),
             play_counts: HashMap::new(),
             artist_headers: HashMap::new(),
+            artist_concerts: HashMap::new(),
             artist_header_sources: HashMap::new(),
             artist_about: HashMap::new(),
             play_count_reads: HashMap::new(),
@@ -2409,12 +2418,48 @@ impl App {
 
     /// The colours mcloud reads from a picture, asked for the first time
     /// they are wanted, as [`Self::tint_for`] asks for the accent.
+    /// Remembers a worked-out mix cover across launches, the newest 200, so a
+    /// mix seen before draws at once.
+    fn remember_mix_cover(&mut self, url: &str, photo: Option<String>, colour: [u8; 3]) {
+        const MAX_MIX_COVERS: usize = 200;
+        if self
+            .mix_covers
+            .iter()
+            .any(|cover| cover.url == url && cover.photo == photo && cover.colour == colour)
+        {
+            return;
+        }
+        self.mix_covers.retain(|cover| cover.url != url);
+        self.mix_covers.push(crate::ui::mcloud::mix::KnownMix {
+            url: url.to_string(),
+            photo,
+            colour,
+        });
+        if self.mix_covers.len() > MAX_MIX_COVERS {
+            let excess = self.mix_covers.len() - MAX_MIX_COVERS;
+            self.mix_covers.drain(..excess);
+        }
+        if let Ok(text) = serde_json::to_string(&self.mix_covers) {
+            self.files.write(
+                &self.dirs.cache.join("mix-covers.json"),
+                text,
+                fastframe_file::Access::Default,
+            );
+        }
+    }
+
     /// A mix's cover, once its photo and colour are known; asks for what is
     /// missing. `None` draws Spotify's image meanwhile, or for any other image.
     pub(crate) fn mix_cover(&mut self, url: &str) -> Option<crate::ui::mcloud::mix::MixCover> {
         use crate::ui::mcloud::mix::{MixCover, MixSource, MixStyle, mix_colours, mix_source};
         let source = mix_source(url)?;
+        let known = self
+            .mix_covers
+            .iter()
+            .find(|cover| cover.url == url)
+            .map(|cover| (cover.photo.clone(), cover.colour));
         let photo = match source {
+            _ if known.is_some() => known.as_ref().and_then(|known| known.0.clone()),
             MixSource::None => None,
             MixSource::Photo(photo) => Some(photo),
             MixSource::Artist(id) | MixSource::Track(id) if !self.mix_photos.contains_key(url) => {
@@ -2430,12 +2475,26 @@ impl App {
             }
             MixSource::Artist(_) | MixSource::Track(_) => self.mix_photos.get(url)?.clone(),
         };
-        let colours = self.artwork_colours(Some(photo.as_deref().unwrap_or(url)))?;
-        let (band, from, to) = mix_colours(colours.page);
-        let style = match &photo {
-            None => MixStyle::Gradient,
-            Some(_) if url.contains("/img/radio/") => MixStyle::Station,
-            Some(_) => MixStyle::Band,
+        let colour = match known {
+            Some((_, colour)) => colour,
+            None => {
+                let colour = self
+                    .artwork_colours(Some(photo.as_deref().unwrap_or(url)))?
+                    .page;
+                self.remember_mix_cover(url, photo.clone(), colour);
+                colour
+            }
+        };
+        let (band, from, to) = mix_colours(colour);
+        let style = match (&photo, self.settings.mcloud_mix_style) {
+            (None, _) | (_, crate::settings::McloudMixStyle::Gradient) => MixStyle::Gradient,
+            (_, crate::settings::McloudMixStyle::Band) => MixStyle::Band,
+            (_, crate::settings::McloudMixStyle::Station) => MixStyle::Station,
+            (_, crate::settings::McloudMixStyle::Photo) => MixStyle::Photo,
+            (_, crate::settings::McloudMixStyle::Apple) if url.contains("/img/radio/") => {
+                MixStyle::Station
+            }
+            (_, crate::settings::McloudMixStyle::Apple) => MixStyle::Band,
         };
         Some(MixCover {
             style,
@@ -7043,6 +7102,7 @@ impl App {
     }
 
     fn search_failed(&mut self, part: &str, error: impl std::fmt::Display) {
+        self.search.previous = None;
         let message = format!("{part}: {error}");
         self.search.error = Some(match self.search.error.take() {
             Some(previous) => format!("{previous}\n{message}"),
@@ -7111,6 +7171,10 @@ impl App {
         result: Result<crate::session_reads::PageExtras, String>,
     ) {
         if let Ok(extras) = &result {
+            if !extras.concerts.is_empty() {
+                self.artist_concerts
+                    .insert(uri.clone(), extras.concerts.clone());
+            }
             if let Some(url) = &extras.header_image {
                 self.artist_headers.insert(uri.clone(), url.clone());
                 self.artwork_colours(Some(url));
@@ -8755,6 +8819,7 @@ impl App {
                             .collect();
                         self.request_contains(uris);
                         self.remember_search(&query);
+                        self.search.previous = Some(results.clone());
                         self.search.results = Loadable::Loaded(results);
                         self.search.results_serial = serial;
                         self.show_search_playlists();
@@ -26507,6 +26572,7 @@ mod tests {
             Ok(crate::session_reads::PageExtras {
                 counts: HashMap::from([("spotify:track:t".to_string(), 5)]),
                 header_image: None,
+                concerts: Vec::new(),
                 header_sources: Vec::new(),
                 about: None,
             }),

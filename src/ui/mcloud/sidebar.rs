@@ -12,6 +12,7 @@ use crate::api::models::{Playlist, pick_image};
 use crate::app::App;
 use crate::i18n::gettext;
 use crate::model::{Action, Page};
+use crate::settings::McloudSideLists;
 use crate::theme::{self, Icon};
 
 const ROW_HEIGHT: f32 = 32.0;
@@ -25,13 +26,21 @@ const ICON_GAP: f32 = 10.0;
 const TOP: f32 = 76.0;
 const SIDE_PADDING: f32 = 10.0;
 const ACCOUNT_HEIGHT: f32 = 54.0;
-/// The recently played playlists listed under the pinned ones while the
-/// list is short, as mcloud's default.
-const RECENT_PLAYLISTS: usize = 5;
 
-const TEXT: Color32 = Color32::from_rgb(0xf2, 0xf2, 0xf2);
-const HEADING: Color32 = Color32::from_rgba_premultiplied(92, 92, 92, 92);
-const QUIET: Color32 = Color32::from_rgba_premultiplied(140, 140, 140, 140);
+fn text_colour() -> Color32 {
+    super::tone(
+        Color32::from_rgb(0xf2, 0xf2, 0xf2),
+        Color32::from_rgb(0x1d, 0x1d, 0x1f),
+    )
+}
+
+fn heading_colour() -> Color32 {
+    super::ink(92)
+}
+
+fn quiet() -> Color32 {
+    super::ink(140)
+}
 
 /// Checkpoints (in seconds) after `playing_context_uri` changes at which the
 /// sidebar checks whether the newly playing playlist has moved to the top of
@@ -164,7 +173,12 @@ fn expanded_rows(
 /// The sidebar's material: #252525 at 76% over the page beside it, so a
 /// coloured page shows through as a deep version of itself.
 fn material(under: Color32) -> Color32 {
-    under.lerp_to_gamma(Color32::from_rgb(0x25, 0x25, 0x25), 0.76)
+    if super::is_dark() {
+        under.lerp_to_gamma(Color32::from_rgb(0x25, 0x25, 0x25), 0.76)
+    } else {
+        // Music's light sidebar: #e2e2e2 at 61%.
+        under.lerp_to_gamma(Color32::from_rgb(0xe2, 0xe2, 0xe2), 0.61)
+    }
 }
 
 /// The edge glow along the right side of the sidebar, matching mcloud's `#am-sidebar-glow`
@@ -258,7 +272,9 @@ fn paint_sidebar_glow(
 }
 
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
-    let tint = super::super::page_tint(app).or_else(|| app.now_playing_tint());
+    // Over the page beside it: the page's colour when it has one. What is
+    // playing elsewhere does not colour the sidebar.
+    let tint = super::super::page_tint(app);
     let under = tint.unwrap_or(app.palette.window);
     // The artist page tints the whole window (mcloud's `am-tinted`): the
     // sidebar is its colour at 34% in #161616, 85% over the page, and has
@@ -267,7 +283,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let (fill, tint) = match &page {
         Page::Artist(id) => {
             let (top, _) = super::artist::page_colours(app, id);
-            let mixed = top.lerp_to_gamma(Color32::from_rgb(0x16, 0x16, 0x16), 0.66);
+            let mixed = top.lerp_to_gamma(
+                super::tone(
+                    Color32::from_rgb(0x16, 0x16, 0x16),
+                    Color32::from_rgb(0xf2, 0xf2, 0xf2),
+                ),
+                0.66,
+            );
             (mixed.lerp_to_gamma(top, 0.15), None)
         }
         _ => (material(under), tint),
@@ -315,7 +337,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             ui.painter().vline(
                 edge_x - 0.5,
                 top_y..=bottom_y,
-                Stroke::new(1.0, Color32::from_white_alpha(10)),
+                Stroke::new(1.0, crate::ui::mcloud::ink(10)),
             );
             let list = area.with_max_y(area.bottom() - ACCOUNT_HEIGHT);
             let scroll_anim_id = egui::Id::new("mcloud-sidebar-collapse-anim");
@@ -379,7 +401,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 ui.painter().hline(
                     sticky_rect.x_range(),
                     sticky_rect.bottom() - 0.5,
-                    Stroke::new(1.0, Color32::from_white_alpha(15)),
+                    Stroke::new(1.0, crate::ui::mcloud::ink(15)),
                 );
                 let add = gettext(app.locale, "Create a playlist");
                 let show_less = gettext(app.locale, "Show Less");
@@ -409,7 +431,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 ui.painter().hline(
                     area.x_range(),
                     list.bottom() - 0.5,
-                    Stroke::new(1.0, Color32::from_white_alpha(18)),
+                    Stroke::new(1.0, crate::ui::mcloud::ink(18)),
                 );
             }
 
@@ -550,9 +572,18 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
 
     let add = gettext(locale, "Create a playlist");
     let show_less = gettext(locale, "Show Less");
+    let heading_label = match app.settings.mcloud_side_lists {
+        McloudSideLists::All => gettext(locale, "Playlists").into_owned(),
+        McloudSideLists::Own => format!(
+            "{} · {}",
+            gettext(locale, "Playlists"),
+            gettext(locale, "Yours")
+        ),
+        McloudSideLists::Spotify => format!("{} · Spotify", gettext(locale, "Playlists")),
+    };
     let (less, create) = heading(
         ui,
-        &gettext(locale, "Playlists"),
+        &heading_label,
         Some((expanded.then_some(show_less.as_ref()), add.as_ref())),
         sticky_heading_y,
     );
@@ -592,15 +623,15 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
         ui.painter().rect_filled(
             rect,
             CornerRadius::same(ROW_RADIUS),
-            Color32::from_white_alpha(20),
+            crate::ui::mcloud::ink(20),
         );
         let lead = Rect::from_min_size(
             pos2(rect.left() + 14.0, rect.center().y - ART_SIZE / 2.0),
             Vec2::splat(ART_SIZE),
         );
         ui.painter()
-            .rect_filled(lead, CornerRadius::same(4), Color32::from_white_alpha(20));
-        theme::paint_icon(ui, Icon::McloudMusic, lead, 14.0, QUIET);
+            .rect_filled(lead, CornerRadius::same(4), crate::ui::mcloud::ink(20));
+        theme::paint_icon(ui, Icon::McloudMusic, lead, 14.0, quiet());
         let field_rect = Rect::from_min_max(
             pos2(lead.right() + 8.0, rect.top() + 2.0),
             pos2(rect.right() - 8.0, rect.bottom() - 2.0),
@@ -615,7 +646,7 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
             egui::TextEdit::singleline(&mut draft)
                 .id(edit_id)
                 .font(theme::medium(13.0))
-                .text_color(TEXT)
+                .text_color(text_colour())
                 .frame(egui::Frame::NONE)
                 .desired_width(field_rect.width()),
         );
@@ -655,9 +686,17 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
         }
     }
 
-    let Some(all) = app.library.playlists.get() else {
+    let Some(library) = app.library.playlists.get() else {
         return;
     };
+    let filtered;
+    let all: &[Playlist] = if app.settings.mcloud_side_lists == McloudSideLists::All {
+        library
+    } else {
+        filtered = shown_playlists(library, app.settings.mcloud_side_lists, app.user_id());
+        &filtered
+    };
+    let recent_count = usize::from(app.settings.mcloud_recent_playlists);
 
     // Item #22: Recents polling schedule (0.1s, 0.4s, 1.5s, 5s, 15s) on playing context
     // change, and deferring background reorders while pointer/focus is inside the list.
@@ -711,7 +750,7 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
         all,
         &app.settings.pinned_contexts,
         &sync.displayed_recents,
-        false,
+        recent_count,
     );
     let collapsed_count = collapsed_order.len();
     let more = !expanded && collapsed_count < all.len();
@@ -737,6 +776,7 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
     let mut open = None;
     let mut any_hovered_or_focused = false;
     let mut toggle = None;
+    let mut drop_on = None;
     for (slot, side_row) in rows.iter().enumerate() {
         let key = match side_row {
             SideRow::Playlist { index, .. } => all[*index].uri.as_str(),
@@ -792,6 +832,22 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
                 if response.clicked() {
                     open = Some(Page::Playlist(playlist.id.clone()));
                 }
+                // A song dragged here joins the playlist, where it may.
+                if app.can_edit_playlist(playlist)
+                    && egui::DragAndDrop::has_payload_of_type::<crate::model::DragTrack>(ui.ctx())
+                {
+                    if response.contains_pointer() {
+                        ui.painter().rect_stroke(
+                            response.rect,
+                            CornerRadius::same(ROW_RADIUS),
+                            egui::Stroke::new(1.5, accent()),
+                            egui::StrokeKind::Inside,
+                        );
+                    }
+                    if let Some(track) = response.dnd_release_payload::<crate::model::DragTrack>() {
+                        drop_on = Some((playlist.id.clone(), playlist.name.clone(), track));
+                    }
+                }
                 response
             }
             SideRow::Folder {
@@ -831,6 +887,13 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
     if let Some(id) = toggle {
         app.actions.push(Action::ToggleLibraryFolder(id));
     }
+    if let Some((playlist_id, playlist_name, track)) = drop_on {
+        app.actions.push(Action::AddToPlaylist {
+            playlist_id,
+            playlist_name,
+            items: track.items.clone(),
+        });
+    }
     ui.data_mut(|d| d.insert_temp(list_active_id, any_hovered_or_focused));
 
     if more {
@@ -858,13 +921,12 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
 
 /// The indices of the playlists to list, in order: pinned ones, then the
 /// rest by Recents, as Spotify sorts them: the recently played first, then
-/// the others in library order. Unless `all` is asked for, only
-/// [`RECENT_PLAYLISTS`] follow the pinned ones.
+/// the others in library order. `count` of them follow the pinned ones.
 fn playlist_order(
     playlists: &[Playlist],
     pinned: &[String],
     recent: &[String],
-    all: bool,
+    count: usize,
 ) -> Vec<usize> {
     let position = |uri: &str| playlists.iter().position(|playlist| playlist.uri == uri);
     let mut order: Vec<usize> = Vec::new();
@@ -873,11 +935,7 @@ fn playlist_order(
             order.push(index);
         }
     }
-    let shown = if all {
-        playlists.len()
-    } else {
-        (order.len() + RECENT_PLAYLISTS).min(playlists.len())
-    };
+    let shown = (order.len() + count).min(playlists.len());
     let by_recents = recent
         .iter()
         .filter_map(|uri| position(uri))
@@ -891,6 +949,23 @@ fn playlist_order(
         }
     }
     order
+}
+
+/// The playlists the setting lists: the account's own or Spotify's.
+fn shown_playlists(
+    library: &[Playlist],
+    lists: McloudSideLists,
+    user: Option<&str>,
+) -> Vec<Playlist> {
+    library
+        .iter()
+        .filter(|playlist| match lists {
+            McloudSideLists::All => true,
+            McloudSideLists::Own => user.is_some_and(|user| playlist.owned_by(user)),
+            McloudSideLists::Spotify => playlist.owner.id.as_deref() == Some("spotify"),
+        })
+        .cloned()
+        .collect()
 }
 
 /// A section heading. With `buttons`, it carries "Show Less" (when given)
@@ -920,7 +995,7 @@ fn paint_heading_in_rect(
         egui::Align2::LEFT_CENTER,
         label,
         theme::semibold(11.0),
-        HEADING,
+        heading_colour(),
     );
     let Some((less, add)) = buttons else {
         return (false, false);
@@ -934,20 +1009,24 @@ fn paint_heading_in_rect(
     plus_response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, add));
     if plus_response.hovered() {
         ui.painter()
-            .rect_filled(plus, CornerRadius::same(6), Color32::from_white_alpha(20));
+            .rect_filled(plus, CornerRadius::same(6), crate::ui::mcloud::ink(20));
     }
     theme::paint_icon(
         ui,
         Icon::McloudPlus,
         plus,
         15.0,
-        if plus_response.hovered() { TEXT } else { QUIET },
+        if plus_response.hovered() {
+            text_colour()
+        } else {
+            quiet()
+        },
     );
     let mut less_clicked = false;
     if let Some(less) = less {
         let galley = ui
             .painter()
-            .layout_no_wrap(less.to_owned(), theme::semibold(11.0), QUIET);
+            .layout_no_wrap(less.to_owned(), theme::semibold(11.0), quiet());
         let pill = Rect::from_min_size(
             pos2(
                 plus.left() - 4.0 - galley.size().x - 16.0,
@@ -958,9 +1037,9 @@ fn paint_heading_in_rect(
         let response = ui.interact(pill, ui.id().with((id_salt, "less", label)), Sense::click());
         response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, less));
         let (fill, color) = if response.hovered() {
-            (Color32::from_white_alpha(31), TEXT)
+            (crate::ui::mcloud::ink(31), text_colour())
         } else {
-            (Color32::from_white_alpha(15), QUIET)
+            (crate::ui::mcloud::ink(15), quiet())
         };
         ui.painter().rect_filled(pill, CornerRadius::same(10), fill);
         ui.painter().galley(
@@ -1004,9 +1083,9 @@ fn row_shifted(
     let rect = alloc_rect.translate(vec2(0.0, y_shift));
     if ui.is_rect_visible(rect) {
         let fill = if active {
-            Color32::from_white_alpha(31)
+            crate::ui::mcloud::ink(31)
         } else if response.hovered() {
-            Color32::from_white_alpha(13)
+            crate::ui::mcloud::ink(13)
         } else {
             Color32::TRANSPARENT
         };
@@ -1023,17 +1102,14 @@ fn row_shifted(
             pos2(lead_left, rect.center().y - lead_size / 2.0),
             Vec2::splat(lead_size),
         );
-        let mut color = TEXT;
+        let mut color = text_colour();
         match leading {
             Leading::Icon(icon) => {
                 icon.image(accent(), ICON_SIZE).paint_at(ui, lead);
             }
             Leading::Art(url, art) => {
-                ui.painter().rect_filled(
-                    lead,
-                    CornerRadius::same(4),
-                    Color32::from_white_alpha(20),
-                );
+                ui.painter()
+                    .rect_filled(lead, CornerRadius::same(4), crate::ui::mcloud::ink(20));
                 crate::ui::widgets::paint_cover(
                     ui,
                     &crate::theme::Palette::mcloud(),
@@ -1045,15 +1121,12 @@ fn row_shifted(
                 );
             }
             Leading::Chevron => {
-                color = QUIET;
-                theme::paint_icon(ui, Icon::McloudChevron, lead, 12.0, QUIET);
+                color = quiet();
+                theme::paint_icon(ui, Icon::McloudChevron, lead, 12.0, quiet());
             }
             Leading::Folder => {
-                ui.painter().rect_filled(
-                    lead,
-                    CornerRadius::same(4),
-                    Color32::from_white_alpha(20),
-                );
+                ui.painter()
+                    .rect_filled(lead, CornerRadius::same(4), crate::ui::mcloud::ink(20));
                 theme::paint_icon(ui, Icon::McloudFolder, lead, 14.0, accent());
             }
         }
@@ -1095,7 +1168,7 @@ fn row_shifted(
             RowEnd::Playing => {
                 theme::paint_icon(ui, Icon::McloudVolume2, end_rect, 14.0, accent());
             }
-            RowEnd::Pinned => theme::paint_icon(ui, Icon::Pin, end_rect, 12.0, QUIET),
+            RowEnd::Pinned => theme::paint_icon(ui, Icon::Pin, end_rect, 12.0, quiet()),
             RowEnd::Folder { open } => {
                 let angle = if open {
                     std::f32::consts::FRAC_PI_2
@@ -1103,7 +1176,7 @@ fn row_shifted(
                     0.0
                 };
                 Icon::McloudChevron
-                    .image(QUIET, 11.0)
+                    .image(quiet(), 11.0)
                     .rotate(angle, Vec2::splat(0.5))
                     .paint_at(
                         ui,
@@ -1119,9 +1192,9 @@ fn row_shifted(
     response
 }
 
-/// mcloud's accent: its palette is fixed.
+/// mcloud's accent, as the user chose it.
 fn accent() -> Color32 {
-    crate::theme::Palette::mcloud().accent
+    super::accent()
 }
 
 /// The account in the bottom-left corner, as in Apple Music: the chip opens
@@ -1152,7 +1225,7 @@ fn account_row(app: &mut App, ui: &mut egui::Ui) {
     let response = ui.interact(chip, ui.id().with("mcloud-account"), Sense::click());
     if response.hovered() {
         ui.painter()
-            .rect_filled(chip, CornerRadius::same(8), Color32::from_white_alpha(13));
+            .rect_filled(chip, CornerRadius::same(8), crate::ui::mcloud::ink(13));
     }
     let face = Rect::from_center_size(
         pos2(chip.left() + 8.0 + 14.0, chip.center().y),
@@ -1194,14 +1267,14 @@ fn account_row(app: &mut App, ui: &mut egui::Ui) {
         ui,
         &name,
         theme::semibold(13.0),
-        TEXT,
+        text_colour(),
         (chip.right() - 8.0 - face.right() - 10.0).max(0.0),
         1,
     );
     ui.painter().galley(
         pos2(face.right() + 10.0, chip.center().y - galley.size().y / 2.0),
         galley,
-        TEXT,
+        text_colour(),
     );
     if response.clicked() {
         app.actions.push(Action::Open(Page::Settings));
@@ -1221,14 +1294,17 @@ fn account_row(app: &mut App, ui: &mut egui::Ui) {
     });
     if response.hovered() {
         ui.painter()
-            .rect_filled(news, CornerRadius::same(8), Color32::from_white_alpha(13));
+            .rect_filled(news, CornerRadius::same(8), crate::ui::mcloud::ink(13));
     }
     let color = if here {
         accent()
     } else if response.hovered() {
-        TEXT
+        text_colour()
     } else {
-        Color32::from_rgb(0xa9, 0xa9, 0xa9)
+        super::tone(
+            Color32::from_rgb(0xa9, 0xa9, 0xa9),
+            Color32::from_rgb(0x6e, 0x6e, 0x73),
+        )
     };
     theme::paint_icon(ui, Icon::McloudBell, news, 18.0, color);
     theme::focus_ring(ui, &response);
@@ -1248,15 +1324,18 @@ fn account_row(app: &mut App, ui: &mut egui::Ui) {
     let color = if active {
         accent()
     } else if response.hovered() {
-        TEXT
+        text_colour()
     } else {
-        Color32::from_rgb(0xa9, 0xa9, 0xa9)
+        super::tone(
+            Color32::from_rgb(0xa9, 0xa9, 0xa9),
+            Color32::from_rgb(0x6e, 0x6e, 0x73),
+        )
     };
     if active || response.hovered() {
         ui.painter().rect_filled(
             friends,
             CornerRadius::same(8),
-            Color32::from_white_alpha(if active { 20 } else { 13 }),
+            crate::ui::mcloud::ink(if active { 20 } else { 13 }),
         );
     }
     theme::paint_icon(ui, Icon::McloudFriends, friends, 18.0, color);
@@ -1343,19 +1422,19 @@ mod tests {
         let recent: Vec<String> = [7, 2, 4, 9, 1, 3, 5, 8].map(uri).to_vec();
 
         assert_eq!(
-            playlist_order(&playlists, &pinned, &recent, false),
+            playlist_order(&playlists, &pinned, &recent, 5),
             vec![7, 2, 4, 9, 1, 3]
         );
         assert_eq!(
-            playlist_order(&playlists, &pinned, &recent, true),
+            playlist_order(&playlists, &pinned, &recent, playlists.len()),
             vec![7, 2, 4, 9, 1, 3, 5, 8, 0, 6]
         );
         // Nothing played yet: the library's own order fills the list.
         assert_eq!(
-            playlist_order(&playlists, &pinned, &[], false),
+            playlist_order(&playlists, &pinned, &[], 5),
             vec![7, 0, 1, 2, 3, 4]
         );
-        assert_eq!(playlist_order(&playlists[..2], &[], &[], false), vec![0, 1]);
+        assert_eq!(playlist_order(&playlists[..2], &[], &[], 5), vec![0, 1]);
     }
 
     #[test]

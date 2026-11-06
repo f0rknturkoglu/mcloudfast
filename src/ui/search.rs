@@ -54,6 +54,14 @@ fn results_page(app: &mut App, ui: &mut egui::Ui, filter: SearchFilter) {
         ui.add_space(12.0);
     }
     let pending = app.search.catalogue_pending || app.search.playlists_pending;
+    // A new query keeps the last results on screen until its own arrive.
+    if mcloud
+        && matches!(app.search.results, Loadable::Loading)
+        && let Some(previous) = app.search.previous.clone()
+    {
+        super::mcloud::search::results(app, ui, &previous, filter);
+        return;
+    }
     if pending {
         widgets::loading_row(ui, &palette, app.locale);
     }

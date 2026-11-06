@@ -627,7 +627,7 @@ pub(super) fn search_box(app: &mut App, ui: &mut egui::Ui, search_width: f32) {
         ui.painter().vline(
             divider_x,
             (cy - 9.0)..=(cy + 9.0),
-            Stroke::new(1.0, Color32::from_white_alpha(38)),
+            Stroke::new(1.0, crate::ui::mcloud::ink(38)),
         );
         let browse_rect =
             Rect::from_center_size(pos2(pill_rect.right() - 30.0, cy), vec2(36.0, 36.0));
@@ -639,9 +639,9 @@ pub(super) fn search_box(app: &mut App, ui: &mut egui::Ui, search_width: f32) {
             Icon::McloudBrowseDrawer
         };
         let browse_color = if is_browse || browse_resp.hovered() {
-            Color32::WHITE
+            crate::ui::mcloud::tone(Color32::WHITE, Color32::BLACK)
         } else {
-            Color32::from_white_alpha(175)
+            crate::ui::mcloud::ink(175)
         };
         theme::paint_icon(ui, browse_icon, browse_rect, 18.0, browse_color);
         browse_resp.widget_info(|| {

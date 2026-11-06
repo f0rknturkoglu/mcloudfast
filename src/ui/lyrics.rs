@@ -141,7 +141,6 @@ fn repaint_for_lyrics(
 
 pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
-    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
     let fit = super::yielding_panel(
         ui.ctx(),
         "lyrics-panel",
@@ -160,15 +159,6 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 .inner_margin(Margin::symmetric(12, 12)),
         );
     let response = panel.show(ui, |ui| {
-        if mcloud {
-            let sheet = ui.max_rect().expand(12.0);
-            let _ = super::mcloud::glass::paint_menu(ui, sheet, app.settings.mcloud_glass);
-            ui.painter().vline(
-                sheet.left(),
-                sheet.y_range(),
-                egui::Stroke::new(1.0, egui::Color32::from_white_alpha(26)),
-            );
-        }
         let window_controls = super::window_controls_reservation(
             ui.ctx(),
             app.show_queue_panel,
@@ -237,9 +227,8 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
     }
 }
 
-fn contents(app: &mut App, ui: &mut egui::Ui) {
+pub(super) fn contents(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
-    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
     let Some(now) = app.now_playing() else {
         widgets::empty_state(
             ui,
@@ -250,51 +239,6 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
         );
         return;
     };
-    if mcloud {
-        ui.horizontal(|ui| {
-            let art_size = 54.0;
-            let (art_rect, _) =
-                ui.allocate_exact_size(egui::vec2(art_size, art_size), Sense::hover());
-            widgets::paint_cover(
-                ui,
-                &palette,
-                now.art_url.as_deref(),
-                art_rect,
-                8.0,
-                Icon::Music,
-                Some(app.backend.art()),
-            );
-            ui.add_space(10.0);
-            ui.vertical(|ui| {
-                ui.add_space(6.0);
-                let title_galley = widgets::ellipsized(
-                    ui,
-                    &now.title,
-                    theme::semibold(14.0),
-                    palette.text,
-                    ui.available_width(),
-                    1,
-                );
-                let title_pos = ui.cursor().min;
-                ui.painter().galley(title_pos, title_galley, palette.text);
-                ui.add_space(20.0);
-                let artist_galley = widgets::ellipsized(
-                    ui,
-                    &now.subtitle,
-                    theme::regular(12.5),
-                    palette.secondary,
-                    ui.available_width(),
-                    1,
-                );
-                let artist_pos = ui.cursor().min;
-                ui.painter()
-                    .galley(artist_pos, artist_galley, palette.secondary);
-            });
-        });
-        ui.add_space(10.0);
-        ui.separator();
-        ui.add_space(6.0);
-    }
     let lyrics = match &app.lyrics {
         Loadable::NotLoaded | Loadable::Loading => {
             if !app.network_reachable {

@@ -31,7 +31,7 @@ fn fill(hovered: bool) -> Color32 {
 }
 
 fn ring() -> Stroke {
-    Stroke::new(0.5, Color32::from_white_alpha(31))
+    Stroke::new(0.5, crate::ui::mcloud::ink(31))
 }
 
 /// Computes the topbar background opacity progress (`0.0..=1.0`) for `scrolled`.
@@ -71,7 +71,7 @@ fn paint_cursor_glow(painter: &egui::Painter, rect: Rect) {
     let clipped = painter.with_clip_rect(rect);
     for (radius, peak_alpha) in [(28.0, 14.0), (18.0, 22.0), (10.0, 28.0)] {
         let alpha = (peak_alpha * proximity).round() as u8;
-        clipped.circle_filled(pointer, radius, Color32::from_white_alpha(alpha));
+        clipped.circle_filled(pointer, radius, crate::ui::mcloud::ink(alpha));
     }
 }
 
@@ -105,7 +105,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         ui.painter().hline(
             band.x_range(),
             band.bottom(),
-            Stroke::new(1.0, Color32::from_white_alpha((18.0 * progress) as u8)),
+            Stroke::new(1.0, crate::ui::mcloud::ink((18.0 * progress) as u8)),
         );
     }
 
@@ -114,7 +114,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     crate::ui::widgets::paint_vertical_gradient(
         ui,
         band,
-        Color32::from_black_alpha(43),
+        super::tone(Color32::from_black_alpha(43), Color32::from_white_alpha(64)),
         Color32::TRANSPARENT,
     );
     let row = Rect::from_min_size(
@@ -203,15 +203,18 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             ui.painter().rect_filled(
                 rect.shrink(2.0),
                 CornerRadius::same(((BUTTON - 4.0) / 2.0) as u8),
-                Color32::from_white_alpha(22),
+                crate::ui::mcloud::ink(22),
             );
         }
         let color = if !enabled {
-            Color32::from_white_alpha(77)
+            crate::ui::mcloud::ink(77)
         } else if response.hovered() {
-            Color32::WHITE
+            super::tone(Color32::WHITE, Color32::BLACK)
         } else {
-            Color32::from_rgb(0xe6, 0xe6, 0xe6)
+            super::tone(
+                Color32::from_rgb(0xe6, 0xe6, 0xe6),
+                Color32::from_rgb(0x2b, 0x2b, 0x2b),
+            )
         };
         theme::paint_icon(ui, icon, rect, 20.0, color);
         if enabled && response.on_hover_text(label.as_ref()).clicked() {
@@ -284,14 +287,17 @@ fn circle(
     if !glass {
         painter.circle_filled(drawn.center(), radius, fill(hovered));
     } else if hovered {
-        painter.circle_filled(drawn.center(), radius, Color32::from_white_alpha(22));
+        painter.circle_filled(drawn.center(), radius, crate::ui::mcloud::ink(22));
     }
     paint_cursor_glow(painter, drawn);
     painter.circle_stroke(drawn.center(), radius - 0.25, ring());
     let color = if hovered {
-        Color32::WHITE
+        super::tone(Color32::WHITE, Color32::BLACK)
     } else {
-        Color32::from_rgb(0xe6, 0xe6, 0xe6)
+        super::tone(
+            Color32::from_rgb(0xe6, 0xe6, 0xe6),
+            Color32::from_rgb(0x2b, 0x2b, 0x2b),
+        )
     };
     theme::paint_icon(ui, icon, drawn, 20.0, color);
     theme::focus_ring(ui, &response);
