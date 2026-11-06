@@ -306,7 +306,7 @@ Her kaydı yukarıdaki gruplara görev olarak taşı (Apple Music ölçüleriyle
 sonra buradan sil. "tema dosyası yok" yazan kayıtlar (CI, kurulum, Pages)
 çoğunlukla mcloudfast'ı ilgilendirmez.
 
-<!-- mcloud-sync:start since=2026-11-05T12:18:42Z -->
+<!-- mcloud-sync:start since=2026-11-06T12:01:58Z -->
 - 2026-11-04 · [PR #113](https://github.com/mcloudHQ/mcloud/pull/113): Spotify's hashed class names, Now Playing slide, library cards (#109, #110, #111) (STATUS.md değişti)
 - 2026-11-04 · [Issue #109](https://github.com/mcloudHQ/mcloud/issues/109): Some newly added features are not showing up
 - 2026-11-04 · [Issue #110](https://github.com/mcloudHQ/mcloud/issues/110): Add opening and closing animations to the sidebar player
@@ -321,4 +321,32 @@ sonra buradan sil. "tema dosyası yok" yazan kayıtlar (CI, kurulum, Pages)
 - 2026-11-05 · [PR #123](https://github.com/mcloudHQ/mcloud/pull/123): Draw "more releases" as a pop-up button (#121); close stuck search results
 - 2026-11-05 · [Issue #121](https://github.com/mcloudHQ/mcloud/issues/121): Redesign the "# more releases" button
 - 2026-11-05 · [PR #124](https://github.com/mcloudHQ/mcloud/pull/124): Smoke: don't check the order of the mix-cover lookups (tema dosyası yok)
+- 2026-11-05 · [PR #138](https://github.com/mcloudHQ/mcloud/pull/138): Sidebar rows at SF Regular on macOS, as in Apple Music
+- 2026-11-05 · [PR #132](https://github.com/mcloudHQ/mcloud/pull/132): Player: the artist — album line drags the album and its artists (#130)
+- 2026-11-05 · [Issue #130](https://github.com/mcloudHQ/mcloud/issues/130): Unable to drag full albums from the player bar
+- 2026-11-05 · [PR #134](https://github.com/mcloudHQ/mcloud/pull/134): Carousel arrows: Apple Music's glass capsule, on the covers' middle
+- 2026-11-05 · [PR #136](https://github.com/mcloudHQ/mcloud/pull/136): What's New: frosted cards in a grid, the chips as a pop-up button (#128)
+- 2026-11-05 · [Issue #128](https://github.com/mcloudHQ/mcloud/issues/128): Redesign the what's new page
+- 2026-11-05 · [PR #139](https://github.com/mcloudHQ/mcloud/pull/139): Artists and profiles as circles, Apple's microphone when there is no photo
+- 2026-11-05 · [Issue #127](https://github.com/mcloudHQ/mcloud/issues/127): Circular artwork for artist and profile images
+- 2026-11-05 · [PR #140](https://github.com/mcloudHQ/mcloud/pull/140): Home: titles in line with the artwork, one text size, chevrons, the shortcuts as Apple's list
+- 2026-11-05 · [Issue #125](https://github.com/mcloudHQ/mcloud/issues/125): improve homepage layout, spacing, and text alignment
+- 2026-11-05 · [PR #141](https://github.com/mcloudHQ/mcloud/pull/141): Track rows: the save star skips the "Hide in this playlist" switch, which gets Apple's minus.circle
+- 2026-11-05 · [PR #142](https://github.com/mcloudHQ/mcloud/pull/142): Home: Spotify's placeholder artist picture gets the microphone; shortcut names on one line
+- 2026-11-05 · [PR #119](https://github.com/mcloudHQ/mcloud/pull/119): Lay out photo-header playlists (Daily Mix, Today's Top Hits) as playlists
+- 2026-11-05 · [PR #144](https://github.com/mcloudHQ/mcloud/pull/144): Queue panel: off-screen rows skip style and layout (#133, #137)
+- 2026-11-05 · [PR #143](https://github.com/mcloudHQ/mcloud/pull/143): Search results as Apple Music's, with see-all pages (#126) (STATUS.md değişti)
+- 2026-11-05 · [Issue #126](https://github.com/mcloudHQ/mcloud/issues/126): Redesign the search results page
+- 2026-11-06 · [PR #135](https://github.com/mcloudHQ/mcloud/pull/135): Clean album list: selected rows keep it on hashed builds (#131)
+- 2026-11-06 · [Issue #131](https://github.com/mcloudHQ/mcloud/issues/131): Artist names reappear when selecting multiple tracks
+- 2026-11-06 · [PR #146](https://github.com/mcloudHQ/mcloud/pull/146): Library: cards scroll under the toolbar (#145)
+- 2026-11-06 · [Issue #145](https://github.com/mcloudHQ/mcloud/issues/145): Top bar in Library pages doesn't have a transparent background
+- 2026-11-06 · [PR #147](https://github.com/mcloudHQ/mcloud/pull/147): Album pages: one copyright line, the ℗ one, as Apple Music
+- 2026-11-06 · [PR #154](https://github.com/mcloudHQ/mcloud/pull/154): Song previews: the first song laid out as the others (#151) (STATUS.md değişti)
+- 2026-11-06 · [Issue #151](https://github.com/mcloudHQ/mcloud/issues/151): Inconsistent layout and spacing in song preview on smaller windows
+- 2026-11-06 · [PR #155](https://github.com/mcloudHQ/mcloud/pull/155): Song previews: Spotify's menus get the theme's glass and fit the card (#152) (STATUS.md değişti)
+- 2026-11-06 · [Issue #152](https://github.com/mcloudHQ/mcloud/issues/152): Song preview context menu does not use liquid glass styling
+- 2026-11-06 · [PR #156](https://github.com/mcloudHQ/mcloud/pull/156): Song previews: readable song and artist names in light mode (STATUS.md değişti)
+- 2026-11-06 · [PR #157](https://github.com/mcloudHQ/mcloud/pull/157): What's New and Premium's callout: one star on a card, the callout as a tooltip (#148) (STATUS.md değişti)
+- 2026-11-06 · [Issue #148](https://github.com/mcloudHQ/mcloud/issues/148): Improve premium tooltips and button icons on the what's new page
 <!-- mcloud-sync:end -->
