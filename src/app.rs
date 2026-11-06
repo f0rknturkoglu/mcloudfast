@@ -581,6 +581,10 @@ pub struct App {
     art_palettes: HashMap<String, Vec<[u8; 3]>>,
     /// The colours mcloud reads from each picture, by the same URL (bounded to 100 entries).
     artwork_colours: HashMap<String, crate::images::ArtworkColours>,
+    /// A mix's photo by its image's address, once looked up; `None` when the
+    /// lookup found none, which draws the gradient.
+    pub(crate) mix_photos: HashMap<String, Option<String>>,
+    mix_photo_pending: HashSet<String>,
     artwork_colour_order: std::collections::VecDeque<String>,
     accent_pending: HashSet<String>,
 
@@ -1230,6 +1234,8 @@ impl App {
             accents: HashMap::new(),
             art_palettes: HashMap::new(),
             artwork_colours: HashMap::new(),
+            mix_photos: HashMap::new(),
+            mix_photo_pending: HashSet::new(),
             artwork_colour_order: std::collections::VecDeque::new(),
             accent_pending: HashSet::new(),
             dialog: None,
@@ -2403,6 +2409,43 @@ impl App {
 
     /// The colours mcloud reads from a picture, asked for the first time
     /// they are wanted, as [`Self::tint_for`] asks for the accent.
+    /// A mix's cover, once its photo and colour are known; asks for what is
+    /// missing. `None` draws Spotify's image meanwhile, or for any other image.
+    pub(crate) fn mix_cover(&mut self, url: &str) -> Option<crate::ui::mcloud::mix::MixCover> {
+        use crate::ui::mcloud::mix::{MixCover, MixSource, MixStyle, mix_colours, mix_source};
+        let source = mix_source(url)?;
+        let photo = match source {
+            MixSource::None => None,
+            MixSource::Photo(photo) => Some(photo),
+            MixSource::Artist(id) | MixSource::Track(id) if !self.mix_photos.contains_key(url) => {
+                let is_track = url.contains("/img/radio/track/");
+                if self.mix_photo_pending.insert(url.to_string()) {
+                    self.backend.api(ApiRequest::MixPhoto {
+                        url: url.to_string(),
+                        id,
+                        is_track,
+                    });
+                }
+                return None;
+            }
+            MixSource::Artist(_) | MixSource::Track(_) => self.mix_photos.get(url)?.clone(),
+        };
+        let colours = self.artwork_colours(Some(photo.as_deref().unwrap_or(url)))?;
+        let (band, from, to) = mix_colours(colours.page);
+        let style = match &photo {
+            None => MixStyle::Gradient,
+            Some(_) if url.contains("/img/radio/") => MixStyle::Station,
+            Some(_) => MixStyle::Band,
+        };
+        Some(MixCover {
+            style,
+            photo,
+            band,
+            from,
+            to,
+        })
+    }
+
     pub fn artwork_colours(&mut self, url: Option<&str>) -> Option<crate::images::ArtworkColours> {
         let url = url?;
         if let Some(colour) = self.artwork_colours.get(url) {
@@ -8649,6 +8692,10 @@ impl App {
                     }
                     Err(error) => self.search_failed(&gettext(self.locale, "Playlists"), error),
                 }
+            }
+            ApiResponse::MixPhoto { url, photo } => {
+                self.mix_photo_pending.remove(&url);
+                self.mix_photos.insert(url, photo);
             }
             ApiResponse::SearchMore {
                 query,
@@ -20891,6 +20938,47 @@ mod tests {
             split: true,
         });
         serial
+    }
+
+    /// A mix's cover waits for its photo and colour, asked for once, and an
+    /// image that is not a mix's has none. A failed lookup draws the gradient.
+    #[test]
+    fn a_mix_cover_appears_once_its_photo_and_colour_are_known() {
+        use crate::ui::mcloud::mix::MixStyle;
+        let mut app = test_app("mix-cover");
+        let colours = crate::images::ArtworkColours {
+            page: [10, 60, 200],
+            common: [10, 60, 200],
+            bottom_edge: [10, 10, 40],
+            trim: [0, 0, 255, 255],
+        };
+        assert_eq!(app.mix_cover("https://i.scdn.co/image/ab67"), None);
+
+        let radio = "https://pickasso.spotifycdn.com/image/x/dt/v1/img/radio/artist/4tZwfgrHOc3mvqYlEYSvVi/en";
+        assert_eq!(app.mix_cover(radio), None);
+        assert!(app.mix_photo_pending.contains(radio));
+        app.handle_api(ApiResponse::MixPhoto {
+            url: radio.into(),
+            photo: Some("https://i.scdn.co/image/photo".into()),
+        });
+        assert!(!app.mix_photo_pending.contains(radio));
+        assert_eq!(app.mix_cover(radio), None, "the colour is still on its way");
+        app.insert_artwork_colour("https://i.scdn.co/image/photo".into(), colours);
+        let cover = app.mix_cover(radio).unwrap();
+        assert_eq!(cover.style, MixStyle::Station);
+        assert_eq!(
+            cover.photo.as_deref(),
+            Some("https://i.scdn.co/image/photo")
+        );
+
+        let lost =
+            "https://pickasso.spotifycdn.com/image/x/dt/v1/img/artist/0k17h0D3J5VfsdmQ1iZtE9/en";
+        app.handle_api(ApiResponse::MixPhoto {
+            url: lost.into(),
+            photo: None,
+        });
+        app.insert_artwork_colour(lost.into(), colours);
+        assert_eq!(app.mix_cover(lost).unwrap().style, MixStyle::Gradient);
     }
 
     /// A kind's next page joins what is held without repeating it, one

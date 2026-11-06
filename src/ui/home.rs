@@ -427,7 +427,14 @@ fn mcloud_shortcuts(app: &mut App, ui: &mut egui::Ui, tiles: &[Tile]) {
         );
         if tile.liked {
             super::sidebar::liked_cover(ui, art, 5.0);
-        } else {
+        } else if !crate::ui::mcloud::mix::paint(
+            app,
+            ui,
+            tile.image.as_deref(),
+            art,
+            5.0,
+            &tile.name,
+        ) {
             widgets::paint_cover(
                 ui,
                 &palette,

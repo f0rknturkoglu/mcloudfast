@@ -9,6 +9,7 @@ pub mod artist;
 pub mod glass;
 pub mod library;
 pub mod lyrics;
+pub mod mix;
 pub mod pages;
 pub mod player;
 pub mod search;
@@ -42,30 +43,6 @@ fn active_id() -> egui::Id {
 
 fn glass_effect_id() -> egui::Id {
     egui::Id::new("mcloud-glass-effect")
-}
-
-/// Extracts the underlying photo URL from a Spotify mix image URL
-/// (e.g. `pickasso.spotifycdn.com`, `seed-mix-image.spotifycdn.com`, `daylist.spotifycdn.com`).
-/// Returns `Some((photo_url, is_station))`.
-pub fn mix_cover_photo(url: &str) -> Option<(String, bool)> {
-    let is_mix_host = url.starts_with("https://pickasso.spotifycdn.com/")
-        || url.starts_with("https://seed-mix-image.spotifycdn.com/")
-        || url.starts_with("https://daylist.spotifycdn.com/");
-    if !is_mix_host {
-        return None;
-    }
-    let is_station = url.contains("/radio/") || url.contains("radio");
-    if let Some(idx) = url.find("ab67") {
-        let hash = &url[idx..];
-        let hash_end = hash
-            .find(|c: char| !c.is_ascii_hexdigit())
-            .unwrap_or(hash.len());
-        let hash = &hash[..hash_end];
-        if hash.len() >= 24 {
-            return Some((format!("https://i.scdn.co/image/{hash}"), is_station));
-        }
-    }
-    None
 }
 
 /// mcloud's page padding (user.css `--am-pad`): 2.6% of the window's width,

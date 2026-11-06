@@ -242,6 +242,41 @@ fn playlist(index: usize) -> Playlist {
     }
 }
 
+/// Gives the first mixes the addresses Spotify's have, with what looking them
+/// up would have found, so a shot shows each of mcloud's covers: a station, an
+/// Essentials band and a gradient without a photo.
+fn demo_mix_covers(app: &mut App, mixes: &mut [Playlist]) {
+    const PATHS: [&str; 3] = [
+        "radio/artist/4tZwfgrHOc3mvqYlEYSvVi/en",
+        "artist/0k17h0D3J5VfsdmQ1iZtE9/en",
+        "mood/chill/en",
+    ];
+    for (index, (mix, path)) in mixes.iter_mut().zip(PATHS).enumerate() {
+        let url =
+            format!("https://pickasso.spotifycdn.com/image/ab67c0de0000deef/dt/v1/img/{path}");
+        if index < 2 {
+            let photo = format!(
+                "https://picsum.photos/seed/spotifast{}/640/640",
+                700 + index
+            );
+            app.mix_photos.insert(url.clone(), Some(photo));
+        } else {
+            app.insert_artwork_colour(
+                url.clone(),
+                crate::images::ArtworkColours {
+                    page: [0x7a, 0x2f, 0x9e],
+                    common: [0x7a, 0x2f, 0x9e],
+                    bottom_edge: [0x2a, 0x12, 0x3a],
+                    trim: [0, 0, 255, 255],
+                },
+            );
+        }
+        for image in &mut mix.images {
+            image.url.clone_from(&url);
+        }
+    }
+}
+
 fn top_mix(index: usize) -> Playlist {
     let (name, artists) = TOP_MIXES[index % TOP_MIXES.len()];
     Playlist {
@@ -665,7 +700,9 @@ pub fn populate(app: &mut App) {
     app.home.top_songs_by_period_complete = [true, true, true];
     app.home.recommendations = Loadable::Loaded(tracks.iter().skip(20).take(10).cloned().collect());
     app.home.made_for_you = Loadable::Loaded(playlists.iter().take(10).cloned().collect());
-    app.home.top_mixes = Loadable::Loaded((0..TOP_MIXES.len()).map(top_mix).collect());
+    let mut mixes: Vec<Playlist> = (0..TOP_MIXES.len()).map(top_mix).collect();
+    demo_mix_covers(app, &mut mixes);
+    app.home.top_mixes = Loadable::Loaded(mixes);
     // New releases: this autumn's records, newest first, and their songs.
     let releases: Vec<Album> = (0..8)
         .map(|index| {

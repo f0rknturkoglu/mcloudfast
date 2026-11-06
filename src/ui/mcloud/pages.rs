@@ -161,7 +161,7 @@ pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
     }
     if hero.liked {
         crate::ui::sidebar::liked_cover(ui, art, radius);
-    } else {
+    } else if !super::mix::paint(app, ui, hero.images.image, art, radius, hero.title) {
         widgets::paint_cover_with_thumbnail(
             ui,
             &palette,

@@ -318,6 +318,12 @@ pub enum ApiRequest {
         kind: crate::model::SearchFilter,
         offset: u32,
     },
+    /// The photo behind a mix's cover: its artist's, or its song's album's.
+    MixPhoto {
+        url: String,
+        id: String,
+        is_track: bool,
+    },
     /// Search for one kind of thing and report the best match, to play it:
     /// how `spotifast play-search` plays a song by its name.
     PlaySearch {
@@ -589,6 +595,10 @@ pub enum ApiResponse {
         serial: u64,
         kind: crate::model::SearchFilter,
         result: ApiResult<SearchResults>,
+    },
+    MixPhoto {
+        url: String,
+        photo: Option<String>,
     },
     /// The URI of the best match for a [`ApiRequest::PlaySearch`], or `None`
     /// when nothing matched.
@@ -5036,6 +5046,7 @@ fn operation_for(api: &ApiGateway, request: &ApiRequest) -> Operation {
             Operation::PlaylistSearch
         }
         ApiRequest::SearchMore { .. } => Operation::CatalogSearch,
+        ApiRequest::MixPhoto { .. } => Operation::Catalog,
         ApiRequest::Search { .. } => Operation::PlaylistSearch,
         ApiRequest::PlaySearch { kind, .. } if kind == "playlist" => Operation::PlaylistSearch,
         ApiRequest::PlaySearch { .. } => Operation::CatalogSearch,
@@ -5786,6 +5797,20 @@ async fn handle(
             query,
             serial,
         },
+        ApiRequest::MixPhoto { url, id, is_track } => {
+            // A failed lookup draws the gradient, as mcloud does without a photo.
+            let photo = if is_track {
+                routed!(track(&id))
+                    .ok()
+                    .and_then(|track| track.album)
+                    .and_then(|album| pick_image(&album.images, 640).map(str::to_string))
+            } else {
+                routed!(artist(&id))
+                    .ok()
+                    .and_then(|artist| pick_image(&artist.images, 640).map(str::to_string))
+            };
+            ApiResponse::MixPhoto { url, photo }
+        }
         ApiRequest::SearchMore {
             query,
             serial,

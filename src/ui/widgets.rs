@@ -2916,16 +2916,6 @@ pub fn card(
     let image_size = art.unwrap_or(CARD_ART);
     let text_width = image_size;
     let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
-    let (mix_photo, is_station) = if mcloud && app.settings.mcloud_mix_covers {
-        image
-            .and_then(crate::ui::mcloud::mix_cover_photo)
-            .map(|(p, s)| (Some(p), s))
-            .unwrap_or((None, false))
-    } else {
-        (None, false)
-    };
-    let effective_circular = circular || is_station;
-    let effective_image = mix_photo.as_deref().or(image);
     let mut layout = card_layout(mcloud);
     let subtitle_lines = if art.is_some() {
         layout.pad_x = 0.0;
@@ -2987,7 +2977,7 @@ pub fn card(
             rect.min + vec2(layout.pad_x, layout.pad_top),
             Vec2::splat(image_size),
         );
-        let radius = if effective_circular {
+        let radius = if circular {
             image_size / 2.0
         } else if mcloud {
             8.0
@@ -2997,7 +2987,12 @@ pub fn card(
         if !mcloud {
             paint_shadow(ui, &palette, image_rect, radius);
         }
-        if person && effective_image.is_none() {
+        let mix = mcloud
+            && !circular
+            && crate::ui::mcloud::mix::paint(app, ui, image, image_rect, radius, title);
+        if mix {
+            // Drawn: the photo with its name, or the gradient.
+        } else if person && image.is_none() {
             // Apple's grey circle and microphone.
             let empty = if palette.dark {
                 Color32::from_gray(0x30)
@@ -3017,18 +3012,14 @@ pub fn card(
             paint_cover(
                 ui,
                 &palette,
-                effective_image,
+                image,
                 image_rect,
                 radius,
-                if effective_circular {
-                    Icon::User
-                } else {
-                    Icon::Music
-                },
+                if circular { Icon::User } else { Icon::Music },
                 Some(app.backend.art()),
             );
         }
-        if mcloud && !effective_circular {
+        if mcloud && !circular {
             // A faint inner edge, so a white cover still ends.
             ui.painter().rect_stroke(
                 image_rect,
@@ -3036,27 +3027,6 @@ pub fn card(
                 egui::Stroke::new(1.0, palette.text.gamma_multiply(0.06)),
                 egui::StrokeKind::Inside,
             );
-        }
-        if mix_photo.is_some() && !is_station {
-            let band_h = (image_rect.height() * 0.26).round();
-            let band_rect = Rect::from_min_size(image_rect.min, vec2(image_rect.width(), band_h));
-            ui.painter().rect_filled(
-                band_rect,
-                CornerRadius {
-                    nw: radius.min(127.0) as u8,
-                    ne: radius.min(127.0) as u8,
-                    sw: 0,
-                    se: 0,
-                },
-                Color32::from_black_alpha(100),
-            );
-            let galley =
-                crate::bidi::layout_line(ui.painter(), title, theme::medium(11.0), Color32::WHITE);
-            let text_pos = pos2(
-                band_rect.left() + 8.0,
-                band_rect.center().y - galley.size().y / 2.0,
-            );
-            ui.painter().galley(text_pos, galley, Color32::WHITE);
         }
         if mcloud && hovered {
             ui.painter().rect_filled(
