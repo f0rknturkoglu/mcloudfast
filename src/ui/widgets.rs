@@ -2479,6 +2479,11 @@ pub fn explicit_badge(ui: &mut Ui, palette: &Palette) {
     );
 }
 
+/// Whether a song table's # is lit for playing in its own order.
+fn marks_natural_order(mcloud: bool, sort: Option<crate::model::TableSort>) -> bool {
+    !mcloud && sort.is_none()
+}
+
 /// The header row above a track table.
 /// The column headings above a track table. Answers with the heading that
 /// was clicked, so the table can sort by it.
@@ -2584,8 +2589,9 @@ pub fn table_header(
     if show_numbers {
         let number = Rect::from_center_size(pos2(x + 22.0, rect.center().y), vec2(30.0, 22.0));
         // With no sort chosen the list already plays its own order, and
-        // the # says so: lit, arrow pointing down the list.
-        let natural = sort.is_none();
+        // the # says so: lit, arrow pointing down the list. mcloud's # stays
+        // a quiet heading until a sort is actually chosen.
+        let natural = marks_natural_order(mcloud, sort);
         let active = sort.filter(|sort| sort.column == SortColumn::Index);
         let response = ui.interact(number, ui.id().with("table-header-number"), Sense::click());
         response.widget_info(|| {
@@ -4115,6 +4121,18 @@ mod tests {
         assert_eq!(settle(0.0, 0.0), 0.0);
         // Between two cards it stays where the user left it.
         assert_eq!(settle(90.0, 2000.0), 90.0);
+    }
+
+    /// mcloud's # stays quiet until a sort is chosen; Spotifast's is lit.
+    #[test]
+    fn only_spotifasts_table_marks_the_natural_order() {
+        assert!(marks_natural_order(false, None));
+        assert!(!marks_natural_order(true, None));
+        let chosen = crate::model::TableSort {
+            column: crate::model::SortColumn::Index,
+            ascending: true,
+        };
+        assert!(!marks_natural_order(false, Some(chosen)));
     }
 
     /// mcloud's shelf starts a card's padding left of the page, so the
