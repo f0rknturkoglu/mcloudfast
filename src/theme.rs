@@ -648,6 +648,7 @@ fastframe_icons::icons! {
         McloudInfo => "mcloud-info",
         McloudLeft => "mcloud-left",
         McloudLyrics => "mcloud-lyrics",
+        McloudMicrophone => "mcloud-microphone",
         McloudMore => "mcloud-more",
         McloudMusic => "mcloud-music",
         McloudNext => "mcloud-next",
@@ -1112,6 +1113,18 @@ pub fn link(
     color: Color32,
 ) -> Response {
     let text = text.into();
+    let response = link_text(ui, &text, font, color);
+    if response.hovered() {
+        let rect = response.rect;
+        ui.painter()
+            .hline(rect.x_range(), rect.bottom() - 1.0, Stroke::new(1.0, color));
+    }
+    response
+}
+
+/// A link's text and its behaviour, without the underline on hover.
+fn link_text(ui: &mut egui::Ui, text: &str, font: egui::FontId, color: Color32) -> Response {
+    let text = text.to_owned();
     let response = if crate::bidi::is_rtl(&text) {
         let galley = crate::bidi::layout(
             ui.painter(),
@@ -1138,31 +1151,39 @@ pub fn link(
     response
         .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Link, ui.is_enabled(), &text));
     focus_ring(ui, &response);
-    if response.hovered() {
-        let rect = response.rect;
-        ui.painter()
-            .hline(rect.x_range(), rect.bottom() - 1.0, Stroke::new(1.0, color));
-    }
     response.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 
 pub fn section_title(ui: &mut egui::Ui, palette: &Palette, label: &str) -> Response {
-    // Under mcloud, Spotify's own shelf headings, which it leaves alone.
-    let size = if crate::ui::mcloud::active(ui.ctx()) {
-        24.0
-    } else {
-        17.0
-    };
-    text(ui, label, bold(size), palette.text)
+    text(ui, label, bold(17.0), palette.text)
 }
 
 pub fn section_link(ui: &mut egui::Ui, palette: &Palette, label: &str) -> Response {
-    let size = if crate::ui::mcloud::active(ui.ctx()) {
-        24.0
-    } else {
-        17.0
-    };
-    link(ui, label, bold(size), palette.text)
+    let font = bold(17.0);
+    if !crate::ui::mcloud::active(ui.ctx()) {
+        return link(ui, label, font, palette.text);
+    }
+    // mcloud's section titles are never underlined: Apple's chevron says they
+    // open a page, and it opens the page too.
+    let title = link_text(ui, label, font, palette.text);
+    if crate::bidi::is_rtl(label) {
+        return title;
+    }
+    let chevron = egui::Rect::from_center_size(
+        egui::pos2(title.rect.right() + 3.0 + 7.0, title.rect.center().y),
+        Vec2::splat(14.0),
+    );
+    paint_icon(
+        ui,
+        Icon::McloudChevron,
+        chevron,
+        14.0,
+        palette.text.gamma_multiply(0.627),
+    );
+    let chevron = ui
+        .interact(chevron, title.id.with("chevron"), Sense::click())
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
+    title.union(chevron)
 }
 
 pub fn subtle(ui: &mut egui::Ui, palette: &Palette, label: &str) -> Response {

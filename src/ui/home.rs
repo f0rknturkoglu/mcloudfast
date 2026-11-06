@@ -233,73 +233,99 @@ fn is_podcast_tile(tile: &Tile) -> bool {
             .is_some_and(|u| u.starts_with("spotify:show:") || u.starts_with("spotify:episode:"))
 }
 
+/// Plays what a shortcut names, or toggles it when it is already playing.
+fn play_tile(app: &mut App, uri: &str, song: bool) {
+    if app.playing_context_uri().as_deref() == Some(uri) {
+        app.actions.push(Action::TogglePlay);
+    } else if song {
+        app.actions.push(Action::PlayUris {
+            uris: vec![uri.to_string()],
+            index: 0,
+        });
+    } else {
+        app.actions.push(Action::PlayContext {
+            uri: uri.to_string(),
+            offset_uri: None,
+            offset_index: None,
+        });
+    }
+}
+
+/// A shortcut's right-click menu. The liked songs' has none.
+fn tile_menu(app: &mut App, tile: &Tile, response: &egui::Response, id: egui::Id) {
+    let palette = app.palette;
+    let (false, Some(uri)) = (tile.liked, &tile.uri) else {
+        return;
+    };
+    egui::Popup::context_menu(response)
+        .id(id)
+        .frame(widgets::menu_frame(&palette))
+        .show(|ui| match &tile.song {
+            Some(track) => {
+                widgets::item_menu(ui, app, &PlayableItem::Track(track.clone()), None, None);
+            }
+            None => {
+                widgets::context_menu_items(ui, app, uri, &tile.name, tile.owned_playlist.as_ref())
+            }
+        });
+}
+
 fn quick_access(app: &mut App, ui: &mut egui::Ui) -> bool {
     let palette = app.palette;
     let tiles = quick_access_tiles(app);
     if tiles.is_empty() {
         return false;
     }
-    // Under mcloud, Spotify's own shortcuts: 64pt tall, 12pt apart, white
-    // at 10% with square corners on the cover.
-    let mcloud = crate::ui::mcloud::active(ui.ctx());
-    let (tile_height, gap, radius, text_inset, font) = if mcloud {
-        (64.0, 12.0, 4.0, 16.0, theme::bold(16.0))
-    } else {
-        (TILE_HEIGHT, 10.0, 6.0, 12.0, theme::bold(14.5))
-    };
+    if crate::ui::mcloud::active(ui.ctx()) {
+        mcloud_shortcuts(app, ui, &tiles);
+        return true;
+    }
+    let (tile_height, gap, radius, text_inset, font) =
+        (TILE_HEIGHT, 10.0, 6.0, 12.0, theme::bold(14.5));
     let available = ui.available_width();
     let columns = ((available / 300.0).floor() as usize).clamp(2, 4);
     let tile_width = (available - gap * (columns as f32 - 1.0)) / columns as f32;
     let rows = tiles.len().div_ceil(columns);
     for row in 0..rows {
-        if row > 0 && mcloud {
-            ui.add_space(gap - ui.spacing().item_spacing.y);
-        }
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = gap;
             for column in 0..columns {
-                let Some(Tile {
-                    image,
-                    name,
-                    page,
-                    uri,
-                    liked,
-                    owned_playlist,
-                    song,
-                }) = tiles.get(row * columns + column)
-                else {
+                let Some(tile) = tiles.get(row * columns + column) else {
                     break;
                 };
                 let (rect, response) =
                     ui.allocate_exact_size(vec2(tile_width, tile_height), Sense::click());
-                if let Page::Artist(id) = page {
+                if let Page::Artist(id) = &tile.page {
                     widgets::prefetch_artist_on_hover(ui.ctx(), &response, id, &mut app.actions);
                 }
                 if ui.is_rect_visible(rect) {
                     let hovered = ui.rect_contains_pointer(rect);
-                    let fill = match (mcloud, hovered) {
-                        (true, false) => egui::Color32::from_white_alpha(26),
-                        (true, true) => egui::Color32::from_white_alpha(51),
-                        (false, false) => palette.surface,
-                        (false, true) => palette.surface_hover,
+                    let fill = if hovered {
+                        palette.surface_hover
+                    } else {
+                        palette.surface
                     };
                     ui.painter()
                         .rect_filled(rect, CornerRadius::same(radius as u8), fill);
                     let cover = Rect::from_min_size(rect.min, Vec2::splat(tile_height));
-                    if *liked {
+                    if tile.liked {
                         super::sidebar::liked_cover(ui, cover, radius);
                     } else {
                         widgets::paint_cover(
                             ui,
                             &palette,
-                            image.as_deref(),
+                            tile.image.as_deref(),
                             cover,
                             radius,
                             Icon::Music,
                             Some(app.backend.art()),
                         );
                     }
-                    let play_room = if hovered && uri.is_some() { 52.0 } else { 12.0 };
+                    let play_room = if hovered && tile.uri.is_some() {
+                        52.0
+                    } else {
+                        12.0
+                    };
                     let text_rect = Rect::from_min_max(
                         pos2(cover.right() + text_inset, rect.top()),
                         pos2(rect.right() - play_room, rect.bottom()),
@@ -309,14 +335,14 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) -> bool {
                         text_rect.left(),
                         text_rect.right(),
                         rect.center().y,
-                        name,
+                        &tile.name,
                         font.clone(),
                         palette.text,
                     );
-                    if hovered && let Some(uri) = uri {
-                        let context_here =
-                            app.playing_context_uri().as_deref() == Some(uri.as_str());
-                        let playing_here = context_here && app.believed_playing();
+                    if hovered && let Some(uri) = &tile.uri {
+                        let playing_here = app.playing_context_uri().as_deref()
+                            == Some(uri.as_str())
+                            && app.believed_playing();
                         let button = Rect::from_center_size(
                             pos2(rect.right() - 28.0, rect.center().y),
                             Vec2::splat(40.0),
@@ -340,51 +366,152 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) -> bool {
                         )
                         .clicked()
                         {
-                            if context_here {
-                                app.actions.push(Action::TogglePlay);
-                            } else if song.is_some() {
-                                app.actions.push(Action::PlayUris {
-                                    uris: vec![uri.clone()],
-                                    index: 0,
-                                });
-                            } else {
-                                app.actions.push(Action::PlayContext {
-                                    uri: uri.clone(),
-                                    offset_uri: None,
-                                    offset_index: None,
-                                });
-                            }
+                            play_tile(app, uri, tile.song.is_some());
                         }
                     }
                 }
                 if response.clicked() {
-                    app.actions.push(Action::Open(page.clone()));
+                    app.actions.push(Action::Open(tile.page.clone()));
                 }
-                if !liked && let Some(uri) = uri {
-                    egui::Popup::context_menu(&response)
-                        .id(ui.make_persistent_id(("quick-access-menu", uri)))
-                        .frame(widgets::menu_frame(&palette))
-                        .show(|ui| match song {
-                            Some(track) => widgets::item_menu(
-                                ui,
-                                app,
-                                &PlayableItem::Track(track.clone()),
-                                None,
-                                None,
-                            ),
-                            None => widgets::context_menu_items(
-                                ui,
-                                app,
-                                uri,
-                                name,
-                                owned_playlist.as_ref(),
-                            ),
-                        });
+                if let Some(uri) = &tile.uri {
+                    let id = ui.make_persistent_id(("quick-access-menu", uri));
+                    tile_menu(app, tile, &response, id);
                 }
             }
         });
     }
     true
+}
+
+/// How many shortcut columns fit across `width`, and how wide each is:
+/// Spotify's shortcuts keep to two rows of its eight where they can.
+fn shortcut_columns(width: f32) -> (usize, f32) {
+    const MIN: f32 = 240.0;
+    const GAP: f32 = 24.0;
+    let count = (((width + GAP) / (MIN + GAP)).floor() as usize).clamp(2, 4);
+    (count, (width - GAP * (count as f32 - 1.0)) / count as f32)
+}
+
+/// Home's shortcuts as one of Apple's lists: 56pt rows, 48pt artwork with 5pt
+/// corners, a rule from the text on under every row but the last, and on
+/// hover play over the artwork and "…" at the row's end.
+fn mcloud_shortcuts(app: &mut App, ui: &mut egui::Ui, tiles: &[Tile]) {
+    const ROW: f32 = 56.0;
+    const ART: f32 = 48.0;
+    const GAP: f32 = 24.0;
+    const TEXT_INSET: f32 = 12.0;
+    const END_ROOM: f32 = 32.0;
+    let palette = app.palette;
+    let (columns, column_width) = shortcut_columns(ui.available_width());
+    let rows = tiles.len().div_ceil(columns);
+    let (block, _) = ui.allocate_exact_size(
+        vec2(ui.available_width(), ROW * rows as f32),
+        Sense::hover(),
+    );
+    for (index, tile) in tiles.iter().enumerate() {
+        let (row, column) = (index / columns, index % columns);
+        let rect = Rect::from_min_size(
+            block.min + vec2((column_width + GAP) * column as f32, ROW * row as f32),
+            vec2(column_width, ROW),
+        );
+        let id = ui.id().with(("mcloud-shortcut", index));
+        let response = ui.interact(rect, id, Sense::click());
+        response
+            .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &tile.name));
+        if let Page::Artist(artist) = &tile.page {
+            widgets::prefetch_artist_on_hover(ui.ctx(), &response, artist, &mut app.actions);
+        }
+        let art = Rect::from_center_size(
+            pos2(rect.left() + ART / 2.0, rect.center().y),
+            Vec2::splat(ART),
+        );
+        if tile.liked {
+            super::sidebar::liked_cover(ui, art, 5.0);
+        } else {
+            widgets::paint_cover(
+                ui,
+                &palette,
+                tile.image.as_deref(),
+                art,
+                5.0,
+                Icon::Music,
+                Some(app.backend.art()),
+            );
+        }
+        let text_left = art.right() + TEXT_INSET;
+        let text_rect = Rect::from_min_max(
+            pos2(text_left, rect.top()),
+            pos2(rect.right() - END_ROOM, rect.bottom()),
+        );
+        crate::bidi::paint_line(
+            &ui.painter().with_clip_rect(text_rect),
+            text_rect.left(),
+            text_rect.right(),
+            rect.center().y,
+            &tile.name,
+            theme::medium(13.0),
+            palette.text,
+        );
+        if row + 1 < rows {
+            ui.painter().hline(
+                text_left..=rect.right(),
+                rect.bottom() - 0.5,
+                egui::Stroke::new(1.0, palette.text.gamma_multiply(0.11)),
+            );
+        }
+        let menu_id = ui.make_persistent_id(("quick-access-menu", index));
+        if ui.rect_contains_pointer(rect) {
+            if let Some(uri) = &tile.uri {
+                let playing_here = app.playing_context_uri().as_deref() == Some(uri.as_str())
+                    && app.believed_playing();
+                let play = ui.interact(art, id.with("play"), Sense::click());
+                let label = gettext(app.locale, if playing_here { "Pause" } else { "Play" });
+                play.widget_info(|| {
+                    egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label.as_ref())
+                });
+                ui.painter().rect_filled(
+                    art,
+                    CornerRadius::same(5),
+                    egui::Color32::from_black_alpha(102),
+                );
+                let icon = if playing_here {
+                    Icon::PauseFilled
+                } else {
+                    Icon::PlayFilled
+                };
+                let glyph = Rect::from_center_size(art.center(), Vec2::splat(16.0));
+                theme::paint_icon(ui, icon, glyph, 16.0, egui::Color32::WHITE);
+                if play.clicked() {
+                    play_tile(app, uri, tile.song.is_some());
+                }
+            }
+            if !tile.liked && tile.uri.is_some() {
+                let more_rect = Rect::from_center_size(
+                    pos2(rect.right() - 12.0, rect.center().y),
+                    Vec2::splat(24.0),
+                );
+                let more = ui.interact(more_rect, id.with("more"), Sense::click());
+                let label = gettext(app.locale, "More options");
+                more.widget_info(|| {
+                    egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label.as_ref())
+                });
+                let color = if more.hovered() {
+                    palette.accent
+                } else {
+                    palette.text.gamma_multiply(0.753)
+                };
+                theme::paint_icon(ui, Icon::Ellipsis, more_rect, 16.0, color);
+                if more.clicked() {
+                    egui::Popup::open_id(ui.ctx(), menu_id);
+                }
+            }
+        }
+        theme::focus_ring(ui, &response);
+        if response.clicked() {
+            app.actions.push(Action::Open(tile.page.clone()));
+        }
+        tile_menu(app, tile, &response, menu_id);
+    }
 }
 
 /// Renders session Home cards or approximate fallback cards in the same shelf.
@@ -1084,6 +1211,18 @@ fn recommendations(app: &mut App, ui: &mut egui::Ui) {
 mod tests {
     use super::*;
     use crate::api::models::ResumePoint;
+
+    /// Eight shortcuts take two rows in a wide page, and never fewer than
+    /// two columns in a narrow one.
+    #[test]
+    fn shortcuts_fit_two_rows_where_the_page_allows() {
+        let (count, width) = shortcut_columns(1108.0);
+        assert_eq!(count, 4);
+        assert_eq!(width, (1108.0 - 3.0 * 24.0) / 4.0);
+        assert_eq!(shortcut_columns(800.0).0, 3);
+        assert_eq!(shortcut_columns(400.0).0, 2);
+        assert_eq!(shortcut_columns(3000.0).0, 4);
+    }
 
     fn show(id: &str) -> Show {
         Show {

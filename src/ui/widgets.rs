@@ -2835,22 +2835,58 @@ impl CardCover {
     }
 }
 
+/// A card's insets and text. mcloud's has no plate: 8pt either side of the
+/// artwork, nothing above it, and one 13pt size for its two lines.
+struct CardLayout {
+    pad_x: f32,
+    pad_top: f32,
+    title_gap: f32,
+    subtitle_gap: f32,
+    bottom_pad: f32,
+    title_font: egui::FontId,
+    subtitle_font: egui::FontId,
+}
+
+fn card_layout(mcloud: bool) -> CardLayout {
+    if mcloud {
+        CardLayout {
+            pad_x: 8.0,
+            pad_top: 0.0,
+            title_gap: 6.0,
+            subtitle_gap: 1.0,
+            bottom_pad: 8.0,
+            title_font: theme::medium(13.0),
+            subtitle_font: theme::regular(13.0),
+        }
+    } else {
+        CardLayout {
+            pad_x: (CARD_WIDTH - CARD_ART) / 2.0,
+            pad_top: 12.0,
+            title_gap: 10.0,
+            subtitle_gap: 2.0,
+            bottom_pad: 8.0,
+            title_font: theme::semibold(14.0),
+            subtitle_font: theme::regular(12.5),
+        }
+    }
+}
+
 /// Fixed height of a [`card`] row for virtualised grids.
 pub fn card_row_height(ui: &mut Ui) -> f32 {
-    const PAD: f32 = 12.0;
-    const TITLE_GAP: f32 = 10.0;
-    const SUBTITLE_GAP: f32 = 2.0;
-    const BOTTOM_PAD: f32 = 8.0;
-    let image_size = CARD_ART;
-    let title_font = theme::semibold(14.0);
-    let subtitle_font = theme::regular(12.5);
+    let layout = card_layout(crate::ui::mcloud::active(ui.ctx()));
     let (title_row, subtitle_row) = ui.fonts_mut(|fonts| {
         (
-            fonts.row_height(&title_font),
-            fonts.row_height(&subtitle_font),
+            fonts.row_height(&layout.title_font),
+            fonts.row_height(&layout.subtitle_font),
         )
     });
-    PAD + image_size + TITLE_GAP + title_row + SUBTITLE_GAP + 2.0 * subtitle_row + BOTTOM_PAD
+    layout.pad_top
+        + CARD_ART
+        + layout.title_gap
+        + title_row
+        + layout.subtitle_gap
+        + 2.0 * subtitle_row
+        + layout.bottom_pad
 }
 
 /// A cover-and-title card for grids and shelves.
@@ -2868,10 +2904,6 @@ pub fn card(
         playing,
     } = cover;
     let palette = app.palette;
-    const PAD: f32 = 12.0;
-    const TITLE_GAP: f32 = 10.0;
-    const SUBTITLE_GAP: f32 = 2.0;
-    const BOTTOM_PAD: f32 = 8.0;
     let image_size = CARD_ART;
     let text_width = image_size;
     let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
@@ -2885,12 +2917,12 @@ pub fn card(
     };
     let effective_circular = circular || is_station;
     let effective_image = mix_photo.as_deref().or(image);
-    let title_font = if mcloud {
-        theme::medium(13.0)
-    } else {
-        theme::semibold(14.0)
-    };
-    let subtitle_font = theme::regular(12.5);
+    let layout = card_layout(mcloud);
+    let title_font = layout.title_font.clone();
+    let subtitle_font = layout.subtitle_font.clone();
+    // Artists and profiles are circles with their names centred and no
+    // controls over them, as Apple's.
+    let person = mcloud && circular;
     // Every card reserves the title row and two subtitle rows, whatever its
     // own subtitle needs: a two-line subtitle then sits inside the hover
     // background, and a shelf that mixes one- and two-line subtitles keeps
@@ -2901,9 +2933,17 @@ pub fn card(
             fonts.row_height(&subtitle_font),
         )
     });
-    let height =
-        PAD + image_size + TITLE_GAP + title_row + SUBTITLE_GAP + 2.0 * subtitle_row + BOTTOM_PAD;
-    let (rect, response) = ui.allocate_exact_size(vec2(CARD_WIDTH, height), Sense::click());
+    let height = layout.pad_top
+        + image_size
+        + layout.title_gap
+        + title_row
+        + layout.subtitle_gap
+        + 2.0 * subtitle_row
+        + layout.bottom_pad;
+    let (rect, response) = ui.allocate_exact_size(
+        vec2(image_size + 2.0 * layout.pad_x, height),
+        Sense::click(),
+    );
     response.widget_info(|| {
         egui::WidgetInfo::labeled(
             egui::WidgetType::Button,
@@ -2927,26 +2967,60 @@ pub fn card(
                     .gamma_multiply(if palette.dark { 0.8 } else { 1.0 }),
             );
         }
-        let image_rect = Rect::from_min_size(rect.min + vec2(PAD, PAD), Vec2::splat(image_size));
+        let image_rect = Rect::from_min_size(
+            rect.min + vec2(layout.pad_x, layout.pad_top),
+            Vec2::splat(image_size),
+        );
         let radius = if effective_circular {
             image_size / 2.0
+        } else if mcloud {
+            8.0
         } else {
             6.0
         };
-        paint_shadow(ui, &palette, image_rect, radius);
-        paint_cover(
-            ui,
-            &palette,
-            effective_image,
-            image_rect,
-            radius,
-            if effective_circular {
-                Icon::User
+        if !mcloud {
+            paint_shadow(ui, &palette, image_rect, radius);
+        }
+        if person && effective_image.is_none() {
+            // Apple's grey circle and microphone.
+            let empty = if palette.dark {
+                Color32::from_gray(0x30)
             } else {
-                Icon::Music
-            },
-            Some(app.backend.art()),
-        );
+                Color32::from_gray(0xec)
+            };
+            ui.painter()
+                .circle_filled(image_rect.center(), radius, empty);
+            theme::paint_icon(
+                ui,
+                Icon::McloudMicrophone,
+                image_rect,
+                image_size,
+                palette.text.gamma_multiply(0.16),
+            );
+        } else {
+            paint_cover(
+                ui,
+                &palette,
+                effective_image,
+                image_rect,
+                radius,
+                if effective_circular {
+                    Icon::User
+                } else {
+                    Icon::Music
+                },
+                Some(app.backend.art()),
+            );
+        }
+        if mcloud && !effective_circular {
+            // A faint inner edge, so a white cover still ends.
+            ui.painter().rect_stroke(
+                image_rect,
+                CornerRadius::same(radius as u8),
+                egui::Stroke::new(1.0, palette.text.gamma_multiply(0.06)),
+                egui::StrokeKind::Inside,
+            );
+        }
         if mix_photo.is_some() && !is_station {
             let band_h = (image_rect.height() * 0.26).round();
             let band_rect = Rect::from_min_size(image_rect.min, vec2(image_rect.width(), band_h));
@@ -2972,19 +3046,26 @@ pub fn card(
             ui.painter().rect_filled(
                 image_rect,
                 CornerRadius::same(radius.min(127.0) as u8),
-                Color32::from_black_alpha(70),
+                Color32::from_black_alpha(20),
             );
         }
-        let text_left = rect.left() + PAD;
+        let text_left = rect.left() + layout.pad_x;
         let title_galley = ellipsized(ui, title, title_font, palette.text, text_width, 1);
         let title_rect = Rect::from_min_size(
-            pos2(text_left, image_rect.bottom() + TITLE_GAP),
+            pos2(text_left, image_rect.bottom() + layout.title_gap),
             vec2(text_width, title_row),
         );
-        let title_pos = match title_galley.job.halign {
-            Align::RIGHT => pos2(title_rect.right(), title_rect.top()),
-            Align::Center => pos2(title_rect.center().x, title_rect.top()),
-            _ => title_rect.min,
+        let title_pos = if person {
+            pos2(
+                title_rect.center().x - title_galley.size().x / 2.0,
+                title_rect.top(),
+            )
+        } else {
+            match title_galley.job.halign {
+                Align::RIGHT => pos2(title_rect.right(), title_rect.top()),
+                Align::Center => pos2(title_rect.center().x, title_rect.top()),
+                _ => title_rect.min,
+            }
         };
         ui.painter().galley(title_pos, title_galley, palette.text);
         let subtitle_galley = ellipsized(
@@ -2996,72 +3077,90 @@ pub fn card(
             2,
         );
         let subtitle_rect = Rect::from_min_size(
-            pos2(text_left, title_rect.bottom() + SUBTITLE_GAP),
+            pos2(text_left, title_rect.bottom() + layout.subtitle_gap),
             vec2(text_width, 2.0 * subtitle_row),
         );
-        let subtitle_pos = match subtitle_galley.job.halign {
-            Align::RIGHT => pos2(subtitle_rect.right(), subtitle_rect.top()),
-            Align::Center => pos2(subtitle_rect.center().x, subtitle_rect.top()),
-            _ => subtitle_rect.min,
+        let subtitle_pos = if person {
+            pos2(
+                subtitle_rect.center().x - subtitle_galley.size().x / 2.0,
+                subtitle_rect.top(),
+            )
+        } else {
+            match subtitle_galley.job.halign {
+                Align::RIGHT => pos2(subtitle_rect.right(), subtitle_rect.top()),
+                Align::Center => pos2(subtitle_rect.center().x, subtitle_rect.top()),
+                _ => subtitle_rect.min,
+            }
         };
         ui.painter()
             .galley(subtitle_pos, subtitle_galley, palette.secondary);
 
-        if hovered && mcloud {
-            let more_center = pos2(image_rect.right() - 24.0, image_rect.bottom() - 24.0);
-            let more_rect = Rect::from_center_size(more_center, Vec2::splat(32.0));
-            let mut more_child = ui.new_child(
+        // mcloud's controls: 28pt glass circles 8pt inside the artwork's
+        // bottom corners, in the accent under the pointer.
+        let glass_button = |ui: &mut Ui, center: egui::Pos2, icon: Icon, label: &str| {
+            let mut child = ui.new_child(
                 UiBuilder::new()
-                    .max_rect(more_rect)
+                    .max_rect(Rect::from_center_size(center, Vec2::splat(28.0)))
                     .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
             );
-            more = theme::circle_button(
-                &mut more_child,
-                Icon::Ellipsis,
-                32.0,
-                palette.surface_hover,
-                palette.surface_active,
-                palette.text,
-                &gettext(app.locale, "More options"),
+            theme::circle_button(
+                &mut child,
+                icon,
+                28.0,
+                Color32::from_black_alpha(107),
+                palette.accent,
+                Color32::WHITE,
+                label,
             )
-            .clicked();
+            .clicked()
+        };
+        if hovered && mcloud && !person {
+            more = glass_button(
+                ui,
+                pos2(image_rect.right() - 22.0, image_rect.bottom() - 22.0),
+                Icon::Ellipsis,
+                &gettext(app.locale, "More options"),
+            );
             if more {
                 egui::Popup::open_id(ui.ctx(), egui::Popup::default_response_id(&response));
             }
         }
 
-        if playable && hovered {
-            let (center, size) = if mcloud {
-                (
-                    pos2(image_rect.left() + 24.0, image_rect.bottom() - 24.0),
-                    32.0,
+        if playable && hovered && !person {
+            let label = gettext(app.locale, if playing { "Pause" } else { "Play" });
+            let icon = if playing {
+                Icon::PauseFilled
+            } else {
+                Icon::PlayFilled
+            };
+            play = if mcloud {
+                glass_button(
+                    ui,
+                    pos2(image_rect.left() + 22.0, image_rect.bottom() - 22.0),
+                    icon,
+                    &label,
                 )
             } else {
-                (
+                let button_rect = Rect::from_center_size(
                     pos2(image_rect.right() - 26.0, image_rect.bottom() - 26.0),
+                    Vec2::splat(44.0),
+                );
+                let mut child = ui.new_child(
+                    UiBuilder::new()
+                        .max_rect(button_rect)
+                        .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
+                );
+                theme::circle_button(
+                    &mut child,
+                    icon,
                     44.0,
+                    palette.accent,
+                    palette.accent_hover,
+                    palette.on_accent,
+                    &label,
                 )
+                .clicked()
             };
-            let button_rect = Rect::from_center_size(center, Vec2::splat(size));
-            let mut child = ui.new_child(
-                UiBuilder::new()
-                    .max_rect(button_rect)
-                    .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
-            );
-            play = theme::circle_button(
-                &mut child,
-                if playing {
-                    Icon::PauseFilled
-                } else {
-                    Icon::PlayFilled
-                },
-                size,
-                palette.accent,
-                palette.accent_hover,
-                palette.on_accent,
-                &gettext(app.locale, if playing { "Pause" } else { "Play" }),
-            )
-            .clicked();
         }
     }
     crate::autoscroll::row(ui, &response);
@@ -3172,9 +3271,10 @@ pub(crate) fn shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut 
 /// is clipped 12pt past the page's margin on both sides, and it settles on a
 /// card when it comes to rest near one.
 fn mcloud_shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui)) {
-    // A card's artwork sits this far inside the card.
-    const CARD_PAD: f32 = 12.0;
-    let pitch = CARD_WIDTH + CARD_GAP / 2.0;
+    // How far past the page's margin the row is clipped.
+    const CLIP: f32 = 12.0;
+    let pad = card_layout(true).pad_x;
+    let pitch = CARD_ART + 2.0 * pad;
     let state_id = ui.make_persistent_id(("shelf-snap", id));
     let state = ui
         .ctx()
@@ -3192,13 +3292,15 @@ fn mcloud_shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui))
     // edge for everything drawn after it.
     let room = ui.available_rect_before_wrap();
     let mut shelf = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_max(
-        pos2(room.left() - CARD_PAD, room.top()),
-        pos2(room.right() + CARD_PAD, room.bottom()),
+        pos2(room.left() - CLIP, room.top()),
+        pos2(room.right() + CLIP, room.bottom()),
     )));
     let output = crate::autoscroll::show(&mut shelf, area, egui::Vec2b::new(true, false), |ui| {
         ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = CARD_GAP / 2.0;
+            ui.spacing_mut().item_spacing.x = 0.0;
+            ui.add_space(CLIP - pad);
             add_contents(ui);
+            ui.add_space(CLIP - pad);
         });
     });
     let height = shelf.min_rect().height();
@@ -3247,8 +3349,13 @@ fn mcloud_shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui))
 
 /// A wrapping grid of cards.
 pub fn grid(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
+    let across = if crate::ui::mcloud::active(ui.ctx()) {
+        0.0
+    } else {
+        CARD_GAP / 2.0
+    };
     ui.horizontal_wrapped(|ui| {
-        ui.spacing_mut().item_spacing = vec2(CARD_GAP / 2.0, CARD_GAP);
+        ui.spacing_mut().item_spacing = vec2(across, CARD_GAP);
         add_contents(ui);
     });
 }
@@ -3309,10 +3416,12 @@ pub fn skeleton_rows(ui: &mut Ui, palette: &Palette, locale: Locale, count: usiz
 /// will show, round for artists. Like [`skeleton_rows`], they do not move.
 pub fn skeleton_cards(ui: &mut Ui, palette: &Palette, locale: Locale, count: usize, round: bool) {
     let fill = skeleton_fill(palette);
-    const PAD: f32 = 12.0;
-    let height = PAD + CARD_ART + 10.0 + 14.0 + 6.0 + 10.0 + PAD;
+    let mcloud = crate::ui::mcloud::active(ui.ctx());
+    let layout = card_layout(mcloud);
+    let height = layout.pad_top + CARD_ART + 10.0 + 14.0 + 6.0 + 10.0 + 12.0;
     for index in 0..count {
-        let (rect, response) = ui.allocate_exact_size(vec2(CARD_WIDTH, height), Sense::hover());
+        let (rect, response) =
+            ui.allocate_exact_size(vec2(CARD_ART + 2.0 * layout.pad_x, height), Sense::hover());
         if index == 0 {
             response.widget_info(|| {
                 egui::WidgetInfo::labeled(
@@ -3326,8 +3435,15 @@ pub fn skeleton_cards(ui: &mut Ui, palette: &Palette, locale: Locale, count: usi
             continue;
         }
         let painter = ui.painter();
-        let art = Rect::from_min_size(rect.min + vec2(PAD, PAD), Vec2::splat(CARD_ART));
-        let radius = if round { CARD_ART / 2.0 } else { 6.0 };
+        let art = Rect::from_min_size(
+            rect.min + vec2(layout.pad_x, layout.pad_top),
+            Vec2::splat(CARD_ART),
+        );
+        let radius = match (round, mcloud) {
+            (true, _) => CARD_ART / 2.0,
+            (false, true) => 8.0,
+            (false, false) => 6.0,
+        };
         painter.rect_filled(art, CornerRadius::same(radius as u8), fill);
         let title = Rect::from_min_size(
             pos2(art.left(), art.bottom() + 12.0),
@@ -4135,6 +4251,19 @@ mod tests {
         assert!(!marks_natural_order(false, Some(chosen)));
     }
 
+    /// mcloud's card has no plate: its artwork starts at the card's top,
+    /// and both its lines are 13pt, while Spotifast's card keeps its padding.
+    #[test]
+    fn mcloud_cards_have_no_plate_and_one_text_size() {
+        let mcloud = card_layout(true);
+        assert_eq!(mcloud.pad_top, 0.0);
+        assert_eq!(CARD_ART + 2.0 * mcloud.pad_x, CARD_ART + 16.0);
+        assert_eq!(mcloud.title_font.size, mcloud.subtitle_font.size);
+        let spotifast = card_layout(false);
+        assert_eq!(CARD_ART + 2.0 * spotifast.pad_x, CARD_WIDTH);
+        assert_eq!(spotifast.pad_top, 12.0);
+    }
+
     /// mcloud's shelf starts a card's padding left of the page, so the
     /// artwork lines up with the title, and leaves the page's edge alone.
     #[test]
@@ -4148,7 +4277,7 @@ mod tests {
                 first = Some(ui.cursor().left());
                 ui.allocate_exact_size(vec2(CARD_WIDTH, 100.0), Sense::hover());
             });
-            assert_eq!(first, Some(left - 12.0));
+            assert_eq!(first, Some(left - 8.0));
             assert_eq!(ui.cursor().left(), left);
         });
         output.textures_delta.clear();

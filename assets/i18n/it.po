@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?"
 "template=translation.yml\n"
-"POT-Creation-Date: 2026-11-06 15:01+0300\n"
+"POT-Creation-Date: 2026-11-06 15:35+0300\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Italian\n"
@@ -44,8 +44,8 @@ msgstr "Brani che ti piacciono"
 msgid "Library order"
 msgstr "Ordine della libreria"
 
-#: src/ui/sidebar.rs:356 src/ui/home.rs:586 src/ui/home.rs:596
-#: src/ui/home.rs:623
+#: src/ui/sidebar.rs:356 src/ui/home.rs:713 src/ui/home.rs:723
+#: src/ui/home.rs:750
 msgid "Recently played"
 msgstr "Ascoltati di recente"
 
@@ -148,7 +148,7 @@ msgid "Search in Your Library"
 msgstr "Cerca nella tua libreria"
 
 #: src/ui/sidebar.rs:1243 src/app.rs:3700 src/ui/artist.rs:223
-#: src/ui/artist.rs:363 src/ui/home.rs:878 src/ui/library.rs:315
+#: src/ui/artist.rs:363 src/ui/home.rs:1005 src/ui/library.rs:315
 #: src/ui/library.rs:541 src/ui/search.rs:177 src/ui/search.rs:509
 #: src/ui/winamp/playlist.rs:746 src/ui/mcloud/pages.rs:362
 #: src/ui/mcloud/pages.rs:446 src/ui/mcloud/pages.rs:749
@@ -376,7 +376,7 @@ msgstr "In coda"
 msgid "Next up"
 msgstr "Successivi"
 
-#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3383
+#: src/ui/queue.rs:635 src/ui/queue.rs:668 src/ui/widgets.rs:3499
 #: src/ui/collection.rs:1279 src/ui/prerelease.rs:242
 msgid "Retry"
 msgstr "Riprova"
@@ -461,8 +461,8 @@ msgstr "Strumentale"
 msgid "No timed lyrics for this track."
 msgstr "Nessun testo sincronizzato per questo brano."
 
-#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3281 src/ui/widgets.rs:3321
-#: src/ui/widgets.rs:3349 src/app.rs:14101 src/ui/collection.rs:930
+#: src/ui/lyrics.rs:676 src/ui/widgets.rs:3388 src/ui/widgets.rs:3430
+#: src/ui/widgets.rs:3465 src/app.rs:14101 src/ui/collection.rs:930
 msgid "Loading…"
 msgstr "Caricamento…"
 
@@ -675,57 +675,57 @@ msgstr "ASCOLTI"
 msgid "Sort by duration"
 msgstr "Ordina per durata"
 
-#: src/ui/widgets.rs:3025
+#: src/ui/widgets.rs:3122 src/ui/home.rs:494
 msgid "More options"
 msgstr "Altre opzioni"
 
-#: src/ui/widgets.rs:3360 src/app.rs:14310 src/app.rs:14324
+#: src/ui/widgets.rs:3476 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
 msgstr "Errore di connessione di rete. Controlla la connessione."
 
-#: src/ui/widgets.rs:3624
+#: src/ui/widgets.rs:3740
 msgid "Cut"
 msgstr "Taglia"
 
-#: src/ui/widgets.rs:3629 src/ui/login.rs:560
+#: src/ui/widgets.rs:3745 src/ui/login.rs:560
 msgid "Copy"
 msgstr "Copia"
 
-#: src/ui/widgets.rs:3634
+#: src/ui/widgets.rs:3750
 msgid "Paste"
 msgstr "Incolla"
 
-#: src/ui/widgets.rs:3651
+#: src/ui/widgets.rs:3767
 msgid "Select all"
 msgstr "Seleziona tutto"
 
-#: src/ui/widgets.rs:3788 src/ui/mcloud/library.rs:135
+#: src/ui/widgets.rs:3904 src/ui/mcloud/library.rs:135
 msgid "Clear"
 msgstr "Cancella"
 
 #. Translators: {name} is replaced by the author's name, shown as a link.
-#: src/ui/widgets.rs:3833
+#: src/ui/widgets.rs:3949
 #, rust-format
 msgid "Built with love by {name}"
 msgstr "Fatto con amore da {name}"
 
-#: src/ui/widgets.rs:3978
+#: src/ui/widgets.rs:4094
 msgid "Host"
 msgstr "Host"
 
-#: src/ui/widgets.rs:3995
+#: src/ui/widgets.rs:4111
 msgid "Port"
 msgstr "Porta"
 
-#: src/ui/widgets.rs:4013
+#: src/ui/widgets.rs:4129
 msgid "Username"
 msgstr "Nome utente"
 
-#: src/ui/widgets.rs:4024
+#: src/ui/widgets.rs:4140
 msgid "Password"
 msgstr "Password"
 
-#: src/ui/widgets.rs:4042
+#: src/ui/widgets.rs:4158
 msgid ""
 "Proxy login applies to Web requests. Local playback uses this proxy only "
 "without a login."
@@ -733,7 +733,7 @@ msgstr ""
 "L’accesso al proxy vale per le richieste Web. La riproduzione locale usa "
 "questo proxy solo senza accesso."
 
-#: src/ui/widgets.rs:4046
+#: src/ui/widgets.rs:4162
 msgid ""
 "Spotify hostnames are resolved by the proxy. Local playback connects "
 "directly."
@@ -2662,7 +2662,7 @@ msgstr "Ancora niente qui"
 msgid "Added songs appear here."
 msgstr "I brani che aggiungi appaiono qui."
 
-#: src/ui/collection.rs:1739 src/ui/home.rs:1001
+#: src/ui/collection.rs:1739 src/ui/home.rs:1128
 msgid "Your top songs"
 msgstr "I tuoi brani più ascoltati"
 
@@ -2958,57 +2958,57 @@ msgstr "Descrizione facoltativa"
 msgid "Save"
 msgstr "Salva"
 
-#: src/ui/home.rs:405
+#: src/ui/home.rs:532
 msgid "Made for you"
 msgstr "Creati per te"
 
-#: src/ui/home.rs:434
+#: src/ui/home.rs:561
 msgid "Your top mixes"
 msgstr "I tuoi mix più ascoltati"
 
-#: src/ui/home.rs:455 src/ui/new_releases.rs:25
+#: src/ui/home.rs:582 src/ui/new_releases.rs:25
 msgid "New releases"
 msgstr "Nuove uscite"
 
 #. Translators: {owner} is the name of the playlist's owner.
-#: src/ui/home.rs:530 src/ui/search.rs:647
+#: src/ui/home.rs:657 src/ui/search.rs:647
 #, rust-format
 msgid "By {owner}"
 msgstr "Di {owner}"
 
-#: src/ui/home.rs:756 src/ui/library.rs:38
+#: src/ui/home.rs:883 src/ui/library.rs:38
 msgid "No podcasts yet"
 msgstr "Ancora nessun podcast"
 
-#: src/ui/home.rs:763 src/ui/library.rs:39
+#: src/ui/home.rs:890 src/ui/library.rs:39
 msgid "Followed podcasts appear here."
 msgstr "I podcast che segui appaiono qui."
 
-#: src/ui/home.rs:775
+#: src/ui/home.rs:902
 msgid "Your podcasts"
 msgstr "I tuoi podcast"
 
 #. Translators: {time} is the time left in an episode, such as 12 min; {show} is the podcast's name.
-#: src/ui/home.rs:781
+#: src/ui/home.rs:908
 #, rust-format
 msgid "{time} left • {show}"
 msgstr "{time} rimanenti • {show}"
 
 #. Translators: {show} is the podcast's name.
-#: src/ui/home.rs:790
+#: src/ui/home.rs:917
 #, rust-format
 msgid "New • {show}"
 msgstr "Nuovo • {show}"
 
-#: src/ui/home.rs:841 src/ui/home.rs:851 src/ui/home.rs:866
+#: src/ui/home.rs:968 src/ui/home.rs:978 src/ui/home.rs:993
 msgid "Your top artists"
 msgstr "I tuoi artisti più ascoltati"
 
-#: src/ui/home.rs:1002
+#: src/ui/home.rs:1129
 msgid "Show more top songs"
 msgstr "Mostra altri brani"
 
-#: src/ui/home.rs:1079
+#: src/ui/home.rs:1206
 msgid "Recommended for you"
 msgstr "Consigliati per te"
 
