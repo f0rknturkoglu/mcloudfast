@@ -177,7 +177,8 @@ performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
       0.4 / 1.5 / 5 / 15 s'de tekrar bakılır.
     - Fare ya da klavye odağı listedeyken arka plan yenilemesi bekler.
 23. **"+" menüsü ve yerinde adlandırma.** *Tamamlandı.*
-    - "+" menüsünde Yeni Çalma Listesi ve Yeni Klasör var.
+    - "+" Yeni Çalma Listesi'ni açar. Yeni Klasör yok: librespot klasörleri
+      sadece okuyabilir (`docs/_reference/what-spotify-allows.md`).
     - Ad listenin en üstündeki bir alanda yazılır. Enter ya da alandan
       çıkmak oluşturur, Esc iptal eder.
     - Oluşan liste hemen açılır.

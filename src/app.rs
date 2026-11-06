@@ -5809,6 +5809,13 @@ impl App {
     }
 
     /// Asks for the New releases shelf again, keeping the cards it shows.
+    /// Asks for Spotify's release feed once, for mcloud's What's New.
+    pub(crate) fn ensure_release_feed(&mut self) {
+        if matches!(self.home.new_releases, Loadable::NotLoaded) {
+            self.load_new_releases();
+        }
+    }
+
     fn load_new_releases(&mut self) {
         self.home.new_releases_generation += 1;
         if !self.home.new_releases_loading {

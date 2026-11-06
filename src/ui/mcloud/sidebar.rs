@@ -66,6 +66,99 @@ enum Leading<'a> {
     Art(Option<&'a str>, &'a crate::images::ArtLoader),
     /// "Show All": a small chevron in the icon column.
     Chevron,
+    /// A folder: its glyph on the artwork's grey square.
+    Folder,
+}
+
+/// What ends a row.
+#[derive(Clone, Copy, PartialEq)]
+enum RowEnd {
+    Nothing,
+    /// The playlist playing: a speaker.
+    Playing,
+    /// A grey pin.
+    Pinned,
+    /// A folder's disclosure, pointing down when it is open.
+    Folder {
+        open: bool,
+    },
+}
+
+/// A row of the playlist list.
+#[derive(Debug, PartialEq)]
+enum SideRow {
+    Playlist {
+        index: usize,
+        depth: u8,
+    },
+    Folder {
+        id: String,
+        name: String,
+        open: bool,
+        depth: u8,
+    },
+}
+
+/// The opened list: what the short list shows stays where it was, then the
+/// account's playlists in its own order with their folders, which can only be
+/// read, not edited. Playlists the rootlist has not met yet wait at the end.
+fn expanded_rows(
+    playlists: &[Playlist],
+    rootlist: &[crate::player::RootlistEntry],
+    collapsed: &[String],
+    first: &[usize],
+) -> Vec<SideRow> {
+    use crate::player::RootlistEntry;
+    let mut rows: Vec<SideRow> = first
+        .iter()
+        .map(|&index| SideRow::Playlist { index, depth: 0 })
+        .collect();
+    let mut listed: Vec<usize> = first.to_vec();
+    let mut depth = 0u8;
+    let mut hidden_from: Option<u8> = None;
+    for entry in rootlist {
+        match entry {
+            RootlistEntry::FolderStart { id, name } => {
+                let open = !collapsed.contains(id);
+                if hidden_from.is_none() {
+                    rows.push(SideRow::Folder {
+                        id: id.clone(),
+                        name: name.clone(),
+                        open,
+                        depth,
+                    });
+                    if !open {
+                        hidden_from = Some(depth);
+                    }
+                }
+                depth = depth.saturating_add(1);
+            }
+            RootlistEntry::FolderEnd => {
+                depth = depth.saturating_sub(1);
+                if hidden_from == Some(depth) {
+                    hidden_from = None;
+                }
+            }
+            RootlistEntry::Playlist(uri) => {
+                let Some(index) = playlists.iter().position(|p| p.uri == *uri) else {
+                    continue;
+                };
+                if listed.contains(&index) {
+                    continue;
+                }
+                listed.push(index);
+                if hidden_from.is_none() {
+                    rows.push(SideRow::Playlist { index, depth });
+                }
+            }
+        }
+    }
+    for index in 0..playlists.len() {
+        if !listed.contains(&index) {
+            rows.push(SideRow::Playlist { index, depth: 0 });
+        }
+    }
+    rows
 }
 
 /// The sidebar's material: #252525 at 76% over the page beside it, so a
@@ -621,17 +714,15 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
         false,
     );
     let collapsed_count = collapsed_order.len();
-    let order = if expanded {
-        playlist_order(
-            all,
-            &app.settings.pinned_contexts,
-            &sync.displayed_recents,
-            true,
-        )
+    let more = !expanded && collapsed_count < all.len();
+    let rows = if expanded {
+        expanded_rows(all, &app.rootlist, &app.collapsed_folders, &collapsed_order)
     } else {
         collapsed_order
+            .iter()
+            .map(|&index| SideRow::Playlist { index, depth: 0 })
+            .collect()
     };
-    let more = !expanded && order.len() < all.len();
 
     let focus_new_id = egui::Id::new("mcloud-playlists-focus-first-new");
     let focus_first_new = ui
@@ -645,12 +736,13 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
     let art_px = app.art_px(ART_SIZE);
     let mut open = None;
     let mut any_hovered_or_focused = false;
-    for (slot, index) in order.into_iter().enumerate() {
-        let playlist = &all[index];
-        let image = pick_image(&playlist.images, art_px);
-        let active = matches!(page, Page::Playlist(id) if *id == playlist.id);
-        let here = playing.as_deref() == Some(playlist.uri.as_str());
-        let slot_id = egui::Id::new(("mcloud-sidebar-slot", &playlist.uri));
+    let mut toggle = None;
+    for (slot, side_row) in rows.iter().enumerate() {
+        let key = match side_row {
+            SideRow::Playlist { index, .. } => all[*index].uri.as_str(),
+            SideRow::Folder { id, .. } => id.as_str(),
+        };
+        let slot_id = egui::Id::new(("mcloud-sidebar-slot", key));
         let prev_slot = ui.data(|d| d.get_temp::<f32>(slot_id));
         ui.data_mut(|d| d.insert_temp(slot_id, slot as f32));
         let target_y = slot as f32 * ROW_HEIGHT;
@@ -676,38 +768,87 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
                 .data_mut(|d| d.insert_temp(slot_id.with("entry-drop"), -8.0_f32));
         }
         let y_shift = (anim_y - target_y).clamp(-64.0, 64.0);
-        let response = row_shifted(
-            ui,
-            Leading::Art(image, app.backend.art()),
-            &playlist.name,
-            active,
-            here,
-            y_shift,
-        );
+        let response = match side_row {
+            SideRow::Playlist { index, depth } => {
+                let playlist = &all[*index];
+                let image = pick_image(&playlist.images, art_px);
+                let active = matches!(page, Page::Playlist(id) if *id == playlist.id);
+                let end = if playing.as_deref() == Some(playlist.uri.as_str()) {
+                    RowEnd::Playing
+                } else if app.settings.pinned_contexts.contains(&playlist.uri) {
+                    RowEnd::Pinned
+                } else {
+                    RowEnd::Nothing
+                };
+                let response = row_shifted(
+                    ui,
+                    Leading::Art(image, app.backend.art()),
+                    &playlist.name,
+                    active,
+                    end,
+                    *depth,
+                    y_shift,
+                );
+                if response.clicked() {
+                    open = Some(Page::Playlist(playlist.id.clone()));
+                }
+                response
+            }
+            SideRow::Folder {
+                id,
+                name,
+                open: folder_open,
+                depth,
+            } => {
+                let fallback = gettext(locale, "Folder");
+                let label = if name.is_empty() {
+                    fallback.as_ref()
+                } else {
+                    name.as_str()
+                };
+                let response = row_shifted(
+                    ui,
+                    Leading::Folder,
+                    label,
+                    false,
+                    RowEnd::Folder { open: *folder_open },
+                    *depth,
+                    y_shift,
+                );
+                if response.clicked() {
+                    toggle = Some(id.clone());
+                }
+                response
+            }
+        };
         if focus_first_new && slot == collapsed_count {
             response.request_focus();
         }
         if response.hovered() || response.has_focus() {
             any_hovered_or_focused = true;
         }
-        if response.clicked() {
-            open = Some(Page::Playlist(playlist.id.clone()));
-        }
+    }
+    if let Some(id) = toggle {
+        app.actions.push(Action::ToggleLibraryFolder(id));
     }
     ui.data_mut(|d| d.insert_temp(list_active_id, any_hovered_or_focused));
 
-    if more
-        && row(
+    if more {
+        let show_all = row(
             ui,
             Leading::Chevron,
             &gettext(locale, "Show All"),
             false,
             false,
-        )
-        .clicked()
-    {
-        expanded = true;
-        ui.data_mut(|d| d.insert_temp(focus_new_id, true));
+        );
+        if show_all.clicked() {
+            expanded = true;
+            // The keyboard moves on to the first new row; a click stays put,
+            // so no focus ring appears under the pointer.
+            if !show_all.clicked_by(egui::PointerButton::Primary) {
+                ui.data_mut(|d| d.insert_temp(focus_new_id, true));
+            }
+        }
     }
     if let Some(page) = open {
         app.actions.push(Action::Open(page));
@@ -841,7 +982,12 @@ fn row(
     active: bool,
     playing: bool,
 ) -> egui::Response {
-    row_shifted(ui, leading, label, active, playing, 0.0)
+    let end = if playing {
+        RowEnd::Playing
+    } else {
+        RowEnd::Nothing
+    };
+    row_shifted(ui, leading, label, active, end, 0, 0.0)
 }
 
 fn row_shifted(
@@ -849,7 +995,8 @@ fn row_shifted(
     leading: Leading<'_>,
     label: &str,
     active: bool,
-    playing: bool,
+    end: RowEnd,
+    depth: u8,
     y_shift: f32,
 ) -> egui::Response {
     let (alloc_rect, response) =
@@ -868,9 +1015,10 @@ fn row_shifted(
         // Playlist rows sit two points further left, so their artwork's
         // centre lines up with the icons above.
         let (lead_left, lead_size) = match leading {
-            Leading::Art(..) => (rect.left() + 14.0, ART_SIZE),
+            Leading::Art(..) | Leading::Folder => (rect.left() + 14.0, ART_SIZE),
             _ => (rect.left() + ROW_PADDING, ICON_SIZE),
         };
+        let lead_left = lead_left + f32::from(depth) * 12.0;
         let lead = Rect::from_min_size(
             pos2(lead_left, rect.center().y - lead_size / 2.0),
             Vec2::splat(lead_size),
@@ -900,22 +1048,30 @@ fn row_shifted(
                 color = QUIET;
                 theme::paint_icon(ui, Icon::McloudChevron, lead, 12.0, QUIET);
             }
+            Leading::Folder => {
+                ui.painter().rect_filled(
+                    lead,
+                    CornerRadius::same(4),
+                    Color32::from_white_alpha(20),
+                );
+                theme::paint_icon(ui, Icon::McloudFolder, lead, 14.0, accent());
+            }
         }
         let font = if active {
             theme::semibold(13.0)
         } else {
             theme::medium(13.0)
         };
-        let gap = if matches!(leading, Leading::Art(..)) {
+        let gap = if matches!(leading, Leading::Art(..) | Leading::Folder) {
             8.0
         } else {
             ICON_GAP
         };
         let text_left = lead.right() + gap;
-        let trailing = if playing {
-            14.0 + 8.0 + ROW_PADDING
-        } else {
+        let trailing = if end == RowEnd::Nothing {
             ROW_PADDING
+        } else {
+            14.0 + 8.0 + ROW_PADDING
         };
         let galley = crate::ui::widgets::ellipsized(
             ui,
@@ -930,12 +1086,30 @@ fn row_shifted(
             galley,
             color,
         );
-        if playing {
-            let speaker = Rect::from_center_size(
-                pos2(rect.right() - ROW_PADDING - 7.0, rect.center().y),
-                Vec2::splat(14.0),
-            );
-            theme::paint_icon(ui, Icon::McloudVolume2, speaker, 14.0, accent());
+        let end_rect = Rect::from_center_size(
+            pos2(rect.right() - ROW_PADDING - 7.0, rect.center().y),
+            Vec2::splat(14.0),
+        );
+        match end {
+            RowEnd::Nothing => {}
+            RowEnd::Playing => {
+                theme::paint_icon(ui, Icon::McloudVolume2, end_rect, 14.0, accent());
+            }
+            RowEnd::Pinned => theme::paint_icon(ui, Icon::Pin, end_rect, 12.0, QUIET),
+            RowEnd::Folder { open } => {
+                let angle = if open {
+                    std::f32::consts::FRAC_PI_2
+                } else {
+                    0.0
+                };
+                Icon::McloudChevron
+                    .image(QUIET, 11.0)
+                    .rotate(angle, Vec2::splat(0.5))
+                    .paint_at(
+                        ui,
+                        Rect::from_center_size(end_rect.center(), Vec2::splat(11.0)),
+                    );
+            }
         }
     }
     response.widget_info(|| {
@@ -972,7 +1146,8 @@ fn account_row(app: &mut App, ui: &mut egui::Ui) {
         pos2(line.right() - 15.0, line.center().y),
         Vec2::splat(30.0),
     );
-    let chip = Rect::from_min_max(line.min, pos2(friends.left() - 2.0, line.bottom()));
+    let news = friends.translate(vec2(-32.0, 0.0));
+    let chip = Rect::from_min_max(line.min, pos2(news.left() - 2.0, line.bottom()));
 
     let response = ui.interact(chip, ui.id().with("mcloud-account"), Sense::click());
     if response.hovered() {
@@ -1036,6 +1211,31 @@ fn account_row(app: &mut App, ui: &mut egui::Ui) {
     });
     theme::focus_ring(ui, &response);
 
+    // What's New: Spotify's feed of releases from the artists followed.
+    let label = gettext(locale, "What's New");
+    let response = ui.interact(news, ui.id().with("mcloud-whats-new"), Sense::click());
+    let here = *app.page() == Page::NewReleases;
+    let response = response.on_hover_text(label.as_ref());
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(egui::WidgetType::Button, true, here, label.as_ref())
+    });
+    if response.hovered() {
+        ui.painter()
+            .rect_filled(news, CornerRadius::same(8), Color32::from_white_alpha(13));
+    }
+    let color = if here {
+        accent()
+    } else if response.hovered() {
+        TEXT
+    } else {
+        Color32::from_rgb(0xa9, 0xa9, 0xa9)
+    };
+    theme::paint_icon(ui, Icon::McloudBell, news, 18.0, color);
+    theme::focus_ring(ui, &response);
+    if response.clicked() {
+        app.actions.push(Action::Open(Page::NewReleases));
+    }
+
     let label = gettext(locale, "Listening activity");
     let response = ui.interact(friends, ui.id().with("mcloud-friends"), Sense::click());
     let is_down = response.is_pointer_button_down_on();
@@ -1076,6 +1276,52 @@ mod tests {
             "uri": uri,
         }))
         .unwrap()
+    }
+
+    /// The opened list keeps the short list's rows first, then follows the
+    /// account's order: a rolled-up folder hides its playlists, and one the
+    /// short list already shows is not listed twice.
+    #[test]
+    fn the_opened_list_follows_the_rootlist_with_its_folders() {
+        use crate::player::RootlistEntry;
+        let playlist = |uri: &str| Playlist {
+            uri: uri.into(),
+            ..Default::default()
+        };
+        let all = [playlist("a"), playlist("b"), playlist("c"), playlist("d")];
+        let rootlist = [
+            RootlistEntry::FolderStart {
+                id: "open".into(),
+                name: "Open".into(),
+            },
+            RootlistEntry::Playlist("a".into()),
+            RootlistEntry::Playlist("b".into()),
+            RootlistEntry::FolderEnd,
+            RootlistEntry::FolderStart {
+                id: "shut".into(),
+                name: "Shut".into(),
+            },
+            RootlistEntry::Playlist("c".into()),
+            RootlistEntry::FolderEnd,
+        ];
+        let rows = expanded_rows(&all, &rootlist, &["shut".into()], &[1]);
+        let folder = |id: &str, open| SideRow::Folder {
+            id: id.into(),
+            name: if open { "Open" } else { "Shut" }.into(),
+            open,
+            depth: 0,
+        };
+        assert_eq!(
+            rows,
+            [
+                SideRow::Playlist { index: 1, depth: 0 },
+                folder("open", true),
+                SideRow::Playlist { index: 0, depth: 1 },
+                folder("shut", false),
+                // Not in the rootlist yet: waits at the end.
+                SideRow::Playlist { index: 3, depth: 0 },
+            ]
+        );
     }
 
     /// Like mcloud's, the sidebar is 15.5% of the window, 220 to 300pt.
