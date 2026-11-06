@@ -336,6 +336,7 @@ pub enum ApiRequest {
     },
     ArtistTopTracks {
         id: String,
+        generation: u64,
     },
     ArtistAlbums {
         id: String,
@@ -613,6 +614,7 @@ pub enum ApiResponse {
     },
     ArtistTopTracks {
         id: String,
+        generation: u64,
         result: ApiResult<Vec<Track>>,
     },
     ArtistAlbums {
@@ -791,6 +793,10 @@ pub enum Command {
     AuthorizePlayback,
     /// Reload the engine config (audio settings changed).
     RestartEngine(EngineConfig),
+    /// Remove cached audio on the disk worker, keeping the active cache's accounting.
+    ClearAudioCache,
+    /// The disk worker finished clearing cached audio.
+    AudioCacheClearFinished(Result<crate::storage::AudioCleared, crate::storage::ClearAudioError>),
     /// Rebuild the HTTP client. Restart local playback only when its HTTP
     /// proxy changed; Off, System, and SOCKS5 share a direct engine connection.
     ApplyProxy {
@@ -912,7 +918,10 @@ pub enum Command {
     UserNames(Vec<String>),
     /// Read Spotify's play counts for an album's songs or an artist's
     /// popular songs, by the album's or the artist's URI.
-    PlayCounts(String),
+    PlayCounts {
+        uri: String,
+        generation: u64,
+    },
     /// Read what friends are listening to through the streaming session,
     /// for the app's request generation.
     FriendActivity(u64),
@@ -1008,6 +1017,7 @@ pub struct LyricsRequest {
 
 pub enum Event {
     Soloist(crate::soloist::Update),
+    AudioCacheCleared(Result<crate::storage::AudioCleared, crate::storage::ClearAudioError>),
     /// The folder picked in the local files dialog; `None` when cancelled.
     LocalFilesFolderChosen(Option<std::path::PathBuf>),
     /// The songs in `folder`, by the `spotify:local:` URIs they play for.
@@ -1069,6 +1079,14 @@ pub enum Event {
         result: Result<(), String>,
     },
     Local(Box<LocalState>),
+    /// Playback on another device changed; poll it now rather than later.
+    RemoteChanged,
+    /// The volume Spotify pushed for the device playing elsewhere, by its
+    /// Connect id, on librespot's 0 to 65535 scale.
+    RemoteVolume {
+        device_id: String,
+        volume: u16,
+    },
     Api(Box<ApiResponse>),
     Accent {
         url: String,
@@ -1125,7 +1143,8 @@ pub enum Event {
     /// artist's header picture, or why they could not be read.
     PlayCounts {
         uri: String,
-        result: Result<session_reads::PageExtras, String>,
+        generation: u64,
+        result: Result<session_reads::PageMetadata, String>,
     },
     /// Saved shows that Spotify's metadata marks as audiobooks. librespot
     /// cannot play them, so the Podcasts shelf leaves them out.
@@ -1385,6 +1404,7 @@ impl Backend {
             && !matches!(
                 command,
                 Command::Accent { .. }
+                    | Command::ClearAudioCache
                     | Command::Shutdown
                     | Command::CheckForUpdates { .. }
                     | Command::InspectUpdate
@@ -1920,6 +1940,8 @@ struct Worker {
     /// True while a playback grant or engine connection is in flight, so a
     /// second attempt does not pile up.
     engine_busy: bool,
+    /// Cached audio is being cleared on the disk worker.
+    audio_cache_clearing: bool,
     search_tasks: Vec<tokio::task::AbortHandle>,
     /// A user changed engine-affecting settings while the current connection
     /// attempt was in flight. Its result is stale and must not be installed.
@@ -2032,6 +2054,7 @@ impl Worker {
             radio_waiting: BTreeMap::new(),
             prerelease_waiting: None,
             engine_busy: false,
+            audio_cache_clearing: false,
             search_tasks: Vec::new(),
             engine_restart_pending: false,
             signed_in: false,
@@ -2064,6 +2087,7 @@ impl Worker {
         let client = crate::http::build_client(&proxy)?;
         let restart = self.engine_proxy != proxy.librespot_url();
         self.http.replace(client);
+        crate::updates::forget_updater();
         self.engine_config.proxy = proxy;
         Ok(restart)
     }
@@ -2233,6 +2257,13 @@ impl Worker {
                     if !enabled {
                         self.emit(Event::Soloist(crate::soloist::Update::Status(
                             crate::soloist::Status::Off,
+                        )));
+                    }
+                    // A rate-limited sign-in can still be unverified here.
+                    // Saying so beats a button that seems to do nothing (#1137).
+                    if enabled && self.api.account().is_none() {
+                        self.emit(Event::Soloist(crate::soloist::Update::Status(
+                            crate::soloist::Status::Failed(crate::soloist::Failure::NotSignedIn),
                         )));
                     }
                     if enabled && let Some(account) = self.api.account() {
@@ -2443,6 +2474,13 @@ impl Worker {
                     config.proxy = self.engine_config.proxy.clone();
                     self.engine_config = config;
                     self.replace_engine();
+                }
+                Command::ClearAudioCache => self.start_audio_cache_clear(),
+                Command::AudioCacheClearFinished(result) => {
+                    self.audio_cache_clearing = false;
+                    self.emit(Event::AudioCacheCleared(result));
+                    // A connection asked for during the clear waited for it.
+                    self.resume_engine();
                 }
                 Command::ApplyProxy { request, config } => self.change_proxy(request, config, None),
                 Command::Player(command) => {
@@ -2792,7 +2830,7 @@ impl Worker {
                     }
                 }
                 Command::UserNames(ids) => self.fetch_user_names(ids),
-                Command::PlayCounts(uri) => self.fetch_play_counts(uri),
+                Command::PlayCounts { uri, generation } => self.fetch_play_counts(uri, generation),
                 Command::FriendActivity(generation) => self.fetch_friend_activity(generation),
                 Command::LoadLikedSongsCache { generation } => {
                     if let Some(account) = self.api.account() {
@@ -3078,9 +3116,9 @@ impl Worker {
                         // in Settings while a shared grant keeps the app
                         // signed in (#634).
                         let message = if source == ApiSource::Shared {
-                            "Spotify permissions changed. Sign in with your own Spotify app."
+                            "Spotify permissions changed. Sign in with your Client ID."
                         } else {
-                            "Spotify permissions changed for your personal app. Authorize it \
+                            "Spotify permissions changed for your Client ID. Authorize it \
                              again, with Sign in or in Settings, under Account."
                         };
                         self.emit(Event::Error(message.into()));
@@ -3204,7 +3242,7 @@ impl Worker {
         }
         let message = match source {
             ApiSource::Shared => format!("Shared Spotify sign-in failed: {error}"),
-            ApiSource::Personal => format!("Personal app authorization failed: {error}"),
+            ApiSource::Personal => format!("Client ID authorization failed: {error}"),
         };
         let other_ready = match source {
             ApiSource::Shared => self.api.personal_ready(),
@@ -3405,8 +3443,8 @@ impl Worker {
                         Event::Auth(AuthStatus::Refused(SignInProblem::UnknownClient))
                     } else {
                         Event::Error(
-                            "Spotify doesn't know this Client ID. Copy it again from your \
-                             app's page in Spotify's developer dashboard."
+                            "Spotify doesn't know this Client ID. Copy it again from \
+                             Spotify's developer dashboard."
                                 .into(),
                         )
                     });
@@ -3583,6 +3621,14 @@ impl Worker {
                     let _ = events.send(Event::AudioDeviceFound { name, id });
                     waker.wake();
                 }
+                EngineEvent::RemoteChanged => {
+                    let _ = events.send(Event::RemoteChanged);
+                    waker.wake();
+                }
+                EngineEvent::RemoteVolume { device_id, volume } => {
+                    let _ = events.send(Event::RemoteVolume { device_id, volume });
+                    waker.wake();
+                }
             }
         })
     }
@@ -3636,6 +3682,51 @@ impl Worker {
         }
         self.take_engine_for_resume();
         self.resume_engine();
+    }
+
+    /// Starts clearing cached audio on the disk worker and goes back to the
+    /// commands: a slow disk must not hold up the player. A new engine opens
+    /// a cache of its own, so `connect_engine` waits for the clear to finish.
+    fn start_audio_cache_clear(&mut self) {
+        if self.audio_cache_clearing {
+            return;
+        }
+        // A connecting engine has a cache of its own that this worker cannot
+        // yet reach. A carried player can still be using its former session's
+        // cache. Wait until there is one owner whose accounting we can update.
+        if self.engine_busy
+            || self.kept_player.is_some()
+            || self.engine.as_ref().is_some_and(|engine| engine.carrying())
+        {
+            self.emit(Event::AudioCacheCleared(Err(
+                crate::storage::ClearAudioError::Reconnecting,
+            )));
+            return;
+        }
+        let cache = self.engine.as_ref().and_then(|engine| {
+            engine
+                .session()
+                .cache()
+                .filter(|cache| {
+                    cache
+                        .file_path(librespot_core::file_id::FileId::from_raw(&[0; 20]))
+                        .is_some()
+                })
+                .cloned()
+        });
+        let root = self.dirs.audio_cache_dir();
+        let commands = self.commands.clone();
+        self.audio_cache_clearing = true;
+        tokio::spawn(async move {
+            let result = tokio::task::spawn_blocking(move || {
+                crate::storage::clear_audio(&root, cache.as_deref())
+            })
+            .await
+            .unwrap_or_else(|error| {
+                Err(crate::storage::ClearAudioError::Failed(error.to_string()))
+            });
+            let _ = commands.send(Command::AudioCacheClearFinished(result));
+        });
     }
 
     /// Reconnect the engine after its session dropped on its own. Whatever
@@ -3904,6 +3995,14 @@ impl Worker {
             return;
         }
         self.pending_playback_grant = Some(credentials.clone());
+        if self.audio_cache_clearing {
+            // The cache a new engine opens counts what is on disk, so it
+            // waits for the clear; finishing resumes from the pending grant.
+            if !self.engine_retry_quiet {
+                self.emit(Event::Playback(LocalPlayback::Connecting));
+            }
+            return;
+        }
         self.cancel_signin = None;
         self.engine_busy = true;
         self.engine_attempt = self.engine_attempt.wrapping_add(1);
@@ -4787,11 +4886,15 @@ impl Worker {
     /// popular songs was played. It needs the playback session and a
     /// verified Web API grant, as upcoming album pages do; without them the
     /// lists simply show no counts.
-    fn fetch_play_counts(&self, uri: String) {
+    fn fetch_play_counts(&self, uri: String, generation: u64) {
         let events = self.events.clone();
         let waker = self.waker.clone();
         let send = move |uri, result| {
-            let _ = events.send(Event::PlayCounts { uri, result });
+            let _ = events.send(Event::PlayCounts {
+                uri,
+                generation,
+                result,
+            });
             waker.wake();
         };
         let Some(engine) = self.engine.clone() else {
@@ -4804,7 +4907,7 @@ impl Worker {
         tokio::spawn(async move {
             let read = tokio::time::timeout(
                 Duration::from_secs(15),
-                session_reads::play_counts(engine.session(), &web, &uri),
+                session_reads::page_metadata(engine.session(), &web, &uri),
             );
             let result = tokio::select! {
                 biased;
@@ -5560,6 +5663,9 @@ async fn handle(
         }};
     }
 
+    // Spotify does not always flag a restricted device beforehand (a Sonos
+    // another app is steering, say), and then refuses its player commands.
+    let retry = command_device(&request).map(|device| (device.to_string(), request.clone()));
     let response = match request {
         ApiRequest::Me => ApiResponse::Me(routed!(me())),
         ApiRequest::Devices => ApiResponse::Devices(routed!(devices())),
@@ -5861,7 +5967,8 @@ async fn handle(
             result: routed!(artist(&id)),
             id,
         },
-        ApiRequest::ArtistTopTracks { id } => ApiResponse::ArtistTopTracks {
+        ApiRequest::ArtistTopTracks { id, generation } => ApiResponse::ArtistTopTracks {
+            generation,
             result: routed!(artist_top_tracks(&id)),
             id,
         },
@@ -6034,8 +6141,53 @@ async fn handle(
             }
         }
     };
+    if let Some((device, request)) = retry
+        && refused_as_restricted(&response)
+        && let Some(engine) = engine
+            .filter(|engine| same_account(&engine.session().username(), api.account().as_ref()))
+    {
+        connect.mark_restricted(&device);
+        if let Some(response) = over_connect(engine, connect, &request).await {
+            log::debug!("Spotify route operation={operation:?} source=connect after refusal");
+            return (response, Vec::new());
+        }
+    }
     observe_playlists(api, &response);
     (response, expired.get().into_iter().collect())
+}
+
+/// The device a player command names, for those [`over_connect`] can send.
+fn command_device(request: &ApiRequest) -> Option<&str> {
+    match request {
+        ApiRequest::Remote { device_id, .. }
+        | ApiRequest::ShufflePlay { device_id, .. }
+        | ApiRequest::AddToQueue { device_id, .. }
+        | ApiRequest::AddManyToQueue { device_id, .. } => device_id.as_deref(),
+        ApiRequest::Transfer { device_id, .. } => Some(device_id),
+        _ => None,
+    }
+}
+
+/// Whether the Web API refused a player command because its device is
+/// restricted ("Restricted device"). "Restriction violated" says nothing
+/// about the device: Spotify also gives it for pausing while paused.
+fn refused_as_restricted(response: &ApiResponse) -> bool {
+    // A batch the Web API already queued part of is not sent again.
+    if matches!(response, ApiResponse::QueueBatchAdded { added, .. } if *added > 0) {
+        return false;
+    }
+    let (ApiResponse::Remote { result, .. }
+    | ApiResponse::Transferred { result, .. }
+    | ApiResponse::QueueAdded { result, .. }
+    | ApiResponse::QueueBatchAdded { result, .. }) = response
+    else {
+        return false;
+    };
+    matches!(
+        result,
+        Err(ApiError::Status { status: 403, message })
+            if message.to_ascii_lowercase().contains("restricted device")
+    )
 }
 
 /// Player commands for a device the Web API refuses (a Sonos, say) go over
@@ -6227,7 +6379,7 @@ enum SessionRead<'a> {
 fn session_read(request: &ApiRequest) -> Option<SessionRead<'_>> {
     Some(match request {
         ApiRequest::RelatedArtists { id } => SessionRead::RelatedArtists { id },
-        ApiRequest::ArtistTopTracks { id } => SessionRead::ArtistTop { id },
+        ApiRequest::ArtistTopTracks { id, .. } => SessionRead::ArtistTop { id },
         ApiRequest::Playlist { id, .. } => SessionRead::Header { id },
         ApiRequest::PlaylistItems { id, offset, .. }
         | ApiRequest::PlaylistQueueItems { id, offset, .. } => SessionRead::Rows {
@@ -6263,9 +6415,10 @@ fn session_response(request: &ApiRequest, answer: SessionAnswer) -> Option<ApiRe
                 result,
             }
         }
-        (ApiRequest::ArtistTopTracks { id }, SessionAnswer::ArtistTop(result)) => {
+        (ApiRequest::ArtistTopTracks { id, generation }, SessionAnswer::ArtistTop(result)) => {
             ApiResponse::ArtistTopTracks {
                 id: id.clone(),
+                generation: *generation,
                 result,
             }
         }
@@ -6342,7 +6495,10 @@ async fn spotify_lyrics(
     cache_dir: &std::path::Path,
 ) -> Option<crate::lyrics::Lyrics> {
     let id = uri.strip_prefix("spotify:track:")?;
-    let path = cache_dir.join(format!("spotify-{id}.json"));
+    // Answers from before the request named the cover are kept only for what
+    // they found: nearly all their "none"s were the request's doing.
+    let path = cache_dir.join(format!("spotify-v2-{id}.json"));
+    let before = cache_dir.join(format!("spotify-{id}.json"));
     if let Some(found) = crate::lyrics::cached(&path) {
         // A cached answer carries the writers it was stored with. An entry
         // from before they were read asks once, and keeps what it gets.
@@ -6358,8 +6514,14 @@ async fn spotify_lyrics(
         }
         return Some(lyrics);
     }
+    if let Some(Some(found)) = crate::lyrics::cached(&before) {
+        return Some(found);
+    }
+    let found_before = || {
+        crate::lyrics::previously_found(&path).or_else(|| crate::lyrics::previously_found(&before))
+    };
     let Some(engine) = engine else {
-        return crate::lyrics::previously_found(&path);
+        return found_before();
     };
     match engine.lyrics_json(uri).await {
         Ok(json) => {
@@ -6384,7 +6546,7 @@ async fn spotify_lyrics(
         }
         Err(error) => {
             log::debug!("spotify lyrics unavailable: {error:#}");
-            crate::lyrics::previously_found(&path)
+            found_before()
         }
     }
 }
@@ -7958,6 +8120,57 @@ mod authorization_tests {
         assert_eq!(worker.engine_config.proxy, ProxyConfig::Off);
     }
 
+    #[test]
+    fn a_refusal_for_a_restricted_device_sends_the_command_over_connect() {
+        let refused = |status, message: &str| ApiResponse::Remote {
+            action: RemoteAction::Pause,
+            result: Err(ApiError::Status {
+                status,
+                message: message.into(),
+            }),
+        };
+        assert!(!refused_as_restricted(&refused(
+            403,
+            "Player command failed: Restriction violated"
+        )));
+        assert!(refused_as_restricted(&refused(
+            403,
+            "Player command failed: Restricted device"
+        )));
+        assert!(!refused_as_restricted(&refused(
+            403,
+            "Player command failed: Premium required"
+        )));
+        assert!(!refused_as_restricted(&refused(404, "Restricted device")));
+        assert!(!refused_as_restricted(&ApiResponse::Remote {
+            action: RemoteAction::Pause,
+            result: Ok(()),
+        }));
+        let batch = |added| ApiResponse::QueueBatchAdded {
+            request: 1,
+            added,
+            result: Err(ApiError::Status {
+                status: 403,
+                message: "Restricted device".into(),
+            }),
+        };
+        assert!(refused_as_restricted(&batch(0)));
+        assert!(!refused_as_restricted(&batch(2)));
+
+        let pause = |device_id: Option<&str>| ApiRequest::Remote {
+            action: RemoteAction::Pause,
+            device_id: device_id.map(str::to_string),
+            play: None,
+            position_ms: 0,
+            percent: 0,
+            flag: false,
+            repeat: String::new(),
+        };
+        assert_eq!(command_device(&pause(Some("move"))), Some("move"));
+        assert_eq!(command_device(&pause(None)), None);
+        assert_eq!(command_device(&ApiRequest::Devices), None);
+    }
+
     /// A session that drops on its own comes back at the level being heard,
     /// exactly, not at the level the app launched with. Music turned down
     /// to 5% after launch used to come back at the previous session's 80%.
@@ -8630,6 +8843,46 @@ mod authorization_tests {
         )));
     }
 
+    #[test]
+    fn audio_cache_clear_works_without_sign_in_and_waits_for_reconnection() {
+        let (runtime, mut worker, _) = worker("audio-clear");
+        let (send, mut commands) = tokio::sync::mpsc::unbounded_channel();
+        worker.commands = send;
+        let root = worker.dirs.audio_cache_dir();
+        std::fs::create_dir_all(root.join("nested")).unwrap();
+        std::fs::write(root.join("nested/track"), [0; 27]).unwrap();
+        worker.engine_busy = true;
+        worker.start_audio_cache_clear();
+        assert!(!worker.audio_cache_clearing);
+        assert!(root.join("nested/track").exists());
+        worker.engine_busy = false;
+        {
+            let _entered = runtime.enter();
+            worker.start_audio_cache_clear();
+        }
+        // The command loop is free again before the disk work has finished,
+        // and a second request does not start a second clear.
+        assert!(worker.audio_cache_clearing);
+        worker.start_audio_cache_clear();
+        let Some(Command::AudioCacheClearFinished(result)) = runtime.block_on(commands.recv())
+        else {
+            panic!("expected the clear's answer");
+        };
+        assert_eq!(result.unwrap().bytes, 27);
+        assert!(commands.try_recv().is_err(), "one clear, one answer");
+        assert!(!worker.signed_in);
+        assert!(!root.join("nested/track").exists());
+    }
+
+    #[test]
+    fn a_connection_waits_for_the_audio_clear_and_keeps_its_grant() {
+        let (_runtime, mut worker, _) = worker("audio-clear-connect");
+        worker.audio_cache_clearing = true;
+        worker.connect_engine(Credentials::with_password("alice", "grant"));
+        assert!(!worker.engine_busy);
+        assert!(worker.pending_playback_grant.is_some());
+    }
+
     pub(super) fn worker(
         name: &str,
     ) -> (
@@ -9038,7 +9291,7 @@ mod authorization_tests {
             // listener's own app; a personal app is renewed by signing in
             // with it, or in Settings (#634).
             let advice = if slot == CredentialSlot::Shared {
-                "Sign in with your own Spotify app."
+                "Sign in with your Client ID."
             } else {
                 "with Sign in or in Settings, under Account."
             };
@@ -9587,6 +9840,7 @@ mod session_tests {
         let api = ApiGateway::new(reqwest::Client::new(), Arc::new(NetActivity::default()));
         let request = ApiRequest::ArtistTopTracks {
             id: "artist1".into(),
+            generation: 42,
         };
         assert_eq!(operation_for(&api, &request), Operation::ArtistTopTracks);
         assert_eq!(
@@ -9595,7 +9849,7 @@ mod session_tests {
         );
         assert!(
             matches!(session_response(&request, SessionAnswer::ArtistTop(Ok(Vec::new()))),
-            Some(ApiResponse::ArtistTopTracks { id, result: Ok(tracks) }) if id == "artist1" && tracks.is_empty())
+            Some(ApiResponse::ArtistTopTracks { id, generation: 42, result: Ok(tracks) }) if id == "artist1" && tracks.is_empty())
         );
         let transient = settle(Err::<Vec<Track>, Failure>(Failure::Retry(anyhow::anyhow!(
             "connection lost"
@@ -9614,6 +9868,7 @@ mod session_tests {
         assert!(matches!(
             session_response(&request, SessionAnswer::ArtistTop(refused)),
             Some(ApiResponse::ArtistTopTracks {
+                generation: 42,
                 result: Err(ApiError::Status { status: 403, .. }),
                 ..
             })
@@ -9848,6 +10103,46 @@ mod tests {
                 .await
                 .is_none()
         );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    /// Old "none"s stop counting, old finds keep working, and a new "none"
+    /// asks again after a week.
+    #[tokio::test]
+    async fn spotify_lyrics_answers_are_versioned_and_a_none_is_short_lived() {
+        let root = std::env::temp_dir().join(format!(
+            "spotifast-spotify-lyrics-v2-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let found = crate::lyrics::from_text("[00:01.00] A test line");
+
+        crate::lyrics::store(&root.join("spotify-kept.json"), &found);
+        assert_eq!(
+            spotify_lyrics(None, "spotify:track:kept", &root).await,
+            found
+        );
+
+        let old_none = root.join("spotify-gone.json");
+        crate::lyrics::store(&old_none, &None);
+        assert_eq!(crate::lyrics::cached(&old_none), Some(None), "as it was");
+        assert!(
+            spotify_lyrics(None, "spotify:track:gone", &root)
+                .await
+                .is_none()
+        );
+
+        let none = root.join("spotify-v2-none.json");
+        crate::lyrics::store(&none, &None);
+        assert_eq!(crate::lyrics::cached(&none), Some(None), "fresh");
+        let eight_days = std::time::SystemTime::now() - Duration::from_secs(60 * 60 * 24 * 8);
+        std::fs::File::options()
+            .write(true)
+            .open(&none)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(eight_days))
+            .unwrap();
+        assert_eq!(crate::lyrics::cached(&none), None, "and gone in a week");
         std::fs::remove_dir_all(root).unwrap();
     }
 

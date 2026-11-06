@@ -363,6 +363,7 @@ pub(crate) fn sort_menu_button(app: &mut App, ui: &mut egui::Ui) {
             SortColumn::Album => gettext(locale, "Album"),
             SortColumn::Duration => gettext(locale, "Duration"),
             SortColumn::Index => gettext(locale, "Custom order"),
+            SortColumn::Plays => pgettext(locale, "column heading", "PLAYS"),
             SortColumn::AddedBy => pgettext(locale, "column heading", "ADDED BY"),
         },
     };
