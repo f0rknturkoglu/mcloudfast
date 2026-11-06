@@ -1431,6 +1431,56 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             gettext(locale, "Off leaves the lyrics for full screen."),
         )
         .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Artwork in the player"),
+            gettext(locale, "Shows the song's artwork in the player."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Liquid Glass player"),
+            gettext(locale, "Off draws the player as a solid surface."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Names in the player open as links"),
+            gettext(locale, "Off asks where to go when the artist and album line is clicked."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Song menu anywhere on the player"),
+            gettext(locale, "Off opens it only over the song."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Playlist filters as buttons"),
+            gettext(locale, "Off keeps them in a menu."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "What's New as cards"),
+            gettext(locale, "Off shows the list of songs."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Apple Music cards on Home"),
+            gettext(locale, "Off draws Spotify's cards."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Search results in sections"),
+            gettext(locale, "Off uses Spotify's tabbed list."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Photo headers as artwork"),
+            gettext(locale, "Off shows a mix's photo across the top of its page."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
+        RowText::new(
+            gettext(locale, "Now Playing only"),
+            gettext(locale, "Hides the bottom player and moves every control into Now Playing."),
+        )
+        .when(app.settings.interface == crate::settings::Interface::Mcloud),
     ];
     for index in [8, 9, 10] {
         appearance_rows[index].available &= visualizers;
@@ -1557,7 +1607,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                                         Stroke::new(2.0, palette.text),
                                     );
                                 }
-                                if resp.on_hover_text(accent.label()).clicked() && current != accent
+                                if resp.on_hover_text(accent_name(locale, accent)).clicked()
+                                    && current != accent
                                 {
                                     app.settings.mcloud_accent = Some(accent);
                                     changed = true;
@@ -1822,6 +1873,29 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                         }
                     },
                 );
+                type Toggle = fn(&mut crate::settings::Settings) -> &mut bool;
+                let toggles: [Toggle; 10] = [
+                    |s| &mut s.mcloud_player_artwork,
+                    |s| &mut s.mcloud_player_glass,
+                    |s| &mut s.mcloud_lcd_links,
+                    |s| &mut s.mcloud_player_menu_anywhere,
+                    |s| &mut s.mcloud_filter_pills,
+                    |s| &mut s.mcloud_feed_cards,
+                    |s| &mut s.mcloud_home_cards,
+                    |s| &mut s.mcloud_search_sections,
+                    |s| &mut s.mcloud_photo_as_artwork,
+                    |s| &mut s.mcloud_np_only,
+                ];
+                for (offset, toggle) in toggles.into_iter().enumerate() {
+                    let row = &appearance_rows[24 + offset];
+                    filtered_row(ui, &palette, &needle, &appearance, row, |ui| {
+                        if widgets::switch(ui, &palette, &row.title, toggle(&mut app.settings))
+                            .changed()
+                        {
+                            changed = true;
+                        }
+                    });
+                }
             }
             // Wide enough for the theme's two buttons side by side.
             let theme_buttons_width = theme::soft_button_width(ui, &theme_guide)
@@ -3405,6 +3479,26 @@ fn eq_curve(ui: &mut egui::Ui, palette: &Palette, settings: &crate::eq::EqSettin
     painter.add(Shape::line(points, Stroke::new(2.0, color)));
     for (hz, db) in crate::eq::BANDS.iter().zip(settings.bands_db) {
         painter.circle_filled(pos2(x_of(*hz), y_of(db + settings.preamp_db)), 3.0, color);
+    }
+}
+
+/// An mcloud accent's name in the user's language.
+fn accent_name(
+    locale: crate::i18n::Locale,
+    accent: crate::settings::McloudAccent,
+) -> std::borrow::Cow<'static, str> {
+    use crate::settings::McloudAccent as Accent;
+    match accent {
+        Accent::Red => gettext(locale, "Red"),
+        Accent::Pink => gettext(locale, "Pink"),
+        Accent::Orange => gettext(locale, "Orange"),
+        Accent::Yellow => gettext(locale, "Yellow"),
+        Accent::Green => gettext(locale, "Green"),
+        Accent::Teal => gettext(locale, "Teal"),
+        Accent::Blue => gettext(locale, "Blue"),
+        Accent::Purple => gettext(locale, "Purple"),
+        Accent::Spotify => gettext(locale, "Spotify Green"),
+        Accent::Graphite => gettext(locale, "Graphite"),
     }
 }
 

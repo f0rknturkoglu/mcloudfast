@@ -1124,7 +1124,10 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
                     crate::motion::seconds(ui.ctx(), 0.3),
                 );
                 let color = if words {
-                    quiet
+                    // Lines further from the sung one fade, standing in for
+                    // Spicy Lyrics' blur by distance.
+                    let distance = active.map_or(0, |at| at.abs_diff(index));
+                    quiet.gamma_multiply((1.0 - 0.1 * distance as f32).max(0.5))
                 } else if lyrics.synced {
                     blend(quiet, app.palette.accent, lit)
                 } else {

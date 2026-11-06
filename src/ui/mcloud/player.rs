@@ -73,14 +73,22 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, content: Rect) {
             ui.set_clip_rect(rect.expand(40.0));
             // The capsule is the area's own: clicks between its controls
             // stay on it rather than reaching the page beneath.
-            ui.allocate_exact_size(rect.size(), Sense::click());
+            let (_, capsule_response) = ui.allocate_exact_size(rect.size(), Sense::click());
             let palette = app.palette;
-            surface(
-                ui,
-                rect,
-                app.settings.mcloud_glass,
-                app.lyrics_fullscreen.is_some(),
-            );
+            if app.settings.mcloud_player_menu_anywhere
+                && let Some(item) = app.now_playing_item()
+            {
+                let context = app.editable_context_playlist();
+                egui::Popup::context_menu(&capsule_response)
+                    .frame(widgets::menu_frame(&palette))
+                    .show(|ui| widgets::item_menu(ui, app, &item, context.as_ref(), None));
+            }
+            let effect = if app.settings.mcloud_player_glass {
+                app.settings.mcloud_glass
+            } else {
+                crate::settings::GlassEffect::Eco
+            };
+            surface(ui, rect, effect, app.lyrics_fullscreen.is_some());
             let now = app.now_playing();
             let transport_right = transport(app, ui, rect, now.as_ref());
             let extras_left = extras(app, ui, rect, now.as_ref());
@@ -92,6 +100,48 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, content: Rect) {
                 display(app, ui, &palette, lcd, now.as_ref());
             }
         });
+}
+
+/// Every control of the player for Now Playing alone: the scrubber, the
+/// transport under it, and the other buttons under that.
+pub(in crate::ui) fn panel_controls(app: &mut App, ui: &mut egui::Ui, rect: Rect) {
+    let now = app.now_playing();
+    let strip = Rect::from_min_size(rect.min, vec2(rect.width(), 17.0));
+    if let Some(now) = &now {
+        let scrub = ui.interact(
+            strip,
+            Id::new("mcloud-np-scrubber"),
+            Sense::click_and_drag(),
+        );
+        let scrubbing = ui.ctx().animate_bool_with_time(
+            Id::new("mcloud-np-scrubbing"),
+            scrub.hovered() || scrub.dragged(),
+            0.2,
+        );
+        let duration = now.duration_ms;
+        let shown_position = app.seek_preview.map_or(now.position_ms, |fraction| {
+            (fraction * duration as f32) as u32
+        });
+        let lcd = strip.with_min_y(strip.bottom() - 17.0);
+        scrubber(app, ui, &scrub, lcd, scrubbing, duration, shown_position);
+    }
+    // The groups lay themselves out as they do in a wide capsule, centred.
+    let transport_row = Rect::from_center_size(
+        pos2(
+            rect.center().x - row_width(5) / 2.0 - PADDING_LEFT + 300.0,
+            strip.bottom() + 20.0,
+        ),
+        vec2(600.0, HEIGHT),
+    );
+    transport(app, ui, transport_row, now.as_ref());
+    let extras_row = Rect::from_center_size(
+        pos2(
+            rect.center().x + row_width(6) / 2.0 + PADDING_RIGHT - 300.0,
+            strip.bottom() + 54.0,
+        ),
+        vec2(600.0, HEIGHT),
+    );
+    extras(app, ui, extras_row, now.as_ref());
 }
 
 /// Where the capsule sits over `content`: an even width, a whole left edge.
@@ -310,17 +360,42 @@ fn transport(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlayi
 }
 
 /// The player buttons a user can turn off, for Settings.
-pub(in crate::ui) const HIDEABLE_BUTTONS: [(&str, &str); 9] = [
+pub(in crate::ui) const HIDEABLE_BUTTONS: [(&str, &str); 10] = [
     ("shuffle", "Shuffle"),
     ("previous", "Previous"),
     ("next", "Next"),
     ("repeat", "Repeat"),
     ("mini", "Mini player"),
     ("lyrics", "Lyrics"),
+    ("nowplaying", "Now Playing"),
     ("devices", "Connect to a device"),
     ("queue", "Queue"),
     ("volume", "Mute"),
 ];
+
+#[cfg(test)]
+mod button_tests {
+    use super::*;
+
+    #[test]
+    fn turned_off_buttons_leave_but_play_stays() {
+        let hidden = vec!["next".to_string(), "play".to_string()];
+        assert_eq!(
+            shown_buttons(&["previous", "play", "next"], &hidden),
+            ["previous", "play"]
+        );
+    }
+
+    #[test]
+    fn only_the_digits_that_changed_roll() {
+        assert_eq!(changed_digits("1:09", "1:10"), [false, false, true, true]);
+        // Aligned at the end, so a new leading digit is the only new column.
+        assert_eq!(
+            changed_digits("9:59", "10:00"),
+            [true, true, false, true, true]
+        );
+    }
+}
 
 /// The buttons of a group left once the turned-off ones go. Play always stays.
 fn shown_buttons(group: &[&'static str], hidden: &[String]) -> Vec<&'static str> {
@@ -339,9 +414,9 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
     let narrow = rect.width() < NARROW_CAPSULE;
     let ids = shown_buttons(
         if narrow {
-            &["lyrics", "queue", "volume"]
+            &["nowplaying", "queue", "volume"]
         } else {
-            &["mini", "lyrics", "devices", "queue", "volume"]
+            &["mini", "lyrics", "nowplaying", "devices", "queue", "volume"]
         },
         &app.settings.mcloud_player_hidden,
     );
@@ -464,18 +539,29 @@ fn extras(app: &mut App, ui: &mut egui::Ui, rect: Rect, now: Option<&NowPlaying>
         }
 
         if let Some(lyrics_slot) = slot("lyrics") {
-            let lyrics_open = app.show_lyrics_panel || app.lyrics_fullscreen.is_some();
+            let full = app.lyrics_fullscreen.is_some();
             let response = button(
                 ui,
                 lyrics_slot,
                 Icon::McloudLyrics,
                 ICON,
-                faded(if lyrics_open {
-                    palette.accent
-                } else {
-                    normal()
-                }),
-                &gettext(locale, "Lyrics"),
+                faded(if full { palette.accent } else { normal() }),
+                &gettext(locale, "Full screen lyrics"),
+            );
+            if response.clicked() && enabled {
+                app.actions.push(Action::SetLyricsFullscreen(!full));
+            }
+        }
+
+        if let Some(pane_slot) = slot("nowplaying") {
+            let open = app.show_lyrics_panel;
+            let response = button(
+                ui,
+                pane_slot,
+                Icon::McloudNowPlaying,
+                ICON,
+                faded(if open { palette.accent } else { normal() }),
+                &gettext(locale, "Now Playing"),
             );
             if response.clicked() && enabled {
                 app.actions.push(Action::ToggleLyricsPanel);
@@ -683,40 +769,45 @@ fn display(
     );
     let fade = 1.0 - 0.8 * scrubbing;
 
-    let side = inner.height();
+    let artwork = app.settings.mcloud_player_artwork;
+    let side = if artwork { inner.height() } else { 0.0 };
     let art = Rect::from_min_size(inner.min, Vec2::splat(side));
     let art_response = ui.interact(art, Id::new("mcloud-player-art"), Sense::click_and_drag());
-    ui.painter().add(
-        egui::epaint::Shadow {
-            offset: [0, 1],
-            blur: 3,
-            spread: 0,
-            color: Color32::from_black_alpha((102.0 * fade) as u8),
-        }
-        .as_shape(art, CornerRadius::same(5)),
-    );
-    widgets::paint_cover(
-        ui,
-        palette,
-        now.art_small.as_deref().or(now.art_url.as_deref()),
-        art,
-        5.0,
-        Icon::Music,
-        Some(app.backend.art()),
-    );
-    if fade < 1.0 {
+    if artwork {
+        ui.painter().add(
+            egui::epaint::Shadow {
+                offset: [0, 1],
+                blur: 3,
+                spread: 0,
+                color: Color32::from_black_alpha((102.0 * fade) as u8),
+            }
+            .as_shape(art, CornerRadius::same(5)),
+        );
+        widgets::paint_cover(
+            ui,
+            palette,
+            now.art_small.as_deref().or(now.art_url.as_deref()),
+            art,
+            5.0,
+            Icon::Music,
+            Some(app.backend.art()),
+        );
+    }
+    if artwork && fade < 1.0 {
         ui.painter().rect_filled(
             art,
             CornerRadius::same(5),
             Color32::from_black_alpha((255.0 * (1.0 - fade) * 0.8) as u8),
         );
     }
-    if art_response.hovered() && scrubbing == 0.0 {
+    if artwork && art_response.hovered() && scrubbing == 0.0 {
         ui.painter()
             .rect_filled(art, CornerRadius::same(5), Color32::from_black_alpha(140));
         theme::paint_icon(ui, Icon::McloudExpand, art, side * 0.55, Color32::WHITE);
     }
     let art_dragged = art_response.drag_started_by(egui::PointerButton::Primary);
+    // The song's menu, over the artwork and the words.
+    let art_menu = art_response.clone();
     if art_response
         .on_hover_text(gettext(locale, "Full screen lyrics"))
         .clicked()
@@ -840,19 +931,80 @@ fn display(
         .interact(
             subtitle_rect,
             Id::new("mcloud-player-subtitle"),
-            Sense::click(),
+            Sense::click_and_drag(),
         )
         .on_hover_cursor(egui::CursorIcon::PointingHand);
     marquee(
         ui,
         &subtitle(now),
+        theme::regular(13.0),
         subtitle_rect,
         crate::ui::mcloud::ink(208).gamma_multiply(fade),
         ui.rect_contains_pointer(lcd),
     );
+    // The line under the title drags the album it names.
+    if subtitle_response.drag_started_by(egui::PointerButton::Primary)
+        && let Some(id) = &now.album_id
+    {
+        egui::DragAndDrop::set_payload(
+            ui.ctx(),
+            crate::model::DragAlbum {
+                uri: format!("spotify:album:{id}"),
+                title: now.album_name.clone(),
+            },
+        );
+    }
+    // Spotify's way: each name is a link, while the whole line can be seen.
+    let line = subtitle(now);
+    let line_fits = ui
+        .painter()
+        .layout_no_wrap(line.clone(), theme::regular(13.0), Color32::WHITE)
+        .size()
+        .x
+        <= subtitle_rect.width();
+    let links = app.settings.mcloud_lcd_links && line_fits;
+    if links
+        && subtitle_response.clicked()
+        && let Some(at) = subtitle_response.interact_pointer_pos()
+    {
+        let mut left = subtitle_rect.left();
+        let mut target = None;
+        for (index, artist) in now.artists.iter().enumerate() {
+            let name = if index + 1 < now.artists.len() {
+                format!("{}, ", artist.name)
+            } else {
+                artist.name.clone()
+            };
+            let width = ui
+                .painter()
+                .layout_no_wrap(name, theme::regular(13.0), Color32::WHITE)
+                .size()
+                .x;
+            if at.x < left + width {
+                target = artist.id.clone().map(Page::Artist);
+                break;
+            }
+            left += width;
+        }
+        let page = target
+            .or_else(|| now.album_id.clone().map(Page::Album))
+            .or_else(|| now.show_id.clone().map(Page::Show));
+        if let Some(page) = page {
+            app.actions.push(Action::Open(page));
+        }
+    }
+    if let Some(item) = app.now_playing_item() {
+        let context = app.editable_context_playlist();
+        for response in [&art_menu, &title_response, &subtitle_response] {
+            egui::Popup::context_menu(response)
+                .id(response.id.with("song-menu"))
+                .frame(widgets::menu_frame(palette))
+                .show(|ui| widgets::item_menu(ui, app, &item, context.as_ref(), None));
+        }
+    }
     let artists_with_id: Vec<_> = now.artists.iter().filter(|a| a.id.is_some()).collect();
     let album_id = now.album_id.clone().filter(|id| !id.is_empty());
-    if !artists_with_id.is_empty() && album_id.is_some() {
+    if !links && !artists_with_id.is_empty() && album_id.is_some() {
         egui::Popup::menu(&subtitle_response)
             .frame(widgets::menu_frame(palette))
             .align(egui::RectAlign::TOP_START)
@@ -1070,11 +1222,17 @@ fn rolling_time(
 /// Text that fits stands still; text that does not scrolls while the
 /// pointer is on the LCD and otherwise ends with an ellipsis, so an idle
 /// window does not repaint for it.
-fn marquee(ui: &egui::Ui, text: &str, rect: Rect, color: Color32, moving: bool) {
+pub(in crate::ui) fn marquee(
+    ui: &egui::Ui,
+    text: &str,
+    font: egui::FontId,
+    rect: Rect,
+    color: Color32,
+    moving: bool,
+) {
     const GAP: f32 = 48.0;
     const SPEED: f32 = 28.0;
     const PAUSE: f64 = 1.2;
-    let font = theme::regular(13.0);
     let full = ui
         .painter()
         .layout_no_wrap(text.to_owned(), font.clone(), color);

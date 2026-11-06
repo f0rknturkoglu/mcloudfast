@@ -441,6 +441,28 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 account_row(app, ui);
             });
         });
+    // A double click on the edge goes back to the width that follows the window.
+    let edge = Rect::from_x_y_ranges(
+        (response.response.rect.right() - 4.0)..=(response.response.rect.right() + 4.0),
+        response.response.rect.y_range(),
+    );
+    let reset = ui.input(|input| {
+        input
+            .pointer
+            .button_double_clicked(egui::PointerButton::Primary)
+            && input
+                .pointer
+                .interact_pos()
+                .is_some_and(|at| edge.contains(at))
+    });
+    if reset && app.settings.mcloud_sidebar_width.is_some() {
+        app.settings.mcloud_sidebar_width = None;
+        ui.ctx().data_mut(|data| {
+            data.remove::<egui::containers::panel::PanelState>(egui::Id::new("sidebar"));
+        });
+        app.actions.push(Action::SettingsChanged);
+        return;
+    }
     // Only a drag sets a width of its own: the default follows the window.
     let width = response.response.rect.width();
     if (width - chosen).abs() > 1.0 && super::super::panel_dragged(ui.ctx(), "sidebar") {
@@ -832,10 +854,20 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
                 if response.clicked() {
                     open = Some(Page::Playlist(playlist.id.clone()));
                 }
-                // A song dragged here joins the playlist, where it may.
+                // A song or album dragged here joins the playlist, where it may.
                 if app.can_edit_playlist(playlist)
-                    && egui::DragAndDrop::has_payload_of_type::<crate::model::DragTrack>(ui.ctx())
+                    && (egui::DragAndDrop::has_payload_of_type::<crate::model::DragTrack>(ui.ctx())
+                        || egui::DragAndDrop::has_payload_of_type::<crate::model::DragAlbum>(
+                            ui.ctx(),
+                        ))
                 {
+                    if let Some(album) = response.dnd_release_payload::<crate::model::DragAlbum>() {
+                        app.actions.push(Action::AddAlbumToPlaylist {
+                            album_uri: album.uri.clone(),
+                            playlist_id: playlist.id.clone(),
+                            playlist_name: playlist.name.clone(),
+                        });
+                    }
                     if response.contains_pointer() {
                         ui.painter().rect_stroke(
                             response.rect,
@@ -1133,7 +1165,7 @@ fn row_shifted(
         let font = if active {
             theme::semibold(13.0)
         } else {
-            theme::medium(13.0)
+            theme::regular(13.0)
         };
         let gap = if matches!(leading, Leading::Art(..) | Leading::Folder) {
             8.0

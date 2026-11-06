@@ -855,20 +855,68 @@ fn table_contents(app: &mut App, ui: &mut egui::Ui, table: Table<'_>) {
         };
     ui.ctx()
         .data_mut(|d| d.insert_temp(egui::Id::new("mcloud-table-show-numbers"), show_numbers));
-    if rows > 0
-        && show_header
-        && let Some(column) = widgets::table_header(
-            ui,
-            &palette,
-            app.locale,
-            table.show_album,
-            table.show_added,
-            table.show_added_by,
-            table.show_plays,
-            show_cover,
-            sort,
-        )
-    {
+    let mcloud = super::mcloud::active(ui.ctx());
+    let header_top = ui.cursor().top();
+    let header_width = ui.available_width();
+    let mut header_click = (rows > 0 && show_header)
+        .then(|| {
+            widgets::table_header(
+                ui,
+                &palette,
+                app.locale,
+                table.show_album,
+                table.show_added,
+                table.show_added_by,
+                table.show_plays,
+                show_cover,
+                sort,
+            )
+        })
+        .flatten();
+    // Past the top of the page the column titles stay, under the toolbar, in
+    // the toolbar's material.
+    let stuck_at = ui.clip_rect().top() + super::mcloud::topbar::HEIGHT;
+    if mcloud && rows > 0 && show_header && header_top < stuck_at {
+        let left = ui.min_rect().left();
+        let locale = app.locale;
+        let area = egui::Area::new(egui::Id::new("mcloud-stuck-table-header"))
+            .order(egui::Order::Middle)
+            .fixed_pos(egui::pos2(left - 12.0, stuck_at))
+            .constrain(false)
+            .show(ui.ctx(), |ui| {
+                ui.set_width(header_width + 24.0);
+                let bar = egui::Rect::from_min_size(
+                    ui.min_rect().min,
+                    egui::vec2(header_width + 24.0, 34.0),
+                );
+                let fill = super::mcloud::tone(
+                    egui::Color32::from_rgba_unmultiplied(0x2a, 0x2a, 0x2a, 235),
+                    egui::Color32::from_rgba_unmultiplied(0xf3, 0xf3, 0xf3, 240),
+                );
+                ui.painter().rect_filled(bar, 0.0, fill);
+                ui.horizontal(|ui| {
+                    ui.add_space(12.0);
+                    ui.vertical(|ui| {
+                        ui.set_width(header_width);
+                        widgets::table_header(
+                            ui,
+                            &palette,
+                            locale,
+                            table.show_album,
+                            table.show_added,
+                            table.show_added_by,
+                            table.show_plays,
+                            show_cover,
+                            sort,
+                        )
+                    })
+                    .inner
+                })
+                .inner
+            });
+        header_click = header_click.or(area.inner);
+    }
+    if let Some(column) = header_click {
         let next = next_sort(sort, column);
         match next {
             Some(sort) => {

@@ -47,6 +47,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     );
     mcloud::set_glass_effect(ctx, app.settings.mcloud_glass);
     mcloud::set_palette(&app.palette);
+    mcloud::set_locale(ctx, app.locale);
+    mcloud::set_apple_cards(app.settings.mcloud_home_cards);
     keys::handle(app, ctx);
     for path in winamp::dropped_skins(ctx) {
         app.actions.push(Action::InstallSkin(path));
@@ -134,7 +136,9 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     }
     if mcloud {
         mcloud::now_playing::card(app, ui, content);
-        mcloud::player::show(app, ui, content);
+        if !mcloud::now_playing::replaces_player(app) {
+            mcloud::player::show(app, ui, content);
+        }
     }
     keep_room_for_panels(app, ctx);
     if !mcloud {
@@ -334,7 +338,10 @@ fn page_tint(app: &mut App) -> Option<Color32> {
     let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
     let mcloud_artist = mcloud && matches!(page, Page::Artist(_));
     let mcloud_collection_tinted = mcloud
-        && matches!(page, Page::Playlist(_) | Page::Album(_) | Page::LikedSongs)
+        && matches!(
+            page,
+            Page::Playlist(_) | Page::Album(_) | Page::LikedSongs | Page::Show(_)
+        )
         && app.settings.mcloud_page_tint != crate::settings::McloudPageTint::Off;
     if !app.settings.accent_from_art
         && image.is_some()
@@ -384,7 +391,10 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
             // mcloud's playlist and album pages are flat by default, or tinted
             // subtly or across the full page when `mcloud_page_tint` asks for it.
             let mcloud_collection = app.settings.interface == crate::settings::Interface::Mcloud
-                && matches!(page, Page::Playlist(_) | Page::Album(_) | Page::LikedSongs);
+                && matches!(
+                    page,
+                    Page::Playlist(_) | Page::Album(_) | Page::LikedSongs | Page::Show(_)
+                );
             let flat = mcloud_collection
                 && app.settings.mcloud_page_tint == crate::settings::McloudPageTint::Off;
             let full_collection_tint = (mcloud_collection

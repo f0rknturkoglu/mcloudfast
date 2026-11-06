@@ -764,6 +764,7 @@ pub fn populate(app: &mut App) {
         playlists: Some(page(playlists.iter().take(6).cloned().collect())),
         shows: Some(page((0..4).map(show).collect())),
         episodes: Some(page((0..4).map(|index| episode(index, 1)).collect())),
+        audiobooks: None,
     });
     app.settings.search_history = vec!["Khruangbin".into(), "ambient".into(), "Rework".into()];
 
@@ -1707,6 +1708,10 @@ pub fn apply_flags(app: &mut App, page: Option<&str>, show: Option<&str>) {
             "mcloud" => {
                 app.actions
                     .push(Action::SetInterface(crate::settings::Interface::Mcloud));
+            }
+            "np-only" => {
+                app.settings.mcloud_np_only = true;
+                app.show_lyrics_panel = true;
             }
             "glass-full" => app.settings.mcloud_glass = crate::settings::GlassEffect::Full,
             "glass-eco" => app.settings.mcloud_glass = crate::settings::GlassEffect::Eco,

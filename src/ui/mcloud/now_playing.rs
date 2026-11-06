@@ -19,6 +19,8 @@ const GAP: f32 = 14.0;
 const META: f32 = 50.0;
 const ACTIONS: f32 = 36.0;
 const CHIP: f32 = 30.0;
+/// The scrubber and two rows of buttons, when the bottom player has gone.
+const CONTROLS: f32 = 84.0;
 const MIN_ART: f32 = 110.0;
 /// Under this the lyrics give up room rather than the artwork vanish.
 const MIN_LYRICS: f32 = 120.0;
@@ -39,6 +41,11 @@ fn art_side(width: f32, height: f32, lyrics: bool) -> f32 {
 /// mcloud's slide, `cubic-bezier(.32,.72,0,1)`, approximated by an ease-out.
 fn slide(t: f32) -> f32 {
     1.0 - (1.0 - t.clamp(0.0, 1.0)).powi(4)
+}
+
+/// Whether Now Playing is showing with every control, so the player goes.
+pub(in crate::ui) fn replaces_player(app: &App) -> bool {
+    app.settings.mcloud_np_only && app.show_lyrics_panel && app.lyrics_fullscreen.is_none()
 }
 
 pub(in crate::ui) fn docked(app: &App) -> bool {
@@ -84,7 +91,10 @@ pub(in crate::ui) fn card(app: &mut App, ui: &mut egui::Ui, content: Rect) {
     let travel = (width + MARGIN) * (1.0 - slide(reveal));
     let rect = Rect::from_min_max(
         pos2(content.right() - MARGIN - width + travel, top),
-        pos2(content.right() - MARGIN + travel, content.bottom() - BOTTOM),
+        pos2(
+            content.right() - MARGIN + travel,
+            content.bottom() - if replaces_player(app) { MARGIN } else { BOTTOM },
+        ),
     );
     if rect.height() < MIN_ART + META {
         return;
@@ -178,7 +188,9 @@ fn body(app: &mut App, ui: &mut egui::Ui, rect: Rect, radius: f32) {
         y = meta.bottom() + GAP;
     }
 
-    let bottom = rect.bottom() - 14.0 - ACTIONS;
+    let only = replaces_player(app);
+    let controls = if only { CONTROLS + GAP } else { 0.0 };
+    let bottom = rect.bottom() - 14.0 - ACTIONS - controls;
     if lyrics_shown && bottom > y {
         // A line not being sung is laid out 1/0.95 wider than its column and
         // drawn smaller, so the column is narrowed by as much.
@@ -188,6 +200,13 @@ fn body(app: &mut App, ui: &mut egui::Ui, rect: Rect, radius: f32) {
         crate::ui::lyrics::contents(app, &mut child);
     }
 
+    if only {
+        let area = Rect::from_min_max(
+            pos2(left, bottom + GAP),
+            pos2(right, bottom + GAP + CONTROLS),
+        );
+        super::player::panel_controls(app, ui, area);
+    }
     actions(app, ui, rect);
     close_button(app, ui, rect);
     app.palette = saved_palette;
@@ -248,22 +267,38 @@ fn meta_row(app: &mut App, ui: &mut egui::Ui, meta: Rect, now: &crate::app::NowP
     let sub = palette.text.gamma_multiply(0.65);
     let chips = 2.0 * CHIP + 10.0;
     let text_width = (meta.width() - chips - 10.0).max(20.0);
-    let title = widgets::ellipsized(
+    let title_size = ui
+        .painter()
+        .layout_no_wrap(now.title.clone(), theme::semibold(19.0), palette.text)
+        .size();
+    let artist_size = ui
+        .painter()
+        .layout_no_wrap(now.subtitle.clone(), theme::regular(17.0), sub)
+        .size();
+    let total = title_size.y + 1.0 + artist_size.y;
+    let top = meta.center().y - total / 2.0;
+    let title_rect = Rect::from_min_size(pos2(meta.left(), top), vec2(text_width, title_size.y));
+    let artist_rect = Rect::from_min_size(
+        pos2(meta.left(), title_rect.bottom() + 1.0),
+        vec2(text_width, artist_size.y),
+    );
+    let moving = ui.rect_contains_pointer(meta);
+    super::player::marquee(
         ui,
         &now.title,
         theme::semibold(19.0),
+        title_rect,
         palette.text,
-        text_width,
-        1,
+        moving,
     );
-    let artist = widgets::ellipsized(ui, &now.subtitle, theme::regular(17.0), sub, text_width, 1);
-    let total = title.size().y + 1.0 + artist.size().y;
-    let top = meta.center().y - total / 2.0;
-    let title_rect = Rect::from_min_size(pos2(meta.left(), top), title.size());
-    let artist_rect =
-        Rect::from_min_size(pos2(meta.left(), title_rect.bottom() + 1.0), artist.size());
-    ui.painter().galley(title_rect.min, title, palette.text);
-    ui.painter().galley(artist_rect.min, artist, sub);
+    super::player::marquee(
+        ui,
+        &now.subtitle,
+        theme::regular(17.0),
+        artist_rect,
+        sub,
+        moving,
+    );
     let title_response = ui
         .interact(title_rect, Id::new("mcloud-np-title"), Sense::click())
         .on_hover_cursor(egui::CursorIcon::PointingHand);

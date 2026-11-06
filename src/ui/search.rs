@@ -18,7 +18,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         return;
     }
     // mcloud's search page has no chips: its headings open each kind's page.
-    let filter = if super::mcloud::active(ui.ctx()) {
+    let filter = if super::mcloud::active(ui.ctx()) && app.settings.mcloud_search_sections {
         SearchFilter::All
     } else {
         app.search.filter
@@ -37,7 +37,7 @@ pub fn show_kind(app: &mut App, ui: &mut egui::Ui, kind: SearchFilter) {
 
 fn results_page(app: &mut App, ui: &mut egui::Ui, filter: SearchFilter) {
     let palette = app.palette;
-    let mcloud = super::mcloud::active(ui.ctx());
+    let mcloud = super::mcloud::active(ui.ctx()) && app.settings.mcloud_search_sections;
     if !mcloud {
         ui.add_space(4.0);
         let labels: Vec<_> = SearchFilter::ALL
@@ -110,7 +110,9 @@ fn results_page(app: &mut App, ui: &mut egui::Ui, filter: SearchFilter) {
         SearchFilter::Albums => albums_grid(app, ui, &results),
         SearchFilter::Playlists => playlists_grid(app, ui, &results),
         SearchFilter::Podcasts => shows_grid(app, ui, &results),
-        SearchFilter::Episodes => episodes(app, ui, &results, usize::MAX),
+        SearchFilter::Episodes | SearchFilter::Audiobooks => {
+            episodes(app, ui, &results, usize::MAX);
+        }
     }
 }
 

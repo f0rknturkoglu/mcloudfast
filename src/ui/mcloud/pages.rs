@@ -32,7 +32,57 @@ pub(in crate::ui::mcloud) const HERO_SCROLL_THRESHOLD_ID: &str = "mcloud-hero-sc
 /// right panel), the title block drops below the cover artwork.
 const STACKED_HERO_WIDTH: f32 = 580.0;
 
+/// A mix's photo across the page with its name over it, as Spotify's header.
+/// False when the setting asks for the artwork or there is no photo.
+fn photo_header(app: &mut App, ui: &mut egui::Ui, hero: &Hero<'_>) -> bool {
+    if app.settings.mcloud_photo_as_artwork {
+        return false;
+    }
+    let Some(photo) = hero
+        .images
+        .image
+        .and_then(|url| app.mix_cover(url))
+        .and_then(|cover| cover.photo)
+    else {
+        return false;
+    };
+    let width = ui.available_width();
+    let height = (width * 3.0 / 7.0).clamp(220.0, 420.0);
+    let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
+    let window = app.palette.window;
+    if let Some(texture) = super::artist::picture(app, ui, &photo, vec2(width, width)) {
+        // The photo's middle band, cropped to the header's shape.
+        let share = (height / width).min(1.0);
+        let uv = Rect::from_min_max(pos2(0.0, 0.5 - share / 2.0), pos2(1.0, 0.5 + share / 2.0));
+        egui::Image::new(texture)
+            .uv(uv)
+            .corner_radius(10)
+            .paint_at(ui, rect);
+    }
+    widgets::paint_vertical_gradient(
+        ui,
+        Rect::from_min_max(pos2(rect.left(), rect.bottom() - height * 0.38), rect.max),
+        Color32::TRANSPARENT,
+        window,
+    );
+    let title = widgets::ellipsized(
+        ui,
+        hero.title,
+        theme::bold(40.0),
+        Color32::WHITE,
+        width - 48.0,
+        2,
+    );
+    let at = pos2(rect.left() + 24.0, rect.bottom() - 20.0 - title.size().y);
+    ui.painter().galley(at, title, Color32::WHITE);
+    ui.add_space(12.0);
+    true
+}
+
 pub(in crate::ui) fn hero(app: &mut App, ui: &mut egui::Ui, hero: Hero<'_>) {
+    if photo_header(app, ui, &hero) {
+        return;
+    }
     let palette = app.palette;
     let art_loader = app.backend.art().clone();
     let softened = hero
@@ -986,37 +1036,33 @@ fn more_by_shelf(
     const CARD_SIZE: f32 = 160.0;
     const CARD_GAP: f32 = 16.0;
 
-    egui::ScrollArea::horizontal()
-        .id_salt("mcloud-album-more-by")
-        .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-        .show(ui, |ui| {
-            ui.horizontal_top(|ui| {
-                ui.spacing_mut().item_spacing.x = CARD_GAP;
-                for other in &other_albums {
-                    let image = pick_image(&other.images, app.art_px(CARD_SIZE));
-                    let year = other.year().unwrap_or("").to_string();
-                    let response = super::artist::card(
-                        app,
-                        ui,
-                        image,
-                        &other.name,
-                        Some(&year),
-                        CARD_SIZE,
-                        false,
-                    );
-                    if response.clicked() {
-                        app.actions
-                            .push(Action::Open(Page::Album(other.id.clone())));
-                    }
-                    egui::Popup::context_menu(&response)
-                        .id(ui.make_persistent_id(("album-more-by-menu", &other.uri)))
-                        .frame(widgets::menu_frame(&app.palette))
-                        .show(|ui| {
-                            widgets::context_menu_items(ui, app, &other.uri, &other.name, None)
-                        });
+    let arrows = widgets::ShelfArrows {
+        inset: 4.0,
+        middle: CARD_SIZE / 2.0,
+    };
+    widgets::snapping_row(
+        ui,
+        "mcloud-album-more-by",
+        CARD_SIZE + CARD_GAP,
+        arrows,
+        |ui| {
+            ui.spacing_mut().item_spacing.x = CARD_GAP;
+            for other in &other_albums {
+                let image = pick_image(&other.images, app.art_px(CARD_SIZE));
+                let year = other.year().unwrap_or("").to_string();
+                let response =
+                    super::artist::card(app, ui, image, &other.name, Some(&year), CARD_SIZE, false);
+                if response.clicked() {
+                    app.actions
+                        .push(Action::Open(Page::Album(other.id.clone())));
                 }
-            });
-        });
+                egui::Popup::context_menu(&response)
+                    .id(ui.make_persistent_id(("album-more-by-menu", &other.uri)))
+                    .frame(widgets::menu_frame(&app.palette))
+                    .show(|ui| widgets::context_menu_items(ui, app, &other.uri, &other.name, None));
+            }
+        },
+    );
     ui.add_space(20.0);
 }
 

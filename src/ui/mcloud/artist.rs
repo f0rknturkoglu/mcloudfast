@@ -6,7 +6,7 @@
 //! singles, appearances and similar artists.
 //!
 //! Spotify's header picture comes with the artist's play counts
-//! ([`crate::session_reads::PageExtras`]); without one, the portrait stands
+//! ([`crate::session_reads::PageMetadata`]); without one, the portrait stands
 //! in, round and centred, as mcloud's avatar hero does.
 
 use std::sync::Arc;
@@ -192,6 +192,9 @@ pub(in crate::ui) fn loaded(
             .iter()
             .filter(|album| seen.insert(album.name.to_lowercase()))
             .collect();
+        let (compilations, releases): (Vec<&Album>, Vec<&Album>) = releases
+            .iter()
+            .partition(|album| album.album_type.as_deref() == Some("compilation"));
         let (singles, albums): (Vec<&Album>, Vec<&Album>) = releases
             .iter()
             .partition(|album| album.album_type.as_deref() == Some("single"));
@@ -209,6 +212,14 @@ pub(in crate::ui) fn loaded(
             "artist-singles",
             &gettext(app.locale, "Singles & EPs"),
             &singles,
+            card_side,
+        );
+        album_shelf(
+            app,
+            ui,
+            "artist-compilations",
+            &gettext(app.locale, "Compilations"),
+            &compilations,
             card_side,
         );
         if list.can_load_more() && !list.loading {
@@ -232,6 +243,27 @@ pub(in crate::ui) fn loaded(
     }
     if let Some(concerts) = app.artist_concerts.get(&artist.uri).cloned() {
         concert_list(app, ui, &concerts);
+    }
+    if let Some(playlists) = app.artist_playlists.get(&artist.uri).cloned() {
+        let title = gettext(app.locale, "Artist Playlists");
+        shelf(ui, "artist-playlists", &title, card_side, |ui| {
+            for playlist in &playlists {
+                let response = card(
+                    app,
+                    ui,
+                    playlist.image.as_deref(),
+                    &playlist.name,
+                    None,
+                    card_side,
+                    false,
+                );
+                if response.clicked()
+                    && let Some(page) = Page::from_uri(&playlist.uri)
+                {
+                    app.actions.push(Action::Open(page));
+                }
+            }
+        });
     }
     if let Some(list) = page.albums.get(DiscographyFilter::AppearsOn.groups()) {
         let appears: Vec<&Album> = list.items.iter().collect();
@@ -271,6 +303,56 @@ pub(in crate::ui) fn loaded(
             }
         });
     }
+    about_section(app, ui, &artist.uri);
+}
+
+/// The biography and listeners at the page's end, for those who read on.
+fn about_section(app: &App, ui: &mut egui::Ui, uri: &str) {
+    let Some(about) = app.artist_about.get(uri) else {
+        return;
+    };
+    if about.biography.is_empty() && about.monthly_listeners.is_none() {
+        return;
+    }
+    let inset = INSET - PAGE_PADDING;
+    ui.horizontal(|ui| {
+        ui.add_space(inset);
+        title(ui, &gettext(app.locale, "About"));
+    });
+    ui.horizontal_top(|ui| {
+        ui.add_space(inset);
+        ui.vertical(|ui| {
+            let width = (ui.available_width() - inset).clamp(200.0, 720.0);
+            ui.set_max_width(width);
+            let ink = Color32::WHITE;
+            if !about.biography.is_empty() {
+                let text = widgets::ellipsized(
+                    ui,
+                    &about.biography,
+                    theme::regular(13.0),
+                    ink.gamma_multiply(0.8),
+                    width,
+                    6,
+                );
+                let (rect, _) = ui.allocate_exact_size(text.size(), Sense::hover());
+                ui.painter().galley(rect.min, text, ink.gamma_multiply(0.8));
+            }
+            if let Some(listeners) = about.monthly_listeners {
+                ui.add_space(8.0);
+                theme::text(
+                    ui,
+                    format!(
+                        "{}: {}",
+                        gettext(app.locale, "Monthly listeners"),
+                        crate::util::format_count(listeners)
+                    ),
+                    theme::medium(12.0),
+                    ink.gamma_multiply(0.6),
+                );
+            }
+        });
+    });
+    ui.add_space(SHELF_GAP);
 }
 
 /// The picture across the page, fading out into the artist's colour, the
@@ -353,6 +435,22 @@ fn hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
         Color32::from_black_alpha(50),
     );
     ui.painter().galley(name_pos, name, NAME_COLOR);
+
+    // A small mark that the artist is on tour, under the name's line.
+    if app.artist_concerts.contains_key(&artist.uri) {
+        let label = gettext(locale, "Upcoming Concerts");
+        let galley =
+            ui.painter()
+                .layout_no_wrap(label.to_string(), theme::semibold(11.0), Color32::WHITE);
+        let pill = Rect::from_center_size(
+            pos2(rect.center().x, name_pos.y - 16.0),
+            galley.size() + vec2(20.0, 8.0),
+        );
+        ui.painter()
+            .rect_filled(pill, CornerRadius::same(7), Color32::from_black_alpha(64));
+        ui.painter()
+            .galley(pill.min + vec2(10.0, 4.0), galley, Color32::WHITE);
+    }
 
     // Play is a white disc with the triangle in the artist's colour.
     let artist_id = artist.id.clone();
@@ -1026,7 +1124,12 @@ fn floating_buttons(app: &mut App, ui: &mut egui::Ui, full: Rect, artist: &Artis
 }
 
 /// The picture at `url`, once loaded.
-fn picture(app: &App, ui: &egui::Ui, url: &str, size: Vec2) -> Option<egui::load::SizedTexture> {
+pub(in crate::ui) fn picture(
+    app: &App,
+    ui: &egui::Ui,
+    url: &str,
+    size: Vec2,
+) -> Option<egui::load::SizedTexture> {
     app.backend.art().touch(url);
     let image = egui::Image::new(url)
         .texture_options(crate::images::COVER_TEXTURE)

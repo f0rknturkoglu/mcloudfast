@@ -245,6 +245,8 @@ pub enum Target {
 struct PendingAlbumQueue {
     id: String,
     label: String,
+    /// The playlist the album was dropped on, rather than the queue.
+    playlist: Option<(String, String)>,
     target: Target,
     offset: u32,
     tracks: Vec<Track>,
@@ -846,6 +848,7 @@ pub struct App {
     /// counts.
     pub artist_headers: HashMap<String, String>,
     pub artist_concerts: HashMap<String, Vec<crate::session_reads::Concert>>,
+    pub artist_playlists: HashMap<String, Vec<crate::session_reads::FeaturedPlaylist>>,
     /// All sources of each artist's wide header picture by artist URI.
     pub artist_header_sources: HashMap<String, Vec<crate::api::models::Image>>,
     /// Each artist's About sheet, by artist URI.
@@ -1503,6 +1506,7 @@ impl App {
             play_counts: HashMap::new(),
             artist_headers: HashMap::new(),
             artist_concerts: HashMap::new(),
+            artist_playlists: HashMap::new(),
             artist_header_sources: HashMap::new(),
             artist_about: HashMap::new(),
             play_count_reads: HashMap::new(),
@@ -8113,6 +8117,48 @@ impl App {
         self.settings_dirty = true;
     }
 
+    /// Adds an album's songs to a playlist, reading them first if need be.
+    fn add_album_to_playlist(&mut self, uri: &str, playlist_id: String, playlist_name: String) {
+        let Some(id) = util::uri_id(uri).map(str::to_string) else {
+            return;
+        };
+        if let Some(page) = self.album_pages.get(&id)
+            && page.tracks.is_complete()
+        {
+            let items = page
+                .tracks
+                .items
+                .iter()
+                .cloned()
+                .map(PlayableItem::Track)
+                .collect();
+            self.actions.push(Action::AddToPlaylist {
+                playlist_id,
+                playlist_name,
+                items,
+            });
+            return;
+        }
+        self.album_queue_serial = self.album_queue_serial.wrapping_add(1);
+        let request = self.album_queue_serial;
+        self.pending_album_queues.insert(
+            request,
+            PendingAlbumQueue {
+                id: id.clone(),
+                label: playlist_name.clone(),
+                playlist: Some((playlist_id, playlist_name)),
+                target: self.target(),
+                offset: 0,
+                tracks: Vec::new(),
+            },
+        );
+        self.backend.api(ApiRequest::AlbumQueueTracks {
+            id,
+            offset: 0,
+            request,
+        });
+    }
+
     /// Asks for the next page of a kind, once at a time.
     fn load_more_search(&mut self, kind: SearchFilter) {
         if self.search.more_pending || self.search.more_failed {
@@ -8239,6 +8285,10 @@ impl App {
             if !extras.concerts.is_empty() {
                 self.artist_concerts
                     .insert(uri.clone(), extras.concerts.clone());
+            }
+            if !extras.playlists.is_empty() {
+                self.artist_playlists
+                    .insert(uri.clone(), extras.playlists.clone());
             }
             if let Some(url) = &extras.header_image {
                 self.artist_headers.insert(uri.clone(), url.clone());
@@ -9913,9 +9963,17 @@ impl App {
                 if serial != self.search.serial || query != self.search.committed {
                     return;
                 }
-                self.search.more_pending = false;
+                if kind != SearchFilter::Audiobooks || !self.search.audiobooks_first {
+                    self.search.more_pending = false;
+                }
+                let first_audiobooks = kind == SearchFilter::Audiobooks
+                    && std::mem::take(&mut self.search.audiobooks_first);
                 let Ok(more) = result else {
-                    self.search.more_failed = true;
+                    // Audiobooks are not sold everywhere: their absence says
+                    // nothing about the kinds that did come.
+                    if !first_audiobooks {
+                        self.search.more_failed = true;
+                    }
                     return;
                 };
                 let uris = more
@@ -9958,6 +10016,17 @@ impl App {
                         self.search.previous = Some(results.clone());
                         self.search.results = Loadable::Loaded(results);
                         self.search.results_serial = serial;
+                        if self.settings.interface == crate::settings::Interface::Mcloud
+                            && self.settings.mcloud_search_sections
+                        {
+                            self.search.audiobooks_first = true;
+                            self.backend.api(ApiRequest::SearchMore {
+                                query: query.clone(),
+                                serial,
+                                kind: SearchFilter::Audiobooks,
+                                offset: 0,
+                            });
+                        }
                         self.show_search_playlists();
                     }
                     Err(error) => self.search_failed(&gettext(self.locale, "Search"), error),
@@ -11947,6 +12016,7 @@ impl App {
             PendingAlbumQueue {
                 id: id.clone(),
                 label: label.clone(),
+                playlist: None,
                 target: self.target(),
                 offset: 0,
                 tracks: Vec::new(),
@@ -11997,6 +12067,7 @@ impl App {
             PendingAlbumQueue {
                 id: id.clone(),
                 label: label.clone(),
+                playlist: None,
                 target: self.target(),
                 offset: 0,
                 tracks: Vec::new(),
@@ -12024,7 +12095,7 @@ impl App {
             return;
         }
         let mut pending = self.pending_album_queues.remove(&request).unwrap();
-        if pending.target != self.target() {
+        if pending.playlist.is_none() && pending.target != self.target() {
             self.toast_error(gettext(
                 self.locale,
                 "Playback device changed. Add the album to queue again",
@@ -12085,7 +12156,19 @@ impl App {
             });
             self.pending_album_queues.insert(request, pending);
         } else {
-            self.queue_album_tracks(pending.tracks, pending.label);
+            if let Some((playlist_id, playlist_name)) = pending.playlist {
+                self.actions.push(Action::AddToPlaylist {
+                    playlist_id,
+                    playlist_name,
+                    items: pending
+                        .tracks
+                        .into_iter()
+                        .map(PlayableItem::Track)
+                        .collect(),
+                });
+            } else {
+                self.queue_album_tracks(pending.tracks, pending.label);
+            }
         }
     }
 
@@ -12153,7 +12236,19 @@ impl App {
             });
             self.pending_album_queues.insert(request, pending);
         } else {
-            self.queue_album_tracks(pending.tracks, pending.label);
+            if let Some((playlist_id, playlist_name)) = pending.playlist {
+                self.actions.push(Action::AddToPlaylist {
+                    playlist_id,
+                    playlist_name,
+                    items: pending
+                        .tracks
+                        .into_iter()
+                        .map(PlayableItem::Track)
+                        .collect(),
+                });
+            } else {
+                self.queue_album_tracks(pending.tracks, pending.label);
+            }
         }
     }
 
@@ -13802,6 +13897,11 @@ impl App {
             }
             Action::SetSearchFilter(filter) => self.search.filter = filter,
             Action::SearchMore(kind) => self.load_more_search(kind),
+            Action::AddAlbumToPlaylist {
+                album_uri,
+                playlist_id,
+                playlist_name,
+            } => self.add_album_to_playlist(&album_uri, playlist_id, playlist_name),
             Action::SetTopPeriod(period) => self.set_top_period(period),
             Action::SetHomeFilter(filter) => self.home.category_filter = filter,
             Action::FocusSearch => {
@@ -23122,6 +23222,23 @@ mod tests {
         });
         app.insert_artwork_colour(lost.into(), colours);
         assert_eq!(app.mix_cover(lost).unwrap().style, MixStyle::Gradient);
+    }
+
+    /// A loaded album dropped on a playlist joins it at once. Audiobooks,
+    /// asked for apart, failing does not stop the other kinds' paging.
+    #[test]
+    fn audiobooks_failing_leaves_the_other_kinds_alone() {
+        let mut app = test_app("search-audiobooks");
+        let serial = searching(&mut app, "radiohead");
+        app.search.audiobooks_first = true;
+        app.handle_api(ApiResponse::SearchMore {
+            query: "radiohead".into(),
+            serial,
+            kind: SearchFilter::Audiobooks,
+            result: Err(crate::api::ApiError::RateLimited),
+        });
+        assert!(!app.search.more_failed);
+        assert!(!app.search.audiobooks_first);
     }
 
     /// A kind's next page joins what is held without repeating it, one

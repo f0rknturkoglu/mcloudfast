@@ -398,6 +398,36 @@ pub struct PageMetadata {
     pub about: Option<ArtistAbout>,
     /// The artist's upcoming concerts, soonest first.
     pub concerts: Vec<Concert>,
+    /// Playlists that feature the artist, by Spotify.
+    pub playlists: Vec<FeaturedPlaylist>,
+}
+
+/// A playlist on an artist's page.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct FeaturedPlaylist {
+    pub uri: String,
+    pub name: String,
+    pub image: Option<String>,
+}
+
+/// The playlists an artist overview lists as featuring the artist.
+fn featured_playlists(body: &serde_json::Value) -> Vec<FeaturedPlaylist> {
+    body.pointer("/data/artistUnion/relatedContent/featuringV2/items")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|item| {
+            let data = item.get("data")?;
+            Some(FeaturedPlaylist {
+                uri: data.get("uri")?.as_str()?.to_string(),
+                name: data.get("name")?.as_str()?.to_string(),
+                image: data
+                    .pointer("/images/items/0/sources/0/url")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::to_string),
+            })
+        })
+        .collect()
 }
 
 /// An artist's About sheet: a photo, listener and follower counts, the
@@ -466,6 +496,7 @@ pub async fn page_metadata(
     let mut header_sources = Vec::new();
     let mut about = None;
     let mut concerts = Vec::new();
+    let mut playlists = Vec::new();
     match crate::util::uri_kind(uri) {
         Some("album") => {
             let mut offset = 0;
@@ -525,6 +556,7 @@ pub async fn page_metadata(
             header_image = hero_source(&header_sources, u32::MAX).map(str::to_string);
             about = about_from(&body);
             concerts = concerts_from(&body);
+            playlists = featured_playlists(&body);
             if let Some(listeners) = monthly_listeners(&body) {
                 counts.insert(uri.to_string(), listeners);
             }
@@ -538,6 +570,7 @@ pub async fn page_metadata(
         header_sources,
         about,
         concerts,
+        playlists,
     })
 }
 
@@ -2227,6 +2260,18 @@ fn iso8601(timestamp_ms: i64) -> Option<String> {
 mod tests {
 
     /// The header picture is the overview's widest source.
+    #[test]
+    fn featured_playlists_come_from_the_overviews_related_content() {
+        let body = serde_json::json!({"data": {"artistUnion": {"relatedContent": {"featuringV2": {"items": [
+            {"data": {"uri": "spotify:playlist:a", "name": "This Is", "images": {"items": [{"sources": [{"url": "u"}]}]}}},
+            {"data": {"name": "no uri"}},
+        ]}}}}});
+        let playlists = super::featured_playlists(&body);
+        assert_eq!(playlists.len(), 1);
+        assert_eq!(playlists[0].name, "This Is");
+        assert_eq!(playlists[0].image.as_deref(), Some("u"));
+    }
+
     #[test]
     fn concerts_come_from_the_overviews_goods_at_most_six() {
         let item = serde_json::json!({"data": {

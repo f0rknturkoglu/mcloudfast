@@ -42,6 +42,7 @@ pub enum PlaylistFilter {
 struct Tools {
     filter: String,
     by_name: bool,
+    by_played: bool,
     playlist_filter: PlaylistFilter,
 }
 
@@ -80,6 +81,15 @@ pub(in crate::ui) fn show(
             ui.spacing_mut().item_spacing.x = 10.0;
             let (frame, _) = ui.allocate_exact_size(vec2(240.0, 30.0), Sense::hover());
             let filter_id = tools_id.with("filter");
+            // Cmd/Ctrl+F finds in the library; Esc in the field clears it.
+            if ui.input_mut(|input| input.consume_key(egui::Modifiers::COMMAND, egui::Key::F)) {
+                ui.memory_mut(|memory| memory.request_focus(filter_id));
+            }
+            if ui.memory(|m| m.has_focus(filter_id))
+                && ui.input(|input| input.key_pressed(egui::Key::Escape))
+            {
+                tools.filter.clear();
+            }
             let has_focus = ui.memory(|m| m.has_focus(filter_id));
             ui.painter().rect(
                 frame,
@@ -137,8 +147,16 @@ pub(in crate::ui) fn show(
                 }
             }
 
-            let labels = [gettext(locale, "Library order"), gettext(locale, "Name")];
-            let selected_idx = usize::from(tools.by_name);
+            let labels = [
+                gettext(locale, "Library order"),
+                gettext(locale, "Name"),
+                gettext(locale, "Recently played"),
+            ];
+            let selected_idx = if tools.by_played {
+                2
+            } else {
+                usize::from(tools.by_name)
+            };
             let chosen = labels[selected_idx].clone();
             let galley = crate::bidi::layout_line(
                 ui.painter(),
@@ -192,6 +210,7 @@ pub(in crate::ui) fn show(
                         let check = picked.then_some(Icon::Check);
                         if widgets::menu_item(ui, &palette, check, label) {
                             tools.by_name = index == 1;
+                            tools.by_played = index == 2;
                             ui.close();
                         }
                     }
@@ -212,79 +231,96 @@ pub(in crate::ui) fn show(
                     PlaylistFilter::Mixed => 3,
                     PlaylistFilter::ByOthers => 4,
                 };
-                let filter_chosen = filter_labels[filter_idx].clone();
-                let is_filtered = tools.playlist_filter != PlaylistFilter::All;
-                let text_color = if is_filtered {
-                    palette.accent
-                } else {
-                    palette.text
-                };
-                let f_galley = crate::bidi::layout_line(
-                    ui.painter(),
-                    filter_chosen.as_ref(),
-                    theme::regular(13.0),
-                    text_color,
-                );
-                let (f_btn, f_resp) =
-                    ui.allocate_exact_size(vec2(f_galley.size().x + 36.0, 30.0), Sense::click());
-                ui.painter().rect(
-                    f_btn,
-                    CornerRadius::same(15),
-                    super::tone(Color32::from_rgb(0x2b, 0x2b, 0x2b), Color32::WHITE),
-                    egui::Stroke::new(
-                        1.0,
-                        if is_filtered {
-                            palette.accent
-                        } else {
-                            crate::ui::mcloud::ink(20)
-                        },
-                    ),
-                    egui::StrokeKind::Inside,
-                );
-                ui.painter().galley(
-                    pos2(
-                        f_btn.left() + 12.0,
-                        f_btn.center().y - f_galley.size().y / 2.0,
-                    ),
-                    f_galley,
-                    text_color,
-                );
-                let f_arrows_x = f_btn.right() - 13.0;
-                let f_cy = f_btn.center().y;
-                for (dy, tip) in [(-3.0_f32, -2.6_f32), (3.0_f32, 2.6_f32)] {
-                    ui.painter().add(egui::Shape::convex_polygon(
-                        vec![
-                            pos2(f_arrows_x - 3.0, f_cy + dy),
-                            pos2(f_arrows_x + 3.0, f_cy + dy),
-                            pos2(f_arrows_x, f_cy + dy + tip),
-                        ],
-                        palette.secondary,
-                        egui::Stroke::NONE,
-                    ));
-                }
-                let f_popup_pos = pos2(
-                    f_btn.left(),
-                    (f_btn.top() - 6.0 - filter_idx as f32 * 28.0).max(8.0),
-                );
-                egui::Popup::from_toggle_button_response(&f_resp)
-                    .at_position(f_popup_pos)
-                    .frame(widgets::menu_frame(&palette))
-                    .show(|ui| {
-                        for (idx, flabel) in filter_labels.iter().enumerate() {
-                            let picked = filter_idx == idx;
-                            let check = picked.then_some(Icon::Check);
-                            if widgets::menu_item(ui, &palette, check, flabel) {
-                                tools.playlist_filter = match idx {
-                                    1 => PlaylistFilter::ByYou,
-                                    2 => PlaylistFilter::BySpotify,
-                                    3 => PlaylistFilter::Mixed,
-                                    4 => PlaylistFilter::ByOthers,
-                                    _ => PlaylistFilter::All,
-                                };
-                                ui.close();
-                            }
+                if app.settings.mcloud_filter_pills {
+                    let filters = [
+                        PlaylistFilter::All,
+                        PlaylistFilter::ByYou,
+                        PlaylistFilter::BySpotify,
+                        PlaylistFilter::Mixed,
+                        PlaylistFilter::ByOthers,
+                    ];
+                    for (index, filter) in filters.into_iter().enumerate() {
+                        if super::pages::chip(ui, &filter_labels[index], filter_idx == index)
+                            .clicked()
+                        {
+                            tools.playlist_filter = filter;
                         }
-                    });
+                    }
+                } else {
+                    let filter_chosen = filter_labels[filter_idx].clone();
+                    let is_filtered = tools.playlist_filter != PlaylistFilter::All;
+                    let text_color = if is_filtered {
+                        palette.accent
+                    } else {
+                        palette.text
+                    };
+                    let f_galley = crate::bidi::layout_line(
+                        ui.painter(),
+                        filter_chosen.as_ref(),
+                        theme::regular(13.0),
+                        text_color,
+                    );
+                    let (f_btn, f_resp) = ui
+                        .allocate_exact_size(vec2(f_galley.size().x + 36.0, 30.0), Sense::click());
+                    ui.painter().rect(
+                        f_btn,
+                        CornerRadius::same(15),
+                        super::tone(Color32::from_rgb(0x2b, 0x2b, 0x2b), Color32::WHITE),
+                        egui::Stroke::new(
+                            1.0,
+                            if is_filtered {
+                                palette.accent
+                            } else {
+                                crate::ui::mcloud::ink(20)
+                            },
+                        ),
+                        egui::StrokeKind::Inside,
+                    );
+                    ui.painter().galley(
+                        pos2(
+                            f_btn.left() + 12.0,
+                            f_btn.center().y - f_galley.size().y / 2.0,
+                        ),
+                        f_galley,
+                        text_color,
+                    );
+                    let f_arrows_x = f_btn.right() - 13.0;
+                    let f_cy = f_btn.center().y;
+                    for (dy, tip) in [(-3.0_f32, -2.6_f32), (3.0_f32, 2.6_f32)] {
+                        ui.painter().add(egui::Shape::convex_polygon(
+                            vec![
+                                pos2(f_arrows_x - 3.0, f_cy + dy),
+                                pos2(f_arrows_x + 3.0, f_cy + dy),
+                                pos2(f_arrows_x, f_cy + dy + tip),
+                            ],
+                            palette.secondary,
+                            egui::Stroke::NONE,
+                        ));
+                    }
+                    let f_popup_pos = pos2(
+                        f_btn.left(),
+                        (f_btn.top() - 6.0 - filter_idx as f32 * 28.0).max(8.0),
+                    );
+                    egui::Popup::from_toggle_button_response(&f_resp)
+                        .at_position(f_popup_pos)
+                        .frame(widgets::menu_frame(&palette))
+                        .show(|ui| {
+                            for (idx, flabel) in filter_labels.iter().enumerate() {
+                                let picked = filter_idx == idx;
+                                let check = picked.then_some(Icon::Check);
+                                if widgets::menu_item(ui, &palette, check, flabel) {
+                                    tools.playlist_filter = match idx {
+                                        1 => PlaylistFilter::ByYou,
+                                        2 => PlaylistFilter::BySpotify,
+                                        3 => PlaylistFilter::Mixed,
+                                        4 => PlaylistFilter::ByOthers,
+                                        _ => PlaylistFilter::All,
+                                    };
+                                    ui.close();
+                                }
+                            }
+                        });
+                }
             }
         });
         ui.add_space(4.0);
@@ -302,13 +338,22 @@ pub(in crate::ui) fn show(
     let next_uris: Vec<String> = order.iter().map(|&i| entries[i].uri.clone()).collect();
     ui.data_mut(|data| data.insert_temp(visit_id, (page_key, next_uris)));
 
-    let shown = visible_ordered(
+    let mut shown = visible_ordered(
         entries,
         &order,
         &tools,
         matches!(page, Page::AllPlaylists),
         app.user_id(),
     );
+    if tools.by_played {
+        let rank = |uri: &str| {
+            app.recent_contexts
+                .iter()
+                .position(|recent| recent == uri)
+                .unwrap_or(usize::MAX)
+        };
+        shown.sort_by_key(|&index| rank(&entries[index].uri));
+    }
     let status = items(locale, entries.len());
     let status = if tools.filter.trim().is_empty() && tools.playlist_filter == PlaylistFilter::All {
         status
@@ -447,8 +492,20 @@ fn cover_card(app: &mut App, ui: &mut egui::Ui, entry: &Entry, cell: Rect, side:
     let response = ui.interact(
         cell,
         Id::new(("mcloud-library-card", &entry.uri)),
-        Sense::click(),
+        Sense::click_and_drag(),
     );
+    // An album's card drags the album, onto a playlist in the sidebar.
+    if let Page::Album(_) = &entry.page
+        && response.drag_started_by(egui::PointerButton::Primary)
+    {
+        egui::DragAndDrop::set_payload(
+            ui.ctx(),
+            crate::model::DragAlbum {
+                uri: entry.uri.clone(),
+                title: entry.name.clone(),
+            },
+        );
+    }
     if let Page::Artist(id) = &entry.page {
         widgets::prefetch_artist_on_hover(ui.ctx(), &response, id, &mut app.actions);
     }

@@ -840,6 +840,21 @@ pub struct SearchResults {
     pub shows: Option<Page<Show>>,
     #[serde(default)]
     pub episodes: Option<Page<Episode>>,
+    #[serde(default)]
+    pub audiobooks: Option<Page<Audiobook>>,
+}
+
+/// An audiobook among search results.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq)]
+pub struct Audiobook {
+    #[serde(default, deserialize_with = "null_default")]
+    pub uri: String,
+    #[serde(default, deserialize_with = "null_default")]
+    pub name: String,
+    #[serde(default, deserialize_with = "null_default")]
+    pub authors: Vec<ArtistRef>,
+    #[serde(default, deserialize_with = "null_default")]
+    pub images: Vec<Image>,
 }
 
 impl SearchResults {
@@ -854,6 +869,7 @@ impl SearchResults {
             Kind::Playlists => more_after(self.playlists.as_ref()),
             Kind::Podcasts => more_after(self.shows.as_ref()),
             Kind::Episodes => more_after(self.episodes.as_ref()),
+            Kind::Audiobooks => more_after(self.audiobooks.as_ref()),
         }
     }
 
@@ -868,6 +884,7 @@ impl SearchResults {
             Kind::Playlists => loaded_in(self.playlists.as_ref()),
             Kind::Podcasts => loaded_in(self.shows.as_ref()),
             Kind::Episodes => loaded_in(self.episodes.as_ref()),
+            Kind::Audiobooks => loaded_in(self.audiobooks.as_ref()),
         }
     }
 
@@ -882,6 +899,9 @@ impl SearchResults {
             Kind::Playlists => append_page(&mut self.playlists, more.playlists, |p| &p.uri),
             Kind::Podcasts => append_page(&mut self.shows, more.shows, |s| &s.uri),
             Kind::Episodes => append_page(&mut self.episodes, more.episodes, |e| &e.uri),
+            // Asked for apart from the rest, so the first page starts the kind.
+            Kind::Audiobooks if self.audiobooks.is_none() => self.audiobooks = more.audiobooks,
+            Kind::Audiobooks => append_page(&mut self.audiobooks, more.audiobooks, |a| &a.uri),
         }
     }
 

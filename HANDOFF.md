@@ -1,6 +1,6 @@
 # mcloudfast: devir notu
 
-Son güncelleme: 2 Kasım 2026
+Son güncelleme: 6 Kasım 2026
 
 ## Proje ne
 
@@ -14,14 +14,26 @@ Açmak için: **Ayarlar → Appearance → Interface style → mcloud**.
 
 ## Repo
 
-- `origin`: github.com/f0rknturkoglu/mcloudfast (çalışma branch'i `main`)
-- `upstream`: crmne/spotifast. Geçmiş tek bir başlangıç commit'ine
-  sıkıştırıldı ("Start mcloudfast from Spotifast 0.15.0", upstream
-  `796393c`). Bu yüzden upstream güncellemeleri `git merge` ile değil, iki
-  upstream sürümü arasındaki fark yama olarak uygulanarak alınır.
+- `origin`: github.com/f0rknturkoglu/mcloudfast, artık github.com/mcloudHQ/mcloudfast
+  adresine yönleniyor. Çalışma branch'i `main`.
+- `upstream`: crmne/spotifast. Taban şu an **v0.17.1**. Geçmiş tek bir başlangıç
+  commit'ine sıkıştırıldığı için güncelleme `git merge` ile değil, yama olarak
+  gelir (bkz. "Upstream güncellemesi").
 - Yerelde `backup/full-history` ve `backup/upstream-main` yedek branch'leri var.
-- Uzaktaki `mcloud-ui` branch'i `main` ile aynı ve silinebilir (silme
-  komutu izin sisteminde engellendi).
+
+### Upstream güncellemesi
+
+1. `git fetch upstream --tags`
+2. Eski taban ile yeni sürüm arasındaki farkı, çeviriler hariç yama yap:
+   `git diff --binary <eski> <yeni> -- . ':!assets/i18n/*.po' ':!assets/i18n/spotifast.pot'`
+3. `git apply --3way` ile uygula, çakışmaları çöz. Çakışmalar çoğunlukla
+   `app.rs`, `ui/mod.rs`, `ui/lyrics.rs`, `ui/widgets.rs`, `session_reads.rs`.
+4. Çeviriler: `update-translations.sh` çalıştır, sonra her dil için
+   `msgmerge --compendium=<upstream .po>`. Çoğul metinler compendium'dan
+   gelmeyebilir, onları elle aktar.
+5. `#~` ile başlayan eski kayıtları temizle, script'i yeniden çalıştır.
+
+Son taban: 0.15.0 (`796393c`) → 0.17.1. Bir sonraki yamanın eski tabanı `v0.17.1`.
 
 ## Kod nerede
 
@@ -30,13 +42,17 @@ dosyalarına sadece küçük dallanmalar eklendi, böylece upstream çakışmala
 
 | Dosya | Ne yapıyor |
 |---|---|
-| `mod.rs` | `active(ctx)` bayrağı (ortak widget'lar mcloud'u buradan anlar), `sentence_case` |
+| `mod.rs` | `active(ctx)` bayrağı, kare başına renk durumu: `ink()`, `tone()`, `accent()`, `is_dark()` |
 | `glass.rs` | Liquid glass: GPU paint callback (egui_glow). Tarif mcloud'un `theme.js` → `toolbarLens` (state `player`) kodundan alındı |
 | `player.rs` | Yüzen player kapsülü (mcloud `#am-player` ölçüleri) |
 | `sidebar.rs` | Apple Music sidebar'ı |
 | `topbar.rs` | Üst çubuk (geri/ileri, ev, arama) |
 | `pages.rs` | Albüm ve playlist başlığı, Shuffle/Play butonları |
 | `artist.rs` | Sanatçı sayfası (başlık görseli, Top Songs ızgarası, raflar) |
+| `mix.rs` | Mix kapakları: şerit, istasyon, gradient; adresten fotoğraf çözme |
+| `now_playing.rs` | Şimdi Çalan: cam kart, kenar paneli, yalnızca panel |
+| `search.rs` | Apple bölümleri, see-all sayfaları, öneri penceresi |
+| `library.rs` | Kütüphane ızgarası, filtre, sıralama |
 | `lyrics.rs` | Kelime kelime doldurma, Spicy Lyrics glow'u, satır ölçeği, ara noktaları — hem tam ekran hem sağ panel ortak |
 
 Lyrics'e ait diğer dosyalar:
@@ -91,20 +107,18 @@ Spotifast'te kancaların olduğu yerler:
 - **Gerçek sayfa kimlikleri:** `~/Library/Caches/me.paolino.spotifast/`
   içindeki JSON dosyalarında.
 
-## Bitenler
+## Durum
 
-Palet ve SF Pro fontu, sidebar, üst çubuk, yüzen player, liquid glass (kullanıcı
-memnun), albüm ve playlist başlığı ile butonlar, tablo başlıkları ve satır
-çizgileri, sanatçı sayfası, ana sayfa selamlamasının kaldırılması, albüm
-sayfasının altı (tam tarih, süre/parça özeti, telif ve "More by [Sanatçı]" rafı),
-Liked Songs sayfası (tür çipleri filtreleme ve sağdaki "Recently added ☰" sıralama açılır menüsü),
-Ana sayfa (All/Music/Podcasts kategori filtre çipleri, filtrelere göre raf ve kısayol gösterimi,
-Spotify'ın 24pt bölüm başlıkları ile raf boşlukları),
-Recently Added ve All Playlists kütüphane görünümleri (`Page::RecentlyAdded`, `Page::AllPlaylists`),
-Sidebar'a "Son Eklenen" ve "Tüm Listeler" bağlantılarının eklenmesi,
-Topbar liquid glass kontrolleri (geri/ileri kapsülü, Home daire butonu ve arama kutusu),
-Sidebar glow (mcloud `user.css:206` `#am-sidebar-glow` ile sayfa kapağının/renginin kenardan sızması),
-Browse sayfası (`Page::Browse`) ve sidebar "Göz At" bağlantısı.
+Özellik özellik gerçek durum [MCLOUD-GOREVLER.md](MCLOUD-GOREVLER.md) dosyasında.
+Orada "Tamam", "Doğrula", "Kısmi" ve "Yapılamaz" ayrımı var; buraya kopyalanmaz.
+
+**Yeni kod için kural:** mcloud görünümünde sabit beyaz kullanma. `mcloud::ink(alpha)`
+ya da `palette.text.gamma_multiply(...)` yaz, yoksa light mode bozulur. Sanatçı
+sayfası bilerek koyu kalır.
+
+**`ui.add_space` tuzağı:** Negatif boşluk ya da `scope_builder` ile sayfanın
+soluna taşan alan, üst `ui`'nin imlecini kaydırır ve sonraki her satır daha solda
+başlar. Sola taşacak alan için `ui.new_child` + `advance_cursor_after_rect` kullan.
 
 ## Lyrics (2 Kasım 2026)
 
@@ -154,49 +168,20 @@ Hiçbiri metinden/sesten çıkarmıyor; hepsi gerçek kelime zamanı verisi kull
 mcloudfast bu üçüncü taraf/hosted kaynaklara bağlanmıyor (repo kuralları:
 hosted servis yok, bakım riski).
 
-## Kalanlar (sırayla önerilen)
+## Kalanlar
 
-**Temel problemlerden sonra:** mcloud'un `STATUS.md`'sindeki Spotify ile
-Apple Music karşılaştırmaları görev listesine çevrildi:
-[MCLOUD-GOREVLER.md](MCLOUD-GOREVLER.md). Temel problemler çözülünce
-oradan başla.
-
-Sayfaların hepsi güncel mcloud reposuna (bulutakbulutt/mcloud) göre eşitlendi:
-- Sanatçı başlığı: isim 40pt; ⓘ 48 / Play 72 / takip 48. Sağ üstte paylaş + "…".
-- ⓘ Hakkında kartı (`mcloud/artist.rs`). Veri, Pathfinder artist overview'dan
-  `ArtistAbout` olarak geliyor.
-- Sanatçı rengi: mcloud'un `artworkColor` + `setTint` algoritması
-  (`images::artwork_colours`).
-- Kütüphane ızgarası (`mcloud/library.rs`): Recently Added, Artists, Albums,
-  All Playlists.
-- Arama: Apple bölümleri (`mcloud/search.rs`): Top Results plakaları, tür rafları, başlıktan açılan "see all" sayfaları (`Page::SearchKind`). Web API Spotify'ın alaka sırasını vermediği için Top Results sanatçı + sırayla türlerden kuruluyor. Browse: "Browse all" düzeni.
-- Sayfa boşluğu `--am-pad`; kenar çubuğu `--am-side`
-  (`settings.mcloud_sidebar_width`, yalnızca sürükleyince kaydediliyor).
+Sıradaki iş gerçek hesapla gezinti, liste `MCLOUD-GOREVLER.md` başında.
 
 Şimdi Çalan paneli (`mcloud/now_playing.rs`): cam kart ya da kenara yapışık;
-kapak, başlık, yıldız, "…" ve altında sözler. Ayarlar: stil, arka plan, sözler.
+kapak, kayan başlık, yıldız, "…" ve altında sözler. Ayarlar: stil, arka plan,
+sözler, yalnızca panel.
 
-Lyrics'te kalanlar (Spicy'den alınabilecekler):
-- **Pasif satırlarda uzaklık bulanıklığı** (`applyBlur`: aktif satırdan
-  uzaklık × 1.25 px, ~6.8 px tavan). egui'de metin blur'u yok; N adet soluk
-  kopya pahalı. Şimdilik dikey fade ile idare ediliyor.
-- **Harf dalgası** (`RefreshedEmphasis`): harf başına scale +0.10, merkezden
-  0.03 em açılma, 0.025 em yukarı, kelime boyunca gecikmeli, min 1 s, son
-  kelimede ×1.6. Tam hali harf harf galley ister; ucuz hali söylenen kelimeyi
-  büyük puntoyla yeniden dizip üstüne çizmek (pompalama).
-- **Duet / arka vokal hizalaması**: `OppositeAligned` + background satırlar.
-  Spotify `color-lyrics` bu veriyi vermiyor.
-- **Romanizasyon**: Japonca/Korece dönüşüm (Kuromoji/opencc). Büyük iş,
-  CJK şarkılarda gerçek kazanç.
-- **TTML yan dosyası**: şarkının yanına `.ttml`/`.xml` konursa kelime
-  zamanları (ve yazarlar) oradan gelir. `local_tags::lyrics` şu an sadece
-  `.lrc` yan dosyasını okuyor; enhanced LRC'nin kelime damgaları zaten
-  ayrıştırılıyor.
-- **Hece ağırlığı**: denendi, naif ünlü-grubu sayımı sessiz `e` (İngilizce
-  "one", "love") ve Türkçe aksanlarda pacing'i bozduğu için geri alındı.
-  Bir sözlük/CMUdict olmadan önerilmiyor.
-- **Üçüncü taraf provider**: yukarıdaki hosted kaynaklardan biri (opsiyonel
-  ayar) — ToS/kırılganlık nedeniyle varsayılan yapılmadı.
+Lyrics'te kalanlar:
+- **Harf dalgası** (`RefreshedEmphasis`): harf başına ölçek, tam hali harf harf galley ister.
+- **Duet / arka vokal:** Spotify `color-lyrics` bu veriyi vermiyor. TTML'de `ttm:agent` var, okunmuyor.
+- **Romanizasyon:** Japonca/Korece dönüşüm. Büyük iş, sözlük gerekir.
+- **Gerçek blur:** Şimdilik uzaklığa göre opaklıkla taklit ediliyor.
+- **Üçüncü taraf söz kaynağı:** ToS ve kırılganlık nedeniyle varsayılan yapılmadı.
 
 Web API izin vermediği için yapılamayanlar:
 - Browse kategori görselleri.
@@ -209,9 +194,11 @@ fark görülürse önce güncel repoya bak.
 
 ## Bilinen durumlar
 
-- `cargo clean` çalıştırıldı (2 Kasım 2026): `target/` boş, ilk build soğuk
-  olacak. Lirik testleri `--features demo` ister
-  (`cargo test --features demo --lib lyrics::tests`).
+- Lirik testleri `--features demo` ister
+  (`cargo test --features demo --lib lyrics::tests`). `cargo test` demo'suz
+  derlerse `target/debug/spotifast` da demo'suz kalır; görüntü almadan önce
+  `cargo build --features demo` çalıştır.
+- Kullanıcı CI beklemek istemiyor, kontroller lokalde yapılır.
 - Lyrics yazarları resmî olmayan `track-credits-view` uç noktasından geliyor;
   ayrıştırma rol başlığına, o yoksa ikinci role bakıyor. Yanıt değişirse
   log'da `spotify credits unavailable` görünür.

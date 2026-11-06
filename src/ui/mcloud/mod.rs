@@ -30,6 +30,17 @@ pub fn active(ctx: &egui::Context) -> bool {
 static DARK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 static ACCENT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0x00fa_2d48);
 
+static APPLE_CARDS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
+/// Whether cards are Apple Music's this frame (mcloud's `homeStyle`).
+pub fn apple_cards() -> bool {
+    APPLE_CARDS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub(super) fn set_apple_cards(apple: bool) {
+    APPLE_CARDS.store(apple, std::sync::atomic::Ordering::Relaxed);
+}
+
 /// Records the frame's appearance and accent.
 pub(super) fn set_palette(palette: &crate::theme::Palette) {
     use std::sync::atomic::Ordering::Relaxed;
@@ -63,6 +74,16 @@ pub fn ink(alpha: u8) -> egui::Color32 {
 /// A colour with its light counterpart, as mcloud's `--am-*` variables.
 pub fn tone(dark: egui::Color32, light: egui::Color32) -> egui::Color32 {
     if is_dark() { dark } else { light }
+}
+
+/// The language of this frame, for widgets that have no `App` to ask.
+pub fn locale(ctx: &egui::Context) -> crate::i18n::Locale {
+    ctx.data(|data| data.get_temp(egui::Id::new("mcloud-locale")))
+        .unwrap_or_default()
+}
+
+pub(super) fn set_locale(ctx: &egui::Context, locale: crate::i18n::Locale) {
+    ctx.data_mut(|data| data.insert_temp(egui::Id::new("mcloud-locale"), locale));
 }
 
 pub(super) fn set_active(ctx: &egui::Context, active: bool) {

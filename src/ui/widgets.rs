@@ -1183,7 +1183,14 @@ fn item_menu_at(
         let (icon, text) = if hidden {
             (Icon::Eye, gettext(locale, "Show in this playlist"))
         } else {
-            (Icon::EyeOff, gettext(locale, "Hide in this playlist"))
+            (
+                if crate::ui::mcloud::active(ui.ctx()) {
+                    Icon::McloudMinusCircle
+                } else {
+                    Icon::EyeOff
+                },
+                gettext(locale, "Hide in this playlist"),
+            )
         };
         if menu_item(ui, &palette, Some(icon), &text) {
             app.actions.push(Action::SetHiddenInPlaylist {
@@ -2919,7 +2926,8 @@ fn card_layout(mcloud: bool) -> CardLayout {
 
 /// Fixed height of a [`card`] row for virtualised grids.
 pub fn card_row_height(ui: &mut Ui) -> f32 {
-    let layout = card_layout(crate::ui::mcloud::active(ui.ctx()));
+    let layout =
+        card_layout(crate::ui::mcloud::active(ui.ctx()) && crate::ui::mcloud::apple_cards());
     let (title_row, subtitle_row) = ui.fonts_mut(|fonts| {
         (
             fonts.row_height(&layout.title_font),
@@ -2953,7 +2961,8 @@ pub fn card(
     let palette = app.palette;
     let image_size = art.unwrap_or(CARD_ART);
     let text_width = image_size;
-    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud;
+    let mcloud = app.settings.interface == crate::settings::Interface::Mcloud
+        && (app.settings.mcloud_home_cards || art.is_some());
     let mut layout = card_layout(mcloud);
     let subtitle_lines = if art.is_some() {
         layout.pad_x = 0.0;
@@ -3299,7 +3308,7 @@ pub(crate) fn shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut 
 fn mcloud_shelf_cards(ui: &mut Ui, id: &str, add_contents: impl FnOnce(&mut Ui)) {
     // How far past the page's margin the row is clipped.
     const CLIP: f32 = 12.0;
-    let pad = card_layout(true).pad_x;
+    let pad = card_layout(crate::ui::mcloud::apple_cards()).pad_x;
     // A child, not a scope: a scope past the page's left edge would move that
     // edge for everything drawn after it.
     let room = ui.available_rect_before_wrap();
@@ -3400,6 +3409,7 @@ pub(crate) fn snapping_row(
 
     // The arrows, on the covers' middle, while the pointer is on the row.
     let inner = output.inner_rect;
+    let locale = crate::ui::mcloud::locale(ui.ctx());
     if ui.rect_contains_pointer(inner) {
         let y = inner.top() + arrows.middle;
         let size = vec2(22.0, 40.0);
@@ -3407,14 +3417,26 @@ pub(crate) fn snapping_row(
         if offset > 0.5 {
             let rect =
                 Rect::from_center_size(pos2(inner.left() + arrows.inset + size.x / 2.0, y), size);
-            if shelf_arrow(ui, rect, state_id.with("back"), false, "Previous") {
+            if shelf_arrow(
+                ui,
+                rect,
+                state_id.with("back"),
+                false,
+                &gettext(locale, "Previous"),
+            ) {
                 paging_to = Some(((offset - page) / pitch).round().max(0.0) * pitch);
             }
         }
         if offset < max_offset - 0.5 {
             let rect =
                 Rect::from_center_size(pos2(inner.right() - arrows.inset - size.x / 2.0, y), size);
-            if shelf_arrow(ui, rect, state_id.with("forward"), true, "Next") {
+            if shelf_arrow(
+                ui,
+                rect,
+                state_id.with("forward"),
+                true,
+                &gettext(locale, "Next"),
+            ) {
                 paging_to = Some((((offset + page) / pitch).round() * pitch).min(max_offset));
             }
         }
@@ -3472,7 +3494,7 @@ pub(crate) fn snapping_row(
 
 /// A wrapping grid of cards.
 pub fn grid(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
-    let across = if crate::ui::mcloud::active(ui.ctx()) {
+    let across = if crate::ui::mcloud::active(ui.ctx()) && crate::ui::mcloud::apple_cards() {
         0.0
     } else {
         CARD_GAP / 2.0
@@ -3538,7 +3560,8 @@ pub fn skeleton_rows(ui: &mut Ui, palette: &Palette, locale: Locale, count: usiz
 /// Placeholder cards for a shelf that is loading, the size of the cards it
 /// will show, round for artists. Like [`skeleton_rows`], they do not move.
 pub fn skeleton_cards(ui: &mut Ui, palette: &Palette, locale: Locale, count: usize, round: bool) {
-    let layout = card_layout(crate::ui::mcloud::active(ui.ctx()));
+    let layout =
+        card_layout(crate::ui::mcloud::active(ui.ctx()) && crate::ui::mcloud::apple_cards());
     let height = layout.pad_top + CARD_ART + 10.0 + 14.0 + 6.0 + 10.0 + 12.0;
     skeleton_cards_sized(ui, palette, locale, count, round, height);
 }
@@ -3574,7 +3597,7 @@ fn skeleton_cards_sized(
     height: f32,
 ) {
     let fill = skeleton_fill(palette);
-    let mcloud = crate::ui::mcloud::active(ui.ctx());
+    let mcloud = crate::ui::mcloud::active(ui.ctx()) && crate::ui::mcloud::apple_cards();
     let layout = card_layout(mcloud);
     for index in 0..count {
         let (rect, response) =

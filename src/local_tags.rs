@@ -94,9 +94,14 @@ pub fn picture(path: &Path) -> Option<Vec<u8>> {
     embedded(path).picture
 }
 
-/// The words for the local file at `path`: a `.lrc` file of the same name
-/// beside it first, then the lyrics in its tags.
+/// The words for the local file at `path`: a `.ttml` or `.lrc` file of the
+/// same name beside it first, then the lyrics in its tags.
 pub fn lyrics(path: &Path) -> Option<crate::lyrics::Lyrics> {
+    if let Ok(text) = std::fs::read_to_string(path.with_extension("ttml"))
+        && let Some(found) = crate::lyrics::from_ttml(&text)
+    {
+        return Some(found);
+    }
     let sidecar = path.with_extension("lrc");
     if let Ok(bytes) = std::fs::read(&sidecar) {
         // A `.lrc` file saved on Windows often starts with a byte order
@@ -213,6 +218,23 @@ pub(crate) mod tests {
         assert_eq!(picture(&bare), None);
         assert_eq!(picture(&dir.join("gone.mp3")), None);
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// A `.ttml` file beside the song brings its word timing.
+    #[test]
+    fn a_ttml_file_beside_the_song_comes_first() {
+        let dir = folder("ttml");
+        let song = dir.join("song.mp3");
+        std::fs::write(&song, b"").unwrap();
+        std::fs::write(dir.join("song.lrc"), "[00:02.50]Sidecar line\n").unwrap();
+        std::fs::write(
+            dir.join("song.ttml"),
+            r#"<tt><body><div><p begin="1.0" end="2.0"><span begin="1.0" end="1.5">Hey</span> <span begin="1.5" end="2.0">you</span></p></div></body></tt>"#,
+        )
+        .unwrap();
+        let found = lyrics(&song).unwrap();
+        assert_eq!(found.lines[0].text, "Hey you");
+        assert_eq!(found.lines[0].syllables.len(), 2);
     }
 
     /// A `.lrc` file beside the song comes first, then the lyrics in its

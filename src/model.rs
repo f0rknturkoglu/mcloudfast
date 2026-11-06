@@ -188,6 +188,7 @@ impl Page {
                     "search" => Page::SearchKind(
                         SearchFilter::ALL
                             .into_iter()
+                            .chain([SearchFilter::Audiobooks])
                             .find(|filter| filter.slug() == id)?,
                     ),
                     "playlist" => Page::Playlist(id.into()),
@@ -818,6 +819,8 @@ pub enum SearchFilter {
     Playlists,
     Podcasts,
     Episodes,
+    /// mcloud's sections only: Spotifast's chips do not offer it.
+    Audiobooks,
 }
 
 impl SearchFilter {
@@ -830,6 +833,7 @@ impl SearchFilter {
             Self::Playlists => "playlist",
             Self::Podcasts => "show",
             Self::Episodes => "episode",
+            Self::Audiobooks => "audiobook",
         }
     }
 
@@ -843,6 +847,7 @@ impl SearchFilter {
             Self::Playlists => "playlists",
             Self::Podcasts => "podcasts",
             Self::Episodes => "episodes",
+            Self::Audiobooks => "audiobooks",
         }
     }
 
@@ -866,6 +871,7 @@ impl SearchFilter {
             Self::Playlists => gettext(locale, "Playlists"),
             Self::Podcasts => gettext(locale, "Podcasts"),
             Self::Episodes => gettext(locale, "Episodes"),
+            Self::Audiobooks => gettext(locale, "Audiobooks"),
         }
     }
 }
@@ -890,6 +896,8 @@ pub struct SearchState {
     /// The next page of a kind failed: the query's other results stay, and
     /// nothing asks again until the next query.
     pub more_failed: bool,
+    /// The first page of audiobooks, asked for apart, is still on its way.
+    pub audiobooks_first: bool,
     pub typed_at: Option<Instant>,
     /// Counts runs of typing in the search field. A run ends when the field
     /// is emptied, its selected text is typed over, or the query is
@@ -1101,6 +1109,13 @@ pub enum RowContext {
         /// stay disabled; removal is URI-based and safe.
         editable_playlist: Option<(String, Option<String>)>,
     },
+}
+
+/// An album held during a drag: dropped on a playlist, its songs join it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DragAlbum {
+    pub uri: String,
+    pub title: String,
 }
 
 /// Track data held during a drag.
@@ -1398,6 +1413,12 @@ pub enum Action {
     SetSearchFilter(SearchFilter),
     /// The page of this kind neared its end: ask for the next.
     SearchMore(SearchFilter),
+    /// An album was dropped on a playlist.
+    AddAlbumToPlaylist {
+        album_uri: String,
+        playlist_id: String,
+        playlist_name: String,
+    },
     SetTopPeriod(TopPeriod),
     SetHomeFilter(HomeFilter),
     FocusSearch,

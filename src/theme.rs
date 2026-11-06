@@ -649,6 +649,8 @@ fastframe_icons::icons! {
         McloudLeft => "mcloud-left",
         McloudLyrics => "mcloud-lyrics",
         McloudMicrophone => "mcloud-microphone",
+        McloudMinusCircle => "mcloud-minus-circle",
+        McloudNowPlaying => "mcloud-now-playing",
         McloudMore => "mcloud-more",
         McloudMusic => "mcloud-music",
         McloudNext => "mcloud-next",

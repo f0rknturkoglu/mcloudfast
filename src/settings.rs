@@ -483,6 +483,27 @@ pub struct Settings {
     pub mcloud_np_background: McloudNpBackground,
     /// Lyrics under Now Playing's artwork; off leaves them for full screen.
     pub mcloud_np_lyrics: bool,
+    /// Now Playing holds every control and the bottom player goes.
+    pub mcloud_np_only: bool,
+    /// The song's artwork in the player.
+    pub mcloud_player_artwork: bool,
+    /// The player's Liquid Glass; off draws it solid.
+    pub mcloud_player_glass: bool,
+    /// The player's artist and album names open as links; off asks where to go.
+    pub mcloud_lcd_links: bool,
+    /// The song's menu anywhere on the player; off only over the song.
+    pub mcloud_player_menu_anywhere: bool,
+    /// All Playlists' filters as buttons; off in a menu.
+    pub mcloud_filter_pills: bool,
+    /// What's New as cards; off as the list of songs.
+    pub mcloud_feed_cards: bool,
+    /// Apple Music's cards on Home's shelves; off Spotify's.
+    pub mcloud_home_cards: bool,
+    /// Search results in Apple Music's sections; off Spotify's tabbed list.
+    pub mcloud_search_sections: bool,
+    /// A photo-header playlist opens with its artwork on the left; off with
+    /// the photo across the page, as Spotify's.
+    pub mcloud_photo_as_artwork: bool,
     /// The interface language; older files without it follow the system.
     pub language: LanguageChoice,
     /// Filename selected from the local themes directory.
@@ -715,6 +736,16 @@ impl Default for Settings {
             mcloud_np_layout: McloudNpLayout::Card,
             mcloud_np_background: McloudNpBackground::Artwork,
             mcloud_np_lyrics: true,
+            mcloud_np_only: false,
+            mcloud_player_artwork: true,
+            mcloud_player_glass: true,
+            mcloud_lcd_links: true,
+            mcloud_player_menu_anywhere: false,
+            mcloud_filter_pills: false,
+            mcloud_feed_cards: true,
+            mcloud_home_cards: true,
+            mcloud_search_sections: true,
+            mcloud_photo_as_artwork: true,
             language: LanguageChoice::System,
             custom_theme: None,
             custom_theme_cache: None,

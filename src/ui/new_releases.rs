@@ -192,7 +192,7 @@ fn mcloud_feed(app: &mut App, ui: &mut egui::Ui) {
 }
 
 pub fn page(app: &mut App, ui: &mut egui::Ui) {
-    if super::mcloud::active(ui.ctx()) {
+    if super::mcloud::active(ui.ctx()) && app.settings.mcloud_feed_cards {
         mcloud_feed(app, ui);
         return;
     }

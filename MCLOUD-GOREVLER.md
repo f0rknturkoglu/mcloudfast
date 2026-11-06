@@ -1,299 +1,163 @@
 # mcloud'dan mcloudfast'a görevler
 
-Son güncelleme: 4 Kasım 2026. Kaynak: mcloud reposunun `STATUS.md` dosyası
-(`main`, `34c241d`).
+Son güncelleme: 6 Kasım 2026. Kaynak: mcloud `main` (`c520d2b`), Spotifast tabanı `v0.17.1`.
 
-mcloud'da Spotify'ı Apple Music'e benzetirken her sayfayı Apple Music ile
-karşılaştırdık; bulunan farklar, ölçüler ve kararlar `STATUS.md`'de. Bu
-dosya o sorunları mcloudfast görevlerine çeviriyor.
+Bu dosya her mcloud özelliğinin mcloudfast'teki gerçek durumunu tutar. Eski
+sürümde 42 maddenin hepsi "Tamamlandı" yazıyordu, oysa bazıları eksikti. O
+yüzden artık dört durum var, ve bir maddenin durumu kanıta göre yazılır.
 
-**Ne zaman:** mcloudfast'ın temel problemleri çözüldükten sonra. Önce onlar.
+**Durumlar:**
+- **Tamam:** Kod var, testi var ya da demo görüntüsünde görüldü.
+- **Doğrula:** Kod var, ama gerçek veriyle ya da elle denenmedi.
+- **Kısmi:** Bir kısmı var, eksiği yazılı.
+- **Yapılamaz:** Sebebi yazılı. Kullanılan kütüphane ya da API izin vermiyor.
 
-**Nasıl okunur:**
-- Her madde: mcloud'da ne öğrendik → mcloudfast'ta ne yapılacak.
-- Sayılar mcloud'un ölçüleri. Tahmin değil, başlangıç noktası.
-- **Yok:** mcloudfast kodunda bulunamadı.
-- **Kontrol:** bir kısmı var. mcloud ölçüsüyle yan yana karşılaştır, eksikse tamamla.
-- Sırası öneri. Önce hız, sonra en çok görülen sayfalar.
+**Çalışma şekli**
+- Ölçüleri tahminle değil, mcloud'un `user.css` ve `theme.js` dosyalarından al.
+- Karar vermeden önce ölç. Hız sorunlarında sebebi tahmin etme.
+- Ekran görüntüleri koyu modda alınır, konu light mode değilse.
+- Kontroller tıklandığı anda durum değiştirir. İstek sonra gelir.
+- "Tamam" yazmadan önce görüntüyle ya da testle doğrula.
 
-**Alınmayanlar:** yalnızca Spotify'ın HTML'ine ya da Spicetify'a ait konular.
-jsDelivr, GitHub Pages, Marketplace, React düğümleri, CSS `:has()`
-performansı, `Spicetify.GraphQL` gecikmesi, Spotify'ın zoom'u ve Windows'un
-60px sürükleme bölgesi bunlara dahil.
+## Hemen yapılacak
 
-## Çalışma şekli (mcloud'da oturan kurallar)
+Yeni işlerin hiçbiri henüz gerçek hesapla denenmedi. Bu tur önce gelir:
 
-- Karar vermeden önce ölç. Hız sorunlarında sebebi tahmin etme, uygulamada ölç.
-- Apple'ın sayıları sadece başlangıç. 2–3 varyantı gerçek pencerede yakala,
-  kullanıcı gözüyle seçsin.
-- Apple referansı: macOS 27, cam ayarı en net, Music penceresi odakta.
-  Gri trafik ışıkları varsa referans geçersiz.
-- Ekran görüntüleri koyu modda alınır. Light mode ancak konu light mode ise.
-- Kontroller tıklandığı anda durum değiştirir. İstek sonra gelir, hata olursa geri alınır.
+- [ ] Gerçek hesapla gezinti: ana sayfa, arama, see-all, Daily Mix kapakları,
+      What's New, klasörler, Now Playing, sanatçı sayfası.
+- [ ] Web API kotası: dolu ise sayfalama durur, sanatçı mix'leri gradient'e düşer.
+- [ ] Windows ve Linux'ta cam ve light mode.
+- [ ] `EnableTransparency` okuması Windows'ta çalışıyor mu (kod derlenmedi).
 
 ## A. Hız ve akıcılık
 
-1. **Sanatçı sayfası önbelleği ve ön yükleme.** *Tamamlandı.*
-   mcloud: sayfa verisi oturum boyunca önbellekte tutuluyor. 2 dakika taze
-   sayılıyor. 30 dakikaya kadar eski veri gösterilip arkada yenileniyor.
-   En fazla 60 kayıt tutuluyor. Bağlantının üstünde 80 ms durunca veri ve
-   başlık görseli önceden yükleniyor. Sıcak açılış 63–170 ms, Spotify'ın
-   kendi sayfası 116–165 ms.
-   Yapılacak: aynı önbellek ve hover ile ön yükleme. Soğuk ve sıcak açılış
-   süresini ölç.
-2. **Başlık görselinin boyutu.** *Tamamlandı.* Her zaman 2660px'lik görsel
-   gelmesin. Başlığı cihazın piksel oranında kaplayan en küçük 7:3 kaynak
-   seçilsin.
-3. **Geri/ileri geçişinde titreme olmasın.** *Tamamlandı.*
-   mcloud'da her geçişte tek bir kare değişiyor (10 sayfa çifti ölçüldü).
-   - Görünümler oturum boyunca önbellekte. Arkada yenileniyor, sadece sıra
-     değiştiyse yeni hali bir sonraki ziyarette geliyor.
-   - "Yükleniyor…" ekranı yanıp sönmüyor.
-   - Daha önce yüklenen kapaklar hemen çiziliyor. Son 200 doku bellekte
-     tutuluyor.
-4. **Gereksiz yeniden çizim olmasın.** *Tamamlandı.* Pencere gizliyken iş
-   yapılmasın. Marquee ve scrubber cihaz pikseli adımlarıyla ilerlesin.
-   Sadece değer değişince yeniden çizilsin. mcloud'da müzik çalarken boşta
-   CPU %27'den %1–5'e indi.
-5. **Lyrics sayfasında cam maliyeti.** *Tamamlandı.* Arka plan her kare
-   değişince camın altındaki blur da her kare yeniden hesaplanıyor. mcloud'un
-   Balanced modu bu sayfada hafif cam kullanıyor: tek örneklemeli bükme, ton
-   ve vurgu var; halo ve ince çizgiler yok. GPU kullanımı %98'den %71'e indi.
-   mcloudfast'ın `GlassEffect::Balanced` modu lyrics sayfasında ne yapıyor,
-   ölç.
+| # | Madde | Durum |
+|---|---|---|
+| 1 | Sanatçı önbelleği ve hover ile ön yükleme | Doğrula |
+| 2 | Başlık görselinin en küçük uygun kaynağı | Tamam |
+| 3 | Geri/ileri geçişte titreme yok | Doğrula |
+| 4 | Gereksiz yeniden çizim yok | Doğrula: raf snap'i düzeltildi, boşta CPU ölçülmedi |
+| 5 | Lyrics'te Balanced cam maliyeti | Doğrula: GPU ölçülmedi |
 
 ## B. Sanatçı sayfası
 
-6. **Düzen pencere genişliğine göre değişsin.** *Tamamlandı.* Apple Music'te
-   ölçüldü (Nirvana, pencere 980–1386pt):
-   - **Dar** (içerik ~600–700pt altı):
-     - Top Songs alt alta 5 satır. Başlığın altında "Albüm · Yıl" yazıyor.
-     - Öne çıkan kart en üstte, tam genişlikte.
-     - Albüm rafında 2 büyük kapak, genişlikle 200'den 275pt'ye büyüyor.
-   - **Geniş:**
-     - Son çıkan albüm ve Top Songs yan yana.
-     - Sütunlar ~220pt. Sağ kenarda bir sonraki sütundan hep ~20pt görünüyor.
-     - Fareyle üstüne gelince ">" sayfa oku çıkıyor.
-     - Albüm kapakları 135–160pt.
-   - Dar pencerede player daha az buton göstersin.
-7. **Başlık görselindeki siyah bantları kırp.** *Tamamlandı.* Bazı görsellerde
-   siyah bant var: Doja Cat'te sağda ve solda, Sade'de üstte. Görsel 280×120
-   boyutta örneklenir. Her kanalı 20'nin altında kalan satır ve sütunlar bant
-   sayılır ve kırpılır. Kırpma değeri görsel başına saklanır.
-8. **Başlıktaki blur ve geçiş.** *Tamamlandı.* W, sidebar'ın sağındaki genişlik.
-   - Görsel W×W/2 boyutunda.
-   - Renge geçiş (α) 0.245W'den 0.646W'ye kadar doğrusal.
-   - Blur (σ) 0.38W'ye kadar 0. Sonra 3/6/10/15/20pt
-     (0.403/0.432/0.475/0.498/0.52W noktalarında, W=1042 için).
-   - Görselin altında bulanık hali devam ediyor (yansıma).
-   - Play üçgeninin köşeleri yuvarlak. Üçgen, genişliğinin 1/18'i kadar
-     sağda duruyor.
-9. **Sanatçı rengi.** *Tamamlandı.*
-   - Gri kapağı olan sanatçının sayfası gri kalsın.
-   - Sidebar bu sayfalarda sayfa renginin %34'ünü #161616 ile karıştırır,
-     %85 opaklıkla.
-   - Kenar parıltısı burada kapalı. Tek renkli sayfayı turuncuya
-     çeviriyordu.
-10. **ⓘ Hakkında kartında kaydırma.** *Tamamlandı.*
-    - Kaydırınca fotoğraf kaydırma miktarının 0.4 katı kadar kayıyor.
-    - 181pt'den (0.257W) başlayarak 200pt boyunca doğrusal olarak bulanıklaşıp
-      renge geçiyor. Sonunda σ 36pt.
-    - Kart rengi: görselin en sık rengi (24 seviyeli histogramın modu).
-      Parlaklığı (HSV V) en fazla 0.42.
-    - Etiket, çip ve biyografi metni rengin üstüne ekleniyor (plus-lighter):
-      etiket +72, çip +20 dolgu ve +26 kenar, biyografi ilk 150px boyunca
-      +187'den +157'ye.
-    - Renk sayfa yüklenirken hesaplanmalı. Kart açıldıktan sonra renk
-      değişirse titreme olur.
-11. **Takip yıldızı.** *Tamamlandı.* Tıklanınca hemen dolsun, 300 ms küçük bir
-    sıçrama yapsın (hareketi azalt ayarı açıksa yapmasın). Toast çıksın:
-    "… takip ediliyor" / "… takipten çıkarıldı". İstek başarısız olursa
-    yıldız eski haline dönsün.
+| # | Madde | Durum |
+|---|---|---|
+| 6 | Genişliğe göre düzen | Tamam |
+| 7 | Başlık görselinde siyah bant kırpma | Tamam |
+| 8 | Başlıkta blur ve renge geçiş | Tamam |
+| 9 | Sanatçı rengi, sidebar karışımı | Tamam |
+| 10 | Hakkında kartında kaydırma | Doğrula |
+| 11 | Takip yıldızı ve toast | Doğrula |
+| 43 | Compilations rafı | Tamam |
+| 44 | Artist Playlists rafı | Doğrula: gerçek yanıtla karşılaştırılmadı |
+| 45 | Upcoming Concerts bölümü ve başlık etiketi | Doğrula: alanlar mcloud kodundan |
+| 46 | Sayfa sonunda About bölümü | Doğrula |
 
 ## C. Albüm ve playlist sayfaları
 
-12. **Başlık ölçüleri.** *Tamamlandı.* Kaynak: macOS 27 Music.
-    - Kapak 150pt ile 270pt arasında, içerik genişliğinin %45'i. Music'te
-      hep 270pt; ~1250pt altında başlık kapağın altına iniyor.
-    - Kapak köşesi 10px.
-    - Başlık 26pt bold. Sanatçı 26pt regular, accent renkte. Satır yüksekliği
-      32pt.
-    - Yıl satırı 12pt semibold.
-    - Playlist açıklaması metin sütununun en altında, 13px, en fazla 3 satır.
-13. **Parça satırları.** *Tamamlandı.*
-    - Apple'da satırlar tek satır ve daha ince. Liste metni 13pt.
-    - Albüm satırlarında kapak yok. Ayırıcı çizgi 48px'ten başlıyor.
-    - Sanatçı satırı olmayan albüm satırında numara dikeyde ortada.
-    - Plays sütunu ve video etiketi yok.
-    - Sanatçı satırı sadece konuk ya da başka sanatçı olan parçalarda var.
-14. **Kaydet butonu yıldız olsun.** *Tamamlandı.* Music'teki gibi boş ve dolu
-    yıldız, accent renkte. Kaydederken Spotify yeşili görünmesin. Shuffle,
-    Play ve + da accent renkte.
-15. **mcloud'un sayfa ayarları.** *Tamamlandı.*
-    - Parça numaraları: albüm ve playlist için ayrı ayrı. Gizlenince başlık
-      16px sola kayar.
-    - Albüm ve playlist rengi: kapalı / hafif / tam. Renk kapaktan gelir,
-      light mode'da da çalışır.
-    - Parça listesinin başlık satırını gizleme (mcloud B6).
-16. **Çalan parçanın göstergesi accent renkte olsun.** *Tamamlandı.* Spotify'ın
-    yeşil ekolayzırı olmasın. Kapağı olan satırda gösterge kapağın üstünde
-    durur.
-17. **Dar alanda aksiyon satırı.** *Tamamlandı.* Yer kalmazsa önce sıralama,
-    sonra arama gizlensin (mcloud #103).
-18. **Kaydırınca çıkan başlık çubuğu.** *Tamamlandı.* Sayfanın en üstündeyken
-    gizli. Play kontrolleri çubuğun altına girince görünür. Cam: #2a2a2a
-    %62, blur 30, satürasyon 1.8.
-19. **Yazı görünümü.** *Tamamlandı.* Negatif harf aralığı yok. mcloud bulgusu:
-    Chromium'un `antialiased` yumuşatması harfleri Music'ten %25 daha ince
-    çiziyordu. egui'nin SF Pro çizimini Music'in ekran görüntüsüyle
-    karşılaştır. Referans: "Aynen Öyle", 26pt bold, 2x'te 273×57px.
+| # | Madde | Durum |
+|---|---|---|
+| 12 | Başlık ölçüleri | Tamam |
+| 13 | Parça satırları | Tamam |
+| 14 | Yıldız butonu | Tamam |
+| 15 | Numara, renk ve başlık ayarları | Tamam |
+| 16 | Çalan parça göstergesi | Tamam |
+| 17 | Dar alanda aksiyon satırı | Doğrula |
+| 18 | Kaydırınca çıkan başlık çubuğu | Doğrula |
+| 19 | Yazı görünümü | Doğrula: Music ile yan yana bakılmadı |
+| 47 | Kaydırınca yapışan sütun başlığı | Doğrula |
+| 48 | Tek ℗ satırı | Tamam |
+| 49 | Hide için Apple'ın eksi ikonu | Tamam |
+| 50 | "More releases" butonu (#121) | Yapılamaz: Spotify'ın kendi öğesi, bizde "More by" rafı var |
 
-## D. Fotoğraflı başlıklar (Daily Mix, tür sayfaları)
+## D. Fotoğraflı başlıklar ve mix kapakları
 
-20. **Başlığın altındaki renk fotoğraftan gelsin.** *Tamamlandı.*
-    - Renk, fotoğrafın en alttaki onda birinden alınır. Ton korunur,
-      satürasyon en fazla %60, açıklık kenarın %60'ı (%10–24 arasında).
-    - Fotoğrafın son %38'i bu renge geçer.
-    - Renk fotoğraf URL'si başına saklanır (son 100). Yeni bir fotoğrafta
-      önceki sayfanın rengi bir an bile görünmez.
-    - mcloud'da Spotify'ın kendi rengi kenarla çoğu zaman uyuşmuyordu
-      (koyu mor kenarın üstünde parlak yeşil gibi).
+| # | Madde | Durum |
+|---|---|---|
+| 20 | Fotoğraf rengi | Tamam |
+| 39 | Şerit, istasyon, gradient kapaklar | Doğrula: gerçek Spotify adresleriyle denenmedi |
+| 51 | Fotoğraflı playlist kapakla açılır | Tamam |
+| 52 | `photoHeaders` kapalıyken üstte fotoğraf | Doğrula: sadece mix'lerde, editoryal listelerde foto verisi yok |
+| 53 | "About recommendations" bağlantısı | Yapılamaz: Spotify'ın kendi öğesi |
 
 ## E. Sidebar
 
-21. **Show All / Show Less ve hareketler.** *Tamamlandı.*
-    - Liste kapalıyken sadece en altta "Show All" var. Açıkken bu satır
-      kalkar. Yerine yapışkan (sticky) başlıkta "Show Less" hapı çıkar. Aynı
-      anda iki kontrol olmaz.
-    - Açılınca kaydırma konumu değişmez. Odak ilk yeni satıra gider.
-    - Listenin derininden kapatınca önce yukarı kayar: en fazla iki sidebar
-      yüksekliği, ease-out cubic, mesafeye göre 300–500 ms. Sonra yerinde
-      kapanır.
-    - Sıra değişince satırlar kayarak yer değiştirir: 300 ms,
-      `cubic-bezier(.2,0,0,1)`. Yeni satır 8px düşerek 200 ms'de belirir.
-      Hareketi azalt ayarı açıksa hareket yok.
-22. **Son çalınanlar ne zaman güncellenir.** *Tamamlandı.*
-    - Çalan liste değişince 0.1 s sonra bakılır. Liste en üste gelene kadar
-      0.4 / 1.5 / 5 / 15 s'de tekrar bakılır.
-    - Fare ya da klavye odağı listedeyken arka plan yenilemesi bekler.
-23. **"+" menüsü ve yerinde adlandırma.** *Tamamlandı.*
-    - "+" Yeni Çalma Listesi'ni açar. Yeni Klasör yok: librespot klasörleri
-      sadece okuyabilir (`docs/_reference/what-spotify-allows.md`).
-    - Ad listenin en üstündeki bir alanda yazılır. Enter ya da alandan
-      çıkmak oluşturur, Esc iptal eder.
-    - Oluşan liste hemen açılır.
-24. **Sidebar ölçüleri ve yapısı.** *Tamamlandı.*
-    - Satır 32px, iç boşluk 16px, ikon 18px, bölüm başlığı 11px.
-    - Malzeme: #252525, %76 opak.
-    - Parıltının tavanı: 0.4'e kadar olduğu gibi, sonra ~0.66'da yumuşak
-      tavan. Büyük renkli alanlar patlamasın.
-    - "Mağaza" başlığı yok. "Göz At", Ara ve Ana Sayfa'nın altında, 2x2 ikonla.
-25. **Hesap satırı.** *Tamamlandı.*
-    - Playlist'ler altından devam ederken liste son 16px'te soluklaşır ve
-      ince bir çizgi görünür. Listenin sonunda ikisi de kalkar.
-    - En dar sidebar'da (170px) isim üç noktayla kısalır, butonlar sayfaya
-      taşmaz.
+| # | Madde | Durum |
+|---|---|---|
+| 21 | Show All / Show Less, kaydırma, satır hareketi | Doğrula |
+| 22 | Son çalınan listenin güncellenmesi | Doğrula |
+| 23 | "+" ile yerinde playlist | Tamam |
+| 23b | Yeni Klasör | Yapılamaz: librespot klasörleri sadece okur |
+| 24 | Ölçüler ve yapı, SF Regular satırlar | Tamam |
+| 25 | Hesap satırı | Tamam |
+| 54 | Klasörlerin gösterimi | Doğrula: klasör sayfası yok, yerinde açılır |
+| 55 | Pin ikonu | Kısmi: pinler yerel, Spotify ile paylaşılamaz |
+| 56 | Kenara çift tıkla genişliği sıfırla | Doğrula |
+| 57 | Son liste sayısı, gösterilen listeler | Tamam |
 
 ## F. Arama
 
-26. **Arama önerileri penceresi.** *Tamamlandı.* macOS 27 Music'te ölçüldü.
-    - **Pencere:** alanın kenarlarından 1.5pt içeride. Üstü, alanın odak
-      halkasının ~1pt altında. Köşeler 13–14pt. Üstte ve altta 5pt boşluk.
-      En fazla 523pt yükseklik (3 sorgu + 7 sonuç).
-    - **Sorgu satırları:** 24pt. 12.5pt büyüteç kenardan 17.5pt'de. Metin
-      38.5pt'den başlar, 13pt. Yazılan kısım %85 beyaz, tamamlanan kısım
-      %55.
-    - **Sonuç satırları:** 52pt. Kapak 46pt, kenardan 17pt (sanatçıda
-      yuvarlak, diğerlerinde ~5pt köşe). Başlık 13pt, alt satır 11pt
-      "Şarkı · Sanatçı".
-    - **Ayırıcı:** 11pt aralık ve 1pt çizgi (%30 beyaz), 16pt içeride.
-    - **Seçim:** accent renkte, kenarlardan 5pt içeride, 6pt köşe, metin
-      beyaz. Escape pencereyi kapatır.
-    - **Cam:** blur σ ≈ 21pt. Parlaklık 44 + 0.044·L. Renk ×1.14.
-    - **Yüklenirken:** aynı camda 3 sorgu ve sonuç iskeleti.
-27. **Arama alanı.** *Tamamlandı.*
-    - Büyütecin merceği yuvarlak ucun merkez çizgisinde, 2px sağda.
-      Kullanıcı +2px'i +1px'e tercih etti.
-    - Metin 36px'ten başlar.
-    - Pencere daralınca alan ikona dönüşmez, sadece daralır.
-28. **Kütüphane filtresi ve sıralama.** *Tamamlandı.* Filtre alanı macOS'taki
-    gibi yuvarlak ve büyüteçli. Sıralama bir pop-up buton: menü seçili
-    öğe butonun üstüne gelecek şekilde açılır.
+| # | Madde | Durum |
+|---|---|---|
+| 26 | Öneri penceresi | Doğrula |
+| 27 | Arama alanı | Tamam |
+| 28 | Kütüphane filtresi ve sıralama | Tamam |
+| 58 | Apple bölümleri ve see-all (#126) | Doğrula: sayfalama gerçek API'yi görmedi |
+| 59 | Top Results sırası | Kısmi: Web API alaka sırası vermiyor, sanatçı ve türler sırayla |
+| 60 | Eski sonuçların ekranda kalması | Tamam |
+| 61 | Audiobooks | Doğrula: her ülkede yok, gelmezse bölüm çıkmaz |
+| 62 | Profiles ve Genres | Yapılamaz: Web API arama türü olarak sunmuyor |
 
 ## G. Menüler, paneller, bildirimler
 
-29. **Menülere cam.** *Tamamlandı.*
-    - macOS 27 NSMenu'nun en net cam ayarı örnek alınır.
-    - Blur 6.8pt.
-    - Kenar bükmesi: 3pt'de ~29pt içerideki sayfa görünür. 18pt'den sonra
-      bükme yok.
-    - Apple'ın tonu: parlak uç sıkışır (beyaz → 146), ton korunur.
-    - `glass.rs` buraya genişletilebilir.
-    - Satır yüksekliği ve açılış animasyonu kullanıcının onayını bekliyor:
-      Apple'da satır 24pt (Spotify'da 40). Apple menüyü animasyonsuz açıyor,
-      kapanışta 0.2 s'de soluyor.
-30. **Sağ tık menüsü.** *Tamamlandı.* "Çalma listesine ekle" Spotify'ın kendi
-    alt menüsündeki listeleri gösterir: kütüphane sırasında, sadece ekleme
-    yapılabilenler. "Sıraya ekle" albüm ve playlist'i parçalarına açarak
-    ekler.
-31. **Player menüleri ve ses.** *Tamamlandı.*
-    - "Sanatçı — Albüm" satırı "Sanatçıya Git / Albüme Git" menüsünü açar.
-      Başlık albüme gider.
-    - Ses kapsülü hoparlörün üstünde 0.5 s durunca açılır.
-    - Sessize alınca ses seviyesi korunur.
-32. **Sağ panel: queue, Friend Activity, cihazlar.** *Tamamlandı.*
-    - Hepsi tek bir cam yaprakta açılır.
-    - Kayarak değil, olduğu yerde belirir. Kayan kenar kesirli piksellerde
-      titriyordu.
-    - Paneller arasında geçerken Now Playing bir an görünmez.
-    - Friends butonu tıklandığı anda basılı görünür.
-33. **Toast.** *Tamamlandı.* Player'ın üstünde çıkar, player gibi Liquid Glass.
-    Arkasında bir sayfa açık olsa da görünür.
+| # | Madde | Durum |
+|---|---|---|
+| 29 | Menülere cam | Doğrula |
+| 30 | Sağ tık menüsü | Doğrula |
+| 31 | Player menüleri, ses kapsülü | Doğrula |
+| 32 | Sağ panel camı | Doğrula |
+| 33 | Toast | Doğrula |
+| 41 | Now Playing: kart, panel, yalnızca panel, arka plan | Doğrula: "yalnızca panel" sadece görüntüde bakıldı |
+| 63 | Hareketli kapak (`npArt`) | Yapılamaz: egui'de video çözücü yok, Apple seçeneği üçüncü taraf dizine bağlanıyor |
+| 64 | Spicy Lyrics kaynağı (`npLyricsSource`) | Yapılamaz: Spicetify eklentisi |
+| 65 | Player'dan şarkı ve albüm sürükleme, kütüphane kartı | Doğrula: elle denenmedi |
+| 66 | Player'dan sanatçı sürükleme | Yapılamaz: bizde sanatçı bırakılacak hedef yok |
+| 67 | Dönen rakamlar | Doğrula |
+| 68 | Şarkı önizlemeleri (`previewMaterial`) | Yapılamaz: Spotify'ın watch feed'i, video gerekir |
 
-## H. Cam (native'in avantajı olan yerler)
+## H. Cam
 
-34. **Kenar yapışması ve sol uçtaki pikselleşme.** *Tamamlandı.* Chromium'un
-    displacement filtresi örnekleri filtrelemiyor. Bu yüzden kenarın en dış
-    ~3 cihaz pikseli yazıların üstünde kırık görünüyordu. Apple filtreliyor.
-    mcloud bunu ucuza çözemedi. mcloudfast'ın shader'ında bilinear ya da
-    mipmap örnekleme ucuz bir çözüm olabilir. Notlar: liquid-glass-research,
-    `research/rim-aa/`.
-35. **Toolbar camının davranışı.** *Tamamlandı.* Her bölümün kendi hover ışığı
-    var. Basınca cam yay (spring) hareketiyle büyür. İmlecin etrafında
-    parıltı var.
-36. **Cam modları ve sistem ayarı.** *Tamamlandı.* Full / Balanced / Eco zaten
-    var. macOS ve Windows'un "Saydamlığı azalt" ayarı açıksa Eco'ya geçilsin.
-37. **Renk bantlaşması.** *Tamamlandı.* mcloud'da koyu renk geçişlerinde camın
-    arkasında 2–4 seviyelik adımlar görünüyordu. Sebep 8 bitlik ara
-    sonuçlardı. Shader'da hassasiyeti ve dithering'i kontrol et.
+| # | Madde | Durum |
+|---|---|---|
+| 34 | Kenar örnekleme | Doğrula |
+| 35 | Toolbar hover, yay, parıltı | Doğrula |
+| 36 | Saydamlığı azalt | Kısmi: macOS tamam, Windows kodu derlenmedi |
+| 37 | Dithering | Tamam |
 
 ## I. Ana sayfa ve diğerleri
 
-38. **Ana sayfa rafları sidebar'ın altından kaysın.** *Tamamlandı.*
-    - Shift + tekerlek rafları yatay kaydırır, hafif yapışma (proximity
-      snap) ile.
-    - Düz dikey tekerleği yataya çevirme korunur: dikey kaydırma sayfayı,
-      Shift + tekerlek rafları kaydırır.
-39. **Mix kapakları ve ana sayfa kartları (mcloud #84).** *Tamamlandı.*
-    - Daily Mix ve benzerlerine, görselin kaynak fotoğrafından Apple tarzı
-      kapak (Essentials band ve station dairesel kapak).
-    - Kartlar Apple stilinde. Üstüne gelinen kartta "…" butonu çıkar ve
-      menüyü açar.
-40. **Light mode ve renk paletleri.** *Tamamlandı.*
-    - `Palette::mcloud_light()` ve `Palette::mcloud_for_darkness()` eklendi.
-    - Açık mod Apple Music macOS Aqua ölçüleriyle eşlendi (#fff pencere,
-      #f6f6f6 panel/sidebar, #1d1d1f metin, #808080 ikincil, #fa233b KeyColor).
-    - Apple Music accent renk paleti (Kırmızı, Pembe, Turuncu, Sarı,
-      Yeşil, Mavi, Mor, Grafit) ayarlar bölümünde seçilebilir.
-41. **Now Playing paneli (mcloud #73).** *Tamamlandı.*
-    - Sağ paneldeki Now Playing cam yaprakta açılır, 1px sınır çizgisiyle.
-    - Çalan parçanın kapağı, başlığı ve sanatçı bilgisi Apple Music kart
-      düzeniyle şarkı sözlerinin üzerinde yer alır.
-42. **Playlist filtreleri (mcloud PR #112 / #108).** *Tamamlandı.*
-    - Tüm Listeler görünümünde kimin hazırladığına göre filtreleme: Tüm
-      Listeler, Senin Listelerin, Spotify’ın Listeleri, Mix’li Listeler,
-      Başkalarının Listeleri.
-    - Öğe sayısı "filtrelenen / toplam" olarak gösterilir.
+| # | Madde | Durum |
+|---|---|---|
+| 38 | Raf hizası, kırpma, snap, oklar | Doğrula: oka tıklama denenmedi |
+| 38b | Rafların sidebar altından kayması | Yapılamaz: mcloud'da da yok |
+| 40 | Light mode | Doğrula: demo sayfalarında bakıldı |
+| 42 | Playlist filtreleri, menü veya buton | Tamam |
+| 69 | Ana sayfa kısayolları ve kartlar (#125) | Tamam |
+| 70 | Browse ölçüleri | Tamam |
+| 71 | What's New kartları (#128) | Doğrula |
+| 72 | What's New Music/Podcast seçimi | Kısmi: istek yalnız albüm alıyor, podcast değeri denenmeden eklenmedi |
+| 73 | Kategori görselleri, Liked tür çipleri | Yapılamaz: Web API vermiyor |
+
+## J. Sözler
+
+| # | Madde | Durum |
+|---|---|---|
+| 74 | Uzaklığa göre soluklaşma | Kısmi: gerçek blur değil, opaklık |
+| 75 | TTML yan dosyası | Tamam: parser testli, gerçek dosyayla denenmedi |
+| 76 | Harf dalgası | Yapılmadı: harf harf galley ister, karar bekliyor |
+| 77 | Duet hizalaması | Yapılamaz: Spotify verisi taşımıyor |
+| 78 | Romanizasyon | Yapılmadı: Japonca sözlük gerektirir |
 
 ## Gelen kutusu
 
@@ -303,51 +167,9 @@ aşağıdaki iki işaretin arasına yazar; işaretleri silme.
 Eklenenler: mcloud `main`'e merge edilen PR'lar, tamamlanıp kapanan issue'lar
 ve PR'sız `STATUS.md` commit'leri.
 
-Her kaydı yukarıdaki gruplara görev olarak taşı (Apple Music ölçüleriyle),
-sonra buradan sil. "tema dosyası yok" yazan kayıtlar (CI, kurulum, Pages)
-çoğunlukla mcloudfast'ı ilgilendirmez.
+Her kaydı yukarıdaki tablolara işle, sonra buradan sil. "tema dosyası yok"
+yazan kayıtlar (CI, kurulum, Pages) çoğunlukla mcloudfast'ı ilgilendirmez.
+Spicetify'a özgü olanlar (`hashed class`, `Spicetify bindings`) da öyle.
 
 <!-- mcloud-sync:start since=2026-11-06T12:01:58Z -->
-- 2026-11-04 · [PR #113](https://github.com/mcloudHQ/mcloud/pull/113): Spotify's hashed class names, Now Playing slide, library cards (#109, #110, #111) (STATUS.md değişti)
-- 2026-11-04 · [Issue #109](https://github.com/mcloudHQ/mcloud/issues/109): Some newly added features are not showing up
-- 2026-11-04 · [Issue #110](https://github.com/mcloudHQ/mcloud/issues/110): Add opening and closing animations to the sidebar player
-- 2026-11-04 · [Issue #111](https://github.com/mcloudHQ/mcloud/issues/111): Improve draggable album
-- 2026-11-04 · [PR #115](https://github.com/mcloudHQ/mcloud/pull/115): Repair Spicetify 2.46.2's skipped cold-start bindings (player, album list, artist pages, Locale) (STATUS.md değişti)
-- 2026-11-04 · [PR #114](https://github.com/mcloudHQ/mcloud/pull/114): Carousel arrows in the search results' frosted material; known mix covers drawn with the shelf
-- 2026-11-05 · [PR #117](https://github.com/mcloudHQ/mcloud/pull/117): Mix cards keep their title from the first frame (Home no longer re-laid out per cover)
-- 2026-11-05 · [PR #116](https://github.com/mcloudHQ/mcloud/pull/116): Eco keeps the toolbar's Liquid Glass shapes, solid
-- 2026-11-05 · [PR #118](https://github.com/mcloudHQ/mcloud/pull/118): Keep the save star a star while Spotify's save animation plays (STATUS.md değişti)
-- 2026-11-05 · [PR #122](https://github.com/mcloudHQ/mcloud/pull/122): Keep the Now Playing pane on Spicy Lyrics' page, without lyrics (STATUS.md değişti)
-- 2026-11-05 · [Issue #120](https://github.com/mcloudHQ/mcloud/issues/120): Fix now playing sidebar behavior on spicy lyrics page
-- 2026-11-05 · [PR #123](https://github.com/mcloudHQ/mcloud/pull/123): Draw "more releases" as a pop-up button (#121); close stuck search results
-- 2026-11-05 · [Issue #121](https://github.com/mcloudHQ/mcloud/issues/121): Redesign the "# more releases" button
-- 2026-11-05 · [PR #124](https://github.com/mcloudHQ/mcloud/pull/124): Smoke: don't check the order of the mix-cover lookups (tema dosyası yok)
-- 2026-11-05 · [PR #138](https://github.com/mcloudHQ/mcloud/pull/138): Sidebar rows at SF Regular on macOS, as in Apple Music
-- 2026-11-05 · [PR #132](https://github.com/mcloudHQ/mcloud/pull/132): Player: the artist — album line drags the album and its artists (#130)
-- 2026-11-05 · [Issue #130](https://github.com/mcloudHQ/mcloud/issues/130): Unable to drag full albums from the player bar
-- 2026-11-05 · [PR #134](https://github.com/mcloudHQ/mcloud/pull/134): Carousel arrows: Apple Music's glass capsule, on the covers' middle
-- 2026-11-05 · [PR #136](https://github.com/mcloudHQ/mcloud/pull/136): What's New: frosted cards in a grid, the chips as a pop-up button (#128)
-- 2026-11-05 · [Issue #128](https://github.com/mcloudHQ/mcloud/issues/128): Redesign the what's new page
-- 2026-11-05 · [PR #139](https://github.com/mcloudHQ/mcloud/pull/139): Artists and profiles as circles, Apple's microphone when there is no photo
-- 2026-11-05 · [Issue #127](https://github.com/mcloudHQ/mcloud/issues/127): Circular artwork for artist and profile images
-- 2026-11-05 · [PR #140](https://github.com/mcloudHQ/mcloud/pull/140): Home: titles in line with the artwork, one text size, chevrons, the shortcuts as Apple's list
-- 2026-11-05 · [Issue #125](https://github.com/mcloudHQ/mcloud/issues/125): improve homepage layout, spacing, and text alignment
-- 2026-11-05 · [PR #141](https://github.com/mcloudHQ/mcloud/pull/141): Track rows: the save star skips the "Hide in this playlist" switch, which gets Apple's minus.circle
-- 2026-11-05 · [PR #142](https://github.com/mcloudHQ/mcloud/pull/142): Home: Spotify's placeholder artist picture gets the microphone; shortcut names on one line
-- 2026-11-05 · [PR #119](https://github.com/mcloudHQ/mcloud/pull/119): Lay out photo-header playlists (Daily Mix, Today's Top Hits) as playlists
-- 2026-11-05 · [PR #144](https://github.com/mcloudHQ/mcloud/pull/144): Queue panel: off-screen rows skip style and layout (#133, #137)
-- 2026-11-05 · [PR #143](https://github.com/mcloudHQ/mcloud/pull/143): Search results as Apple Music's, with see-all pages (#126) (STATUS.md değişti)
-- 2026-11-05 · [Issue #126](https://github.com/mcloudHQ/mcloud/issues/126): Redesign the search results page
-- 2026-11-06 · [PR #135](https://github.com/mcloudHQ/mcloud/pull/135): Clean album list: selected rows keep it on hashed builds (#131)
-- 2026-11-06 · [Issue #131](https://github.com/mcloudHQ/mcloud/issues/131): Artist names reappear when selecting multiple tracks
-- 2026-11-06 · [PR #146](https://github.com/mcloudHQ/mcloud/pull/146): Library: cards scroll under the toolbar (#145)
-- 2026-11-06 · [Issue #145](https://github.com/mcloudHQ/mcloud/issues/145): Top bar in Library pages doesn't have a transparent background
-- 2026-11-06 · [PR #147](https://github.com/mcloudHQ/mcloud/pull/147): Album pages: one copyright line, the ℗ one, as Apple Music
-- 2026-11-06 · [PR #154](https://github.com/mcloudHQ/mcloud/pull/154): Song previews: the first song laid out as the others (#151) (STATUS.md değişti)
-- 2026-11-06 · [Issue #151](https://github.com/mcloudHQ/mcloud/issues/151): Inconsistent layout and spacing in song preview on smaller windows
-- 2026-11-06 · [PR #155](https://github.com/mcloudHQ/mcloud/pull/155): Song previews: Spotify's menus get the theme's glass and fit the card (#152) (STATUS.md değişti)
-- 2026-11-06 · [Issue #152](https://github.com/mcloudHQ/mcloud/issues/152): Song preview context menu does not use liquid glass styling
-- 2026-11-06 · [PR #156](https://github.com/mcloudHQ/mcloud/pull/156): Song previews: readable song and artist names in light mode (STATUS.md değişti)
-- 2026-11-06 · [PR #157](https://github.com/mcloudHQ/mcloud/pull/157): What's New and Premium's callout: one star on a card, the callout as a tooltip (#148) (STATUS.md değişti)
-- 2026-11-06 · [Issue #148](https://github.com/mcloudHQ/mcloud/issues/148): Improve premium tooltips and button icons on the what's new page
 <!-- mcloud-sync:end -->

@@ -1032,6 +1032,95 @@ pub fn from_text(text: &str) -> Option<Lyrics> {
 
 // ---- LRC ------------------------------------------------------------------
 
+/// A TTML time: seconds (`12.5`, `12.5s`) or `m:ss.xx` or `h:mm:ss.xx`, in ms.
+fn ttml_time(text: &str) -> Option<u32> {
+    let text = text.trim().trim_end_matches('s');
+    let mut seconds = 0.0_f64;
+    for part in text.split(':') {
+        seconds = seconds * 60.0 + part.parse::<f64>().ok()?;
+    }
+    Some((seconds * 1000.0).round() as u32)
+}
+
+/// The value of `name="…"` in an XML tag's attributes.
+fn ttml_attribute<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
+    let needle = format!(" {name}=\"");
+    let start = tag.find(&needle)? + needle.len();
+    let end = tag[start..].find('"')?;
+    Some(&tag[start..start + end])
+}
+
+fn ttml_text(text: &str) -> String {
+    text.replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+}
+
+/// Lyrics from TTML, as Apple Music and Spicy Lyrics write them: one `<p>` a
+/// line with its times, and `<span>`s for the words when they are timed.
+pub fn from_ttml(text: &str) -> Option<Lyrics> {
+    let mut lines = Vec::new();
+    let mut rest = text;
+    while let Some(open) = rest.find("<p ") {
+        let body = &rest[open..];
+        let tag_end = body.find('>')?;
+        let tag = &body[..tag_end];
+        let close = body.find("</p>")?;
+        let inner = &body[tag_end + 1..close];
+        rest = &body[close + 4..];
+        let (Some(at), end) = (
+            ttml_attribute(tag, "begin").and_then(ttml_time),
+            ttml_attribute(tag, "end").and_then(ttml_time),
+        ) else {
+            continue;
+        };
+        let mut syllables = Vec::new();
+        let mut words = String::new();
+        let mut cursor = inner;
+        while let Some(span) = cursor.find("<span") {
+            words.push_str(&ttml_text(&cursor[..span]));
+            let piece = &cursor[span..];
+            let span_tag_end = piece.find('>')?;
+            let span_tag = &piece[..span_tag_end];
+            let span_close = piece.find("</span>")?;
+            let word = ttml_text(&piece[span_tag_end + 1..span_close]);
+            if let (Some(word_at), Some(word_end)) = (
+                ttml_attribute(span_tag, "begin").and_then(ttml_time),
+                ttml_attribute(span_tag, "end").and_then(ttml_time),
+            ) {
+                // A space between spans belongs to the word before it, as
+                // the pieces joined must spell the line.
+                if !syllables.is_empty() && words.ends_with(' ') {
+                    let last: &mut Syllable = syllables.last_mut()?;
+                    last.text.push(' ');
+                }
+                syllables.push(Syllable {
+                    text: word.clone(),
+                    at_ms: word_at,
+                    end_ms: word_end,
+                });
+            }
+            words.push_str(&word);
+            cursor = &piece[span_close + 7..];
+        }
+        words.push_str(&ttml_text(cursor));
+        lines.push(Line {
+            at_ms: Some(at),
+            text: words.trim().to_string(),
+            end_ms: end,
+            syllables,
+        });
+    }
+    (!lines.is_empty()).then_some(Lyrics {
+        lines,
+        synced: true,
+        instrumental: false,
+        writers: Vec::new(),
+    })
+}
+
 /// Parses `[mm:ss.xx]` lines. A line may open with several stamps when the
 /// same words repeat; tags such as `[ar:...]` carry no digits and are
 /// skipped. The result is sorted by time.

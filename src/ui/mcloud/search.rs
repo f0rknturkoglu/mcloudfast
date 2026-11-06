@@ -234,6 +234,51 @@ fn sections(app: &mut App, ui: &mut egui::Ui, results: &SearchResults) {
             },
         );
     }
+    let audiobooks = results
+        .audiobooks
+        .as_ref()
+        .map(|page| page.items.as_slice())
+        .unwrap_or_default();
+    if !audiobooks.is_empty() {
+        let size = art(counts.album);
+        shelf(
+            app,
+            ui,
+            "search-audiobooks",
+            &gettext(locale, "Audiobooks"),
+            SearchFilter::Audiobooks,
+            size + counts.gap,
+            counts.gap,
+            |app, ui| {
+                for book in audiobooks {
+                    audiobook_card(app, ui, book, size);
+                }
+            },
+        );
+    }
+}
+
+fn audiobook_card(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    book: &crate::api::models::Audiobook,
+    art: f32,
+) {
+    let card_art = app.art_px(art);
+    let authors = join_names(book.authors.iter().map(|a| a.name.as_str()));
+    let card = widgets::card(
+        ui,
+        app,
+        pick_image(&book.images, card_art),
+        &book.name,
+        &authors,
+        widgets::CardCover::default().sized(Some(art)),
+    );
+    if card.clicked
+        && let Some(page) = Page::from_uri(&book.uri)
+    {
+        app.actions.push(Action::Open(page));
+    }
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -710,6 +755,16 @@ fn kind_page(app: &mut App, ui: &mut egui::Ui, results: &SearchResults, kind: Se
                 .unwrap_or_default();
             grid(ui, items, counts.album, counts.gap, |ui, show, art| {
                 search::show_card(app, ui, show, Some(art));
+            });
+        }
+        SearchFilter::Audiobooks => {
+            let items = results
+                .audiobooks
+                .as_ref()
+                .map(|page| page.items.as_slice())
+                .unwrap_or_default();
+            grid(ui, items, counts.album, counts.gap, |ui, book, art| {
+                audiobook_card(app, ui, book, art);
             });
         }
         SearchFilter::Episodes => {

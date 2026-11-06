@@ -193,7 +193,33 @@ fn system_reduced_transparency() -> bool {
     objc2_app_kit::NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceTransparency()
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Windows' "Transparency effects" switch, from the registry value Settings
+/// writes. A missing value means the effects are on.
+#[cfg(windows)]
+fn system_reduced_transparency() -> bool {
+    use windows_sys::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};
+    let wide = |text: &str| text.encode_utf16().chain([0]).collect::<Vec<u16>>();
+    let key = wide(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+    let value = wide("EnableTransparency");
+    let mut data: u32 = 1;
+    let mut size = std::mem::size_of::<u32>() as u32;
+    // SAFETY: both names are NUL-terminated, and `data` and `size` outlive the
+    // call and describe a four-byte buffer.
+    let status = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            key.as_ptr(),
+            value.as_ptr(),
+            RRF_RT_REG_DWORD,
+            std::ptr::null_mut(),
+            std::ptr::from_mut(&mut data).cast(),
+            &mut size,
+        )
+    };
+    status == 0 && data == 0
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 fn system_reduced_transparency() -> bool {
     false
 }
