@@ -678,7 +678,7 @@ msgstr "Sorteren op duur"
 
 #: src/ui/widgets.rs:3019
 msgid "More options"
-msgstr ""
+msgstr "Meer opties"
 
 #: src/ui/widgets.rs:3284 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
@@ -1842,21 +1842,21 @@ msgstr ""
 
 #: src/ui/settings.rs:1320
 msgid "Accent colour"
-msgstr ""
+msgstr "Accentkleur"
 
 #: src/ui/settings.rs:1323
 msgid "Apple Music accent colour for buttons, icons and highlights."
-msgstr ""
+msgstr "Apple Music-accentkleur voor knoppen, pictogrammen en markeringen."
 
 #: src/ui/settings.rs:1328
 msgid "Apple Music mix covers"
-msgstr ""
+msgstr "Mixhoezen in Apple Music-stijl"
 
 #: src/ui/settings.rs:1331
 msgid ""
 "Draw Daily Mix and radio covers in Apple Music's Essentials and station "
 "style."
-msgstr ""
+msgstr "Toon hoezen van Daily Mix en radio in de Essentials- en zenderstijl van Apple Music."
 
 #: src/ui/settings.rs:1391 src/ui/settings.rs:1617
 msgctxt "glass"
@@ -4070,15 +4070,15 @@ msgstr "Alles bekijken"
 
 #: src/ui/mcloud/library.rs:204
 msgid "By Spotify"
-msgstr ""
+msgstr "Van Spotify"
 
 #: src/ui/mcloud/library.rs:205
 msgid "Mixed"
-msgstr ""
+msgstr "Gemengd"
 
 #: src/ui/mcloud/library.rs:206
 msgid "By Others"
-msgstr ""
+msgstr "Van anderen"
 
 #. Translators: How many albums, artists or playlists a library view
 #. holds. Keep {count}.

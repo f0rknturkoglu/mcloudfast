@@ -17,7 +17,7 @@ pub mod topbar;
 
 /// Whether mcloud draws this frame, for the widgets it shares with
 /// Spotifast's look (track rows, table headers), which have no `App` to ask.
-/// [`crate::ui::show`] records it at the start of every frame.
+/// [`crate::ui::show()`] records it at the start of every frame.
 pub fn active(ctx: &egui::Context) -> bool {
     ctx.data(|data| data.get_temp::<bool>(active_id()))
         .unwrap_or(false)

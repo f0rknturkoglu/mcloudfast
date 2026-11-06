@@ -671,7 +671,7 @@ msgstr "재생 시간으로 정렬"
 
 #: src/ui/widgets.rs:3019
 msgid "More options"
-msgstr ""
+msgstr "옵션 더 보기"
 
 #: src/ui/widgets.rs:3284 src/app.rs:14310 src/app.rs:14324
 msgid "Network connection error. Check your connection."
@@ -1805,21 +1805,21 @@ msgstr ""
 
 #: src/ui/settings.rs:1320
 msgid "Accent colour"
-msgstr ""
+msgstr "강조 색상"
 
 #: src/ui/settings.rs:1323
 msgid "Apple Music accent colour for buttons, icons and highlights."
-msgstr ""
+msgstr "버튼, 아이콘, 강조 표시에 쓰는 Apple Music 강조 색상입니다."
 
 #: src/ui/settings.rs:1328
 msgid "Apple Music mix covers"
-msgstr ""
+msgstr "Apple Music 스타일 믹스 커버"
 
 #: src/ui/settings.rs:1331
 msgid ""
 "Draw Daily Mix and radio covers in Apple Music's Essentials and station "
 "style."
-msgstr ""
+msgstr "Daily Mix와 라디오 커버를 Apple Music의 Essentials 및 스테이션 스타일로 표시합니다."
 
 #: src/ui/settings.rs:1391 src/ui/settings.rs:1617
 msgctxt "glass"
@@ -3998,15 +3998,15 @@ msgstr "모두 둘러보기"
 
 #: src/ui/mcloud/library.rs:204
 msgid "By Spotify"
-msgstr ""
+msgstr "Spotify가 만든 항목"
 
 #: src/ui/mcloud/library.rs:205
 msgid "Mixed"
-msgstr ""
+msgstr "믹스"
 
 #: src/ui/mcloud/library.rs:206
 msgid "By Others"
-msgstr ""
+msgstr "다른 사람이 만든 항목"
 
 #. Translators: How many albums, artists or playlists a library view
 #. holds. Keep {count}.

@@ -1,5 +1,5 @@
 //! The floating player, as mcloud draws it (user.css `#am-player`): a glass
-//! capsule over the page that grows with the window up to [`MAX_WIDTH`],
+//! capsule over the page that grows with the window up to `MAX_WIDTH`,
 //! then stays centred. Transport on the left; in the middle the "LCD" with
 //! the artwork, the title and its star, the scrolling "Artist — Album" line,
 //! the "…" menu and a hairline scrubber along its bottom; mini player,

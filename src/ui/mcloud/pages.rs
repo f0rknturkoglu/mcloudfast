@@ -3,7 +3,7 @@
 //! or artists in the accent, the details, and Play and Shuffle pills along
 //! the artwork's bottom edge.
 //!
-//! [`hero`] leaves the band for the pills where [`actions_row`] finds it
+//! `hero` leaves the band for the pills where `actions_row` finds it
 //! later in the same pass, so Spotifast's pages call both unchanged.
 
 use std::sync::Arc;
