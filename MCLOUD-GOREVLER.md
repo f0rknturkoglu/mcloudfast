@@ -171,5 +171,19 @@ Her kaydı yukarıdaki tablolara işle, sonra buradan sil. "tema dosyası yok"
 yazan kayıtlar (CI, kurulum, Pages) çoğunlukla mcloudfast'ı ilgilendirmez.
 Spicetify'a özgü olanlar (`hashed class`, `Spicetify bindings`) da öyle.
 
-<!-- mcloud-sync:start since=2026-11-06T12:01:58Z -->
+<!-- mcloud-sync:start since=2026-11-07T10:47:53Z -->
+- 2026-11-06 · [PR #164](https://github.com/mcloudHQ/mcloud/pull/164): Home: every card's text starts level under the artwork, one-line titles (#163) (STATUS.md değişti)
+- 2026-11-06 · [Issue #163](https://github.com/mcloudHQ/mcloud/issues/163): Inconsistent spacing and text alignment on homepage cards
+- 2026-11-06 · [PR #166](https://github.com/mcloudHQ/mcloud/pull/166): Artist and search shelves: the arrows show on hover, as circles of Home's glass (#165) (STATUS.md değişti)
+- 2026-11-06 · [Issue #165](https://github.com/mcloudHQ/mcloud/issues/165): Carousel arrows are invisible in artists page
+- 2026-11-06 · [PR #168](https://github.com/mcloudHQ/mcloud/pull/168): Search: the shortcut hint at the field's end in flat keys, Follow a capsule (#161) (STATUS.md değişti)
+- 2026-11-06 · [Issue #161](https://github.com/mcloudHQ/mcloud/issues/161): Improve search suggestion buttons and keyboard shortcut styling
+- 2026-11-06 · [PR #162](https://github.com/mcloudHQ/mcloud/pull/162): Song previews: everything fits the card, a smaller card, Apple's explicit mark (#151) (STATUS.md değişti)
+- 2026-11-06 · [PR #169](https://github.com/mcloudHQ/mcloud/pull/169): Play pill: no fade from Spotify's red when a playlist opens
+- 2026-11-06 · [PR #170](https://github.com/mcloudHQ/mcloud/pull/170): Mix covers: the band as Apple's Essentials, measured (#160) (STATUS.md değişti)
+- 2026-11-06 · [Issue #160](https://github.com/mcloudHQ/mcloud/issues/160): Apple music mix cover titles are not centered
+- 2026-11-06 · [PR #158](https://github.com/mcloudHQ/mcloud/pull/158): Now Playing sidebar: blended and compact artwork, the explicit mark (#153) (STATUS.md değişti)
+- 2026-11-06 · [Issue #153](https://github.com/mcloudHQ/mcloud/issues/153): Redesign sidebar player with the latest ios 27 style
+- 2026-11-06 · [PR #159](https://github.com/mcloudHQ/mcloud/pull/159): Scrolling: :has() rules name their last compound, a narrower restyle (#137) (STATUS.md değişti)
+- 2026-11-07 · [PR #171](https://github.com/mcloudHQ/mcloud/pull/171): Now Playing: say where Spicy's Animated Background setting lives
 <!-- mcloud-sync:end -->
