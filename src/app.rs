@@ -612,6 +612,11 @@ pub struct App {
     hidden_songs_requested: bool,
     pub track_cache: HashMap<String, Track>,
     track_requests: HashSet<String>,
+    /// What was last asked for on behalf of the remembered song and its
+    /// context, and when. These are asked for every frame until they arrive,
+    /// so an answer that is an error must not be asked for again at once.
+    resume_track_asked: Option<(String, Instant)>,
+    resume_context_asked: Option<(String, Instant)>,
     /// Album URIs already resolved or attempted through librespot this session.
     album_types_requested: HashSet<String>,
     /// Saved shows Spotify marks as audiobooks, which librespot cannot play;
@@ -688,6 +693,13 @@ pub struct App {
     lyrics_restore_maximized: bool,
     pub lyrics_backdrop: crate::images::LyricsBackdrop,
     pub softened_covers: crate::images::SoftenedCovers,
+    /// Spotify's Browse pictures in their tiles' colours.
+    pub duotone_tiles: crate::images::DuotoneTiles,
+    /// Spotify's Browse categories, and when to ask again after a failure.
+    pub browse_tiles: Loadable<Vec<crate::session_reads::BrowseTile>>,
+    pub browse_tiles_retry: Option<std::time::Instant>,
+    /// Public profiles opened this session, by user id.
+    pub user_pages: HashMap<String, Loadable<std::sync::Arc<crate::session_reads::UserPage>>>,
     /// The track the lyrics below are for.
     pub lyrics_uri: Option<String>,
     /// How many of `LYRICS_RETRIES` this song has used.
@@ -1136,6 +1148,15 @@ fn link_recording(
     recording_uris.entry(key).or_default().insert(uri);
 }
 
+/// How long the remembered song and context wait before being asked for
+/// again. They are details for a player that is not playing yet, asked for
+/// every frame; once Spotify refuses them (429, or its quota for the day), asking
+/// at frame rate keeps the refusal going for everything else as well.
+const RESUME_ASK_AGAIN: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// How long Browse waits before asking for its categories again.
+pub(crate) const BROWSE_TILES_RETRY: std::time::Duration = std::time::Duration::from_secs(20);
+
 impl App {
     pub fn new(waker: &Waker, dirs: AppDirs, mut settings: Settings, options: AppOptions) -> Self {
         let mix_covers = std::fs::read(dirs.cache.join("mix-covers.json"))
@@ -1382,6 +1403,8 @@ impl App {
             hidden_songs_requested: false,
             track_cache: HashMap::new(),
             track_requests: HashSet::new(),
+            resume_track_asked: None,
+            resume_context_asked: None,
             album_types_requested: HashSet::new(),
             audiobook_shows: HashSet::new(),
             audiobooks_requested: HashSet::new(),
@@ -1425,6 +1448,10 @@ impl App {
             lyrics_restore_maximized: false,
             lyrics_backdrop: Default::default(),
             softened_covers: Default::default(),
+            duotone_tiles: Default::default(),
+            browse_tiles: Loadable::NotLoaded,
+            browse_tiles_retry: None,
+            user_pages: HashMap::new(),
             lyrics_uri: None,
             lyrics_retries: 0,
             lyrics_retry_at: None,
@@ -3256,6 +3283,37 @@ impl App {
                     self.set_user_name(id.clone(), name);
                     self.set_user_image(id, image);
                 }
+                Event::BrowseTiles { result } => {
+                    self.browse_tiles = match result {
+                        Ok(tiles) => Loadable::Loaded(tiles),
+                        Err(error) => {
+                            self.browse_tiles_retry =
+                                Some(std::time::Instant::now() + BROWSE_TILES_RETRY);
+                            Loadable::Failed(error)
+                        }
+                    };
+                }
+                Event::UserPage { id, result } => {
+                    let page = match result {
+                        Ok(page) => Loadable::Loaded(std::sync::Arc::new(page)),
+                        Err(error) => Loadable::Failed(error),
+                    };
+                    self.user_pages.insert(id, page);
+                }
+                Event::TrackCredits { uri, result } => {
+                    if let Some(Dialog::Credits {
+                        uri: shown,
+                        credits,
+                        ..
+                    }) = &mut self.dialog
+                        && *shown == uri
+                    {
+                        *credits = match result {
+                            Ok(found) => Loadable::Loaded(found),
+                            Err(error) => Loadable::Failed(error),
+                        };
+                    }
+                }
                 Event::PlayCounts {
                     uri,
                     generation,
@@ -3578,6 +3636,9 @@ impl App {
                 self.audio_key_banner = false;
                 self.audio_key_banner_closed = false;
                 self.uploaded_covers.clear();
+                self.browse_tiles = Loadable::NotLoaded;
+                self.browse_tiles_retry = None;
+                self.user_pages.clear();
                 self.sign_in_url = None;
                 self.web_app = None;
                 self.shared_grant = false;
@@ -3622,6 +3683,7 @@ impl App {
                     self.load_made_for_you(false);
                 }
                 if became_ready {
+                    self.reask_session_pages();
                     self.reread_playlists_over_session();
                     let artists: Vec<_> = self
                         .artist_pages
@@ -3787,7 +3849,7 @@ impl App {
                     self.load_playlists();
                 }
             }
-            Page::Browse => {}
+            Page::Browse | Page::User(_) => {}
             Page::Playlist(id) => {
                 let incomplete = match self.playlist_pages.get(&id) {
                     None => true,
@@ -4170,9 +4232,11 @@ impl App {
             self.track_used.insert(id, Instant::now());
             return;
         }
-        if !self.track_requests.insert(id.clone()) {
+        if asked_recently(&self.resume_track_asked, &id) || !self.track_requests.insert(id.clone())
+        {
             return;
         }
+        self.resume_track_asked = Some((id.clone(), Instant::now()));
         self.backend.api(ApiRequest::Track { id });
     }
 
@@ -4189,9 +4253,12 @@ impl App {
         let Some(context) = self.resume_context.clone() else {
             return;
         };
-        if self.context_track_uris(&context).is_some() {
+        if self.context_track_uris(&context).is_some()
+            || asked_recently(&self.resume_context_asked, &context)
+        {
             return;
         }
+        self.resume_context_asked = Some((context.clone(), Instant::now()));
         if let Some(page) = Page::decode(&Self::context_page(&context)) {
             self.ensure_loaded(page);
         }
@@ -6609,6 +6676,7 @@ impl App {
                 }
             }
             Page::Browse => {}
+            Page::User(id) => self.request_user_page(&id, true),
             Page::Playlist(id) => {
                 let needs_generation = self
                     .playlist_pages
@@ -8230,6 +8298,59 @@ impl App {
     /// the playback session can read them. A read that failed is asked
     /// again on a visit a minute later. Successful artist overviews are
     /// revalidated after ten minutes to discover newly announced countdowns.
+    /// Asks again for what only the playback session can answer and was
+    /// refused before it was up: signing in reaches a page sooner than the
+    /// session does, and nothing else would ask again.
+    fn reask_session_pages(&mut self) {
+        let refused = matches!(self.browse_tiles, Loadable::Failed(_));
+        if refused {
+            self.browse_tiles = Loadable::NotLoaded;
+            self.browse_tiles_retry = None;
+        }
+        // Under mcloud Browse is one click away and its pictures take a
+        // moment, so they are ready before it opens.
+        if refused || self.settings.interface == crate::settings::Interface::Mcloud {
+            self.request_browse_tiles();
+        }
+        let failed: Vec<String> = self
+            .user_pages
+            .iter()
+            .filter(|(_, page)| matches!(page, Loadable::Failed(_)))
+            .map(|(id, _)| id.clone())
+            .collect();
+        for id in failed {
+            self.request_user_page(&id, true);
+        }
+    }
+
+    /// Asks for Spotify's Browse categories once, and again a while after a
+    /// failure, such as the playback session not being up yet.
+    pub fn request_browse_tiles(&mut self) {
+        let due = match &self.browse_tiles {
+            Loadable::NotLoaded => true,
+            Loadable::Failed(_) => self
+                .browse_tiles_retry
+                .is_none_or(|at| std::time::Instant::now() >= at),
+            Loadable::Loading | Loadable::Loaded(_) => false,
+        };
+        if due {
+            self.browse_tiles = Loadable::Loading;
+            self.backend.send(Command::BrowseTiles);
+        }
+    }
+
+    /// Asks for a profile the first time it is shown; `retry` asks again.
+    pub fn request_user_page(&mut self, id: &str, retry: bool) {
+        let asked = self
+            .user_pages
+            .get(id)
+            .is_some_and(|page| !retry || !matches!(page, Loadable::Failed(_)));
+        if !asked {
+            self.user_pages.insert(id.to_string(), Loadable::Loading);
+            self.backend.send(Command::UserPage(id.to_string()));
+        }
+    }
+
     pub fn request_play_counts(&mut self, uri: &str) {
         if !self.local_ready || !self.network_reachable {
             return;
@@ -14405,6 +14526,18 @@ impl App {
                     self.backend.send(Command::AuthorizePlayback);
                 }
             }
+            Action::SetMcloudSideLists(lists) => {
+                self.settings.mcloud_side_lists = lists;
+                self.save_settings();
+            }
+            Action::ShowCredits { uri, title } => {
+                self.dialog = Some(Dialog::Credits {
+                    uri: uri.clone(),
+                    title,
+                    credits: Loadable::Loading,
+                });
+                self.backend.send(Command::TrackCredits(uri));
+            }
             Action::RequestPlayCounts(uri) => self.request_play_counts(&uri),
             Action::SetPrereleaseSaved { uri, saved } => {
                 if self.local_ready {
@@ -15962,6 +16095,13 @@ pub fn on_top_window_level(on_top: bool) -> egui::WindowLevel {
 /// Winamp window opens.
 fn winamp_on_top_level(winamp_window: bool, on_top: bool) -> Option<egui::WindowLevel> {
     winamp_window.then_some(on_top_window_level(on_top))
+}
+
+/// Whether `what` was asked for within [`RESUME_ASK_AGAIN`].
+fn asked_recently(asked: &Option<(String, Instant)>, what: &str) -> bool {
+    asked
+        .as_ref()
+        .is_some_and(|(held, at)| held == what && at.elapsed() < RESUME_ASK_AGAIN)
 }
 
 fn page_related_needs_load(pages: &HashMap<String, ArtistPage>, id: &str) -> bool {
@@ -24889,6 +25029,116 @@ mod tests {
             app.art_palettes.get(url).map(Vec::as_slice),
             Some(&[[200, 40, 40], [40, 40, 200]][..])
         );
+    }
+
+    /// A refused song is not asked for again on the next frame: this alone
+    /// sent ten requests a second, and kept Spotify's limit from ever ending.
+    #[test]
+    fn a_refused_resume_track_waits_before_asking_again() {
+        let mut app = headless_app();
+        app.resume_track = Some("spotify:track:resume".into());
+        app.request_resume_track();
+        assert!(app.track_requests.contains("resume"));
+        app.handle_api(ApiResponse::Track {
+            id: "resume".into(),
+            result: Err(crate::api::client::ApiError::QuotaExhausted),
+        });
+        app.request_resume_track();
+        assert!(
+            !app.track_requests.contains("resume"),
+            "asked at frame rate"
+        );
+        // Another song has nothing to wait for.
+        app.resume_track = Some("spotify:track:other".into());
+        app.request_resume_track();
+        assert!(app.track_requests.contains("other"));
+        // And once the wait is over the first is asked for again.
+        app.track_requests.clear();
+        app.resume_track = Some("spotify:track:resume".into());
+        app.resume_track_asked = Some(("resume".into(), Instant::now() - RESUME_ASK_AGAIN));
+        app.request_resume_track();
+        assert!(app.track_requests.contains("resume"));
+    }
+
+    /// The same for the remembered context: an artist Spotify refuses goes
+    /// back to needing a load, and was read again on the very next frame.
+    #[test]
+    fn a_refused_resume_context_waits_before_asking_again() {
+        let mut app = headless_app();
+        app.auth = AuthStatus::Connected {
+            username: "alice".into(),
+        };
+        app.network_reachable = true;
+        app.resume_track = Some("spotify:track:resume".into());
+        assert!(app.resume_only(), "nothing is playing");
+        app.resume_context = Some("spotify:artist:artist".into());
+        app.ensure_resume_context_loaded();
+        assert!(matches!(
+            app.artist_pages["artist"].artist,
+            Loadable::Loading
+        ));
+        app.handle_api(ApiResponse::Artist {
+            id: "artist".into(),
+            result: Err(crate::api::client::ApiError::QuotaExhausted),
+        });
+        assert!(matches!(
+            app.artist_pages["artist"].artist,
+            Loadable::Failed(_)
+        ));
+        app.ensure_resume_context_loaded();
+        assert!(
+            matches!(app.artist_pages["artist"].artist, Loadable::Failed(_)),
+            "asked at frame rate"
+        );
+        app.resume_context_asked = Some((
+            "spotify:artist:artist".into(),
+            Instant::now() - RESUME_ASK_AGAIN,
+        ));
+        app.ensure_resume_context_loaded();
+        assert!(matches!(
+            app.artist_pages["artist"].artist,
+            Loadable::Loading
+        ));
+    }
+
+    /// A page opened before the playback session is up is refused. Browse
+    /// and a profile ask again as soon as it is, without being revisited.
+    #[test]
+    fn pages_refused_before_the_session_is_up_ask_again_when_it_is() {
+        let mut app = test_app("session-pages-reask");
+        app.browse_tiles = Loadable::Failed("no session".into());
+        app.browse_tiles_retry = Some(std::time::Instant::now() + BROWSE_TILES_RETRY);
+        app.user_pages
+            .insert("kasia".into(), Loadable::Failed("no session".into()));
+        app.user_pages.insert(
+            "ada".into(),
+            Loadable::Loaded(std::sync::Arc::new(Default::default())),
+        );
+        app.handle_playback(LocalPlayback::Ready {
+            device_id: "device".into(),
+        });
+        assert!(matches!(app.browse_tiles, Loadable::Loading));
+        assert!(matches!(app.user_pages["kasia"], Loadable::Loading));
+        assert!(
+            matches!(app.user_pages["ada"], Loadable::Loaded(_)),
+            "a page that loaded is left alone"
+        );
+    }
+
+    /// A refusal is not final: Browse asks again once the wait is over, and
+    /// not on every frame before it.
+    #[test]
+    fn browse_asks_again_only_after_its_wait() {
+        let mut app = test_app("browse-retry");
+        app.request_browse_tiles();
+        assert!(matches!(app.browse_tiles, Loadable::Loading));
+        app.browse_tiles = Loadable::Failed("no session".into());
+        app.browse_tiles_retry = Some(std::time::Instant::now() + BROWSE_TILES_RETRY);
+        app.request_browse_tiles();
+        assert!(matches!(app.browse_tiles, Loadable::Failed(_)));
+        app.browse_tiles_retry = Some(std::time::Instant::now() - BROWSE_TILES_RETRY);
+        app.request_browse_tiles();
+        assert!(matches!(app.browse_tiles, Loadable::Loading));
     }
 
     /// Two lookups of one adder can overlap; the one that found nothing

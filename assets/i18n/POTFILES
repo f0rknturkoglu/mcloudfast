@@ -39,6 +39,7 @@ src/ui/sidebar.rs
 src/ui/soloist.rs
 src/ui/topbar.rs
 src/ui/update.rs
+src/ui/user.rs
 src/ui/widgets.rs
 src/ui/winamp/equalizer.rs
 src/ui/winamp/mod.rs

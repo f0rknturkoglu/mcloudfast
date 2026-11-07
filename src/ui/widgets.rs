@@ -439,10 +439,34 @@ pub fn menu_item_enabled(
     menu_item_response(ui, palette, icon, label, enabled, false).1
 }
 
+/// The height of a row in mcloud's menus: Apple's, not Spotify's 40.
+const MCLOUD_MENU_ROW: f32 = 24.0;
+/// The width of the rows in mcloud's menus.
+const MCLOUD_MENU_WIDTH: f32 = 232.0;
+/// The side of an icon in mcloud's menus.
+const MCLOUD_MENU_ICON: f32 = 14.0;
+/// The room between the edge of mcloud's menus and their rows.
+const MCLOUD_MENU_MARGIN: f32 = 4.0;
+/// The shadow of mcloud's menus.
+const MCLOUD_MENU_SHADOW: egui::epaint::Shadow = egui::epaint::Shadow {
+    offset: [0, 14],
+    blur: 36,
+    spread: 0,
+    color: Color32::from_black_alpha(128),
+};
+
+/// mcloud's --am-rim-edge: the thin line around a menu.
+fn mcloud_menu_edge() -> Color32 {
+    super::mcloud::tone(
+        Color32::from_black_alpha(217),
+        Color32::from_black_alpha(51),
+    )
+}
+
 /// Paints macOS 27 NSMenu Liquid Glass once per popup layer/pass when mcloud is
 /// active, falling back to `palette.overlay` when Eco or Reduced Transparency
 /// turns glass off.
-fn ensure_mcloud_menu_glass(ui: &Ui, palette: &Palette) {
+fn ensure_mcloud_menu_glass(ui: &mut Ui, palette: &Palette) {
     if !super::mcloud::active(ui.ctx()) {
         return;
     }
@@ -450,6 +474,10 @@ fn ensure_mcloud_menu_glass(ui: &Ui, palette: &Palette) {
     if layer.order == egui::Order::Background {
         return;
     }
+    // Rows touch, as NSMenu's, and take the menu's width rather than
+    // stretching it to the widest it may be.
+    ui.spacing_mut().item_spacing.y = 0.0;
+    ui.set_max_width(MCLOUD_MENU_WIDTH);
     let pass = ui.ctx().cumulative_pass_nr();
     let key = egui::Id::new(("mcloud-menu-glass-pass", layer));
     let already = ui.ctx().data(|d| d.get_temp::<u64>(key) == Some(pass));
@@ -459,16 +487,31 @@ fn ensure_mcloud_menu_glass(ui: &Ui, palette: &Palette) {
     ui.ctx().data_mut(|d| d.insert_temp(key, pass));
     let outer = egui::AreaState::load(ui.ctx(), layer.id)
         .and_then(|state| state.size)
-        .map(|size| Rect::from_min_size(ui.max_rect().min - vec2(6.0, 6.0), size))
-        .unwrap_or_else(|| ui.max_rect().expand(6.0));
+        .map(|size| Rect::from_min_size(ui.max_rect().min - Vec2::splat(MCLOUD_MENU_MARGIN), size))
+        .unwrap_or_else(|| ui.max_rect().expand(MCLOUD_MENU_MARGIN));
     let effect = super::mcloud::glass_effect(ui.ctx());
+    let corner = CornerRadius::same(super::mcloud::glass::MENU_CORNER_RADIUS as u8);
     if !super::mcloud::glass::paint_menu(ui, outer, effect) {
+        // mcloud's --am-menu-solid-a.
         ui.painter().rect_filled(
             outer,
-            CornerRadius::same(super::mcloud::glass::MENU_CORNER_RADIUS as u8),
-            palette.overlay,
+            corner,
+            super::mcloud::tone(
+                Color32::from_rgba_unmultiplied(0x2c, 0x2c, 0x2e, 0xf0),
+                Color32::from_rgba_unmultiplied(0xf6, 0xf6, 0xf6, 0xf0),
+            ),
         );
     }
+    // The bright rim inside the thin dark edge, as NSMenu's.
+    ui.painter().rect_stroke(
+        outer.shrink(0.5),
+        corner,
+        Stroke::new(
+            1.0,
+            Color32::from_white_alpha(if palette.dark { 26 } else { 90 }),
+        ),
+        egui::StrokeKind::Inside,
+    );
 }
 
 /// A menu item that may be highlighted as the keyboard's choice, as the
@@ -483,9 +526,10 @@ fn menu_item_response(
     highlighted: bool,
 ) -> (egui::Response, bool) {
     ensure_mcloud_menu_glass(ui, palette);
+    let mcloud = super::mcloud::active(ui.ctx());
     let width = ui.available_width();
     let (rect, response) = ui.allocate_exact_size(
-        vec2(width, 28.0),
+        vec2(width, if mcloud { MCLOUD_MENU_ROW } else { 28.0 }),
         if enabled {
             Sense::click()
         } else {
@@ -493,13 +537,51 @@ fn menu_item_response(
         },
     );
     if ui.is_rect_visible(rect) {
-        if (response.hovered() || highlighted) && enabled {
+        let lit = (response.hovered() || highlighted) && enabled;
+        if lit {
+            let (corner, fill) = if mcloud {
+                (8, super::mcloud::accent())
+            } else {
+                (6, palette.surface_hover)
+            };
             ui.painter()
-                .rect_filled(rect, CornerRadius::same(6), palette.surface_hover);
+                .rect_filled(rect, CornerRadius::same(corner), fill);
         }
-        let color = if enabled { palette.text } else { palette.dim };
+        let color = if !enabled {
+            palette.dim
+        } else if lit && mcloud {
+            Color32::WHITE
+        } else {
+            palette.text
+        };
         let mut x = rect.left() + 10.0;
-        if let Some(icon) = icon {
+        if mcloud {
+            // An icon takes the text's colour, in its own column; a choice's
+            // tick has a narrower one, which every row of its menu keeps.
+            let ticks = egui::Id::new(("mcloud-menu-ticks", ui.layer_id()));
+            if icon == Some(Icon::Check) {
+                ui.data_mut(|data| data.insert_temp(ticks, true));
+                Icon::Check.image(color, 11.0).paint_at(
+                    ui,
+                    Rect::from_center_size(
+                        pos2(rect.left() + 12.5, rect.center().y),
+                        Vec2::splat(11.0),
+                    ),
+                );
+                x = rect.left() + 22.0;
+            } else if let Some(icon) = icon {
+                icon.image(color, MCLOUD_MENU_ICON).paint_at(
+                    ui,
+                    Rect::from_center_size(
+                        pos2(rect.left() + 16.5, rect.center().y),
+                        Vec2::splat(MCLOUD_MENU_ICON),
+                    ),
+                );
+                x = rect.left() + 32.0;
+            } else if ui.data(|data| data.get_temp::<bool>(ticks).unwrap_or(false)) {
+                x = rect.left() + 22.0;
+            }
+        } else if let Some(icon) = icon {
             let icon_rect =
                 Rect::from_center_size(pos2(x + 8.0, rect.center().y), Vec2::splat(16.0));
             icon.image(
@@ -518,7 +600,7 @@ fn menu_item_response(
         let galley = crate::bidi::layout(
             ui.painter(),
             label,
-            theme::regular(13.5),
+            theme::regular(if mcloud { 13.0 } else { 13.5 }),
             color,
             (rect.right() - 10.0 - x).max(0.0),
             1,
@@ -591,7 +673,11 @@ fn submenu<R>(
 ) -> Option<egui::InnerResponse<R>> {
     ensure_mcloud_menu_glass(ui, palette);
     let width = ui.available_width();
-    let (rect, response) = ui.allocate_exact_size(vec2(width, 28.0), Sense::click());
+    let mcloud = super::mcloud::active(ui.ctx());
+    let (rect, response) = ui.allocate_exact_size(
+        vec2(width, if mcloud { MCLOUD_MENU_ROW } else { 28.0 }),
+        Sense::click(),
+    );
     let is_in_menu = egui::menu::is_in_menu(ui);
     let submenu_id = egui::menu::SubMenu::id_from_widget_id(response.id);
     let is_open = if is_in_menu {
@@ -601,13 +687,40 @@ fn submenu<R>(
     };
 
     if ui.is_rect_visible(rect) {
-        if response.hovered() || is_open {
+        // Under the pointer the row takes the accent; left open while the
+        // pointer is in its submenu it is only marked (.am-active.am-parent).
+        let lit = mcloud && response.hovered();
+        if lit {
+            ui.painter()
+                .rect_filled(rect, CornerRadius::same(8), super::mcloud::accent());
+        } else if mcloud && is_open {
+            ui.painter()
+                .rect_filled(rect, CornerRadius::same(8), super::mcloud::ink(31));
+        } else if response.hovered() || is_open {
             ui.painter()
                 .rect_filled(rect, CornerRadius::same(6), palette.surface_hover);
         }
-        let color = palette.text;
+        let color = if lit { Color32::WHITE } else { palette.text };
+        let arrow_colour = if lit {
+            Color32::WHITE
+        } else if mcloud {
+            palette.text.gamma_multiply(0.6)
+        } else {
+            palette.secondary
+        };
         let mut x = rect.left() + 10.0;
-        if let Some(icon) = icon {
+        if mcloud {
+            if let Some(icon) = icon {
+                icon.image(color, MCLOUD_MENU_ICON).paint_at(
+                    ui,
+                    Rect::from_center_size(
+                        pos2(rect.left() + 16.5, rect.center().y),
+                        Vec2::splat(MCLOUD_MENU_ICON),
+                    ),
+                );
+                x = rect.left() + 32.0;
+            }
+        } else if let Some(icon) = icon {
             let icon_rect =
                 Rect::from_center_size(pos2(x + 8.0, rect.center().y), Vec2::splat(16.0));
             icon.image(palette.secondary, 16.0).paint_at(ui, icon_rect);
@@ -616,9 +729,13 @@ fn submenu<R>(
 
         let arrow_galley = crate::bidi::layout(
             ui.painter(),
-            egui::menu::SubMenuButton::RIGHT_ARROW,
-            theme::regular(11.0),
-            palette.secondary,
+            if mcloud {
+                "›"
+            } else {
+                egui::menu::SubMenuButton::RIGHT_ARROW
+            },
+            theme::regular(if mcloud { 15.0 } else { 11.0 }),
+            arrow_colour,
             16.0,
             1,
             None,
@@ -637,14 +754,14 @@ fn submenu<R>(
         ui.painter().galley(
             crate::bidi::galley_pos(arrow_rect, &arrow_galley),
             arrow_galley,
-            palette.secondary,
+            arrow_colour,
         );
 
         let max_text_width = (rect.right() - 10.0 - arrow_width - 6.0 - x).max(0.0);
         let galley = crate::bidi::layout(
             ui.painter(),
             label,
-            theme::regular(13.5),
+            theme::regular(if mcloud { 13.0 } else { 13.5 }),
             color,
             max_text_width,
             1,
@@ -673,7 +790,9 @@ fn submenu<R>(
         style.visuals.window_fill = Color32::TRANSPARENT;
         style.visuals.menu_corner_radius =
             CornerRadius::same(super::mcloud::glass::MENU_CORNER_RADIUS as u8);
-        style.visuals.window_stroke = Stroke::new(1.0, crate::ui::mcloud::ink(33));
+        style.visuals.window_stroke = Stroke::new(0.5, mcloud_menu_edge());
+        style.visuals.popup_shadow = MCLOUD_MENU_SHADOW;
+        style.spacing.menu_margin = egui::Margin::same(MCLOUD_MENU_MARGIN as i8);
         config = config.style(style);
     }
     if is_in_menu {
@@ -693,6 +812,17 @@ fn submenu<R>(
 }
 
 pub fn menu_separator(ui: &mut Ui, palette: &Palette) {
+    if super::mcloud::active(ui.ctx()) {
+        ensure_mcloud_menu_glass(ui, palette);
+        // .am-popover-separator: a 1pt line, 5pt above and below, 11pt in.
+        let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 11.0), Sense::hover());
+        ui.painter().hline(
+            rect.x_range().shrink(11.0),
+            rect.center().y,
+            Stroke::new(1.0, super::mcloud::ink(36)),
+        );
+        return;
+    }
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 9.0), Sense::hover());
     ui.painter().hline(
         rect.x_range().shrink(6.0),
@@ -710,17 +840,12 @@ pub fn menu_frame(palette: &Palette) -> egui::Frame {
     if mcloud_palette {
         egui::Frame::new()
             .fill(Color32::TRANSPARENT)
-            .stroke(Stroke::new(1.0, crate::ui::mcloud::ink(33)))
+            .stroke(Stroke::new(0.5, mcloud_menu_edge()))
             .corner_radius(CornerRadius::same(
                 super::mcloud::glass::MENU_CORNER_RADIUS as u8,
             ))
-            .inner_margin(egui::Margin::same(6))
-            .shadow(egui::epaint::Shadow {
-                offset: [0, 6],
-                blur: 20,
-                spread: 0,
-                color: palette.shadow,
-            })
+            .inner_margin(egui::Margin::same(MCLOUD_MENU_MARGIN as i8))
+            .shadow(MCLOUD_MENU_SHADOW)
     } else {
         egui::Frame::new()
             .fill(palette.overlay)
@@ -736,18 +861,28 @@ pub fn menu_frame(palette: &Palette) -> egui::Frame {
     }
 }
 
+/// A context menu on `response` that a "…" button opens too, when `more` says
+/// it was clicked. A context menu stays where it was opened, so opening one by
+/// [`egui::Popup::open_id`], which gives no position, marks it open and never
+/// draws it.
+pub fn context_popup<'a>(response: &egui::Response, more: bool) -> egui::Popup<'a> {
+    let popup = egui::Popup::context_menu(response);
+    if more {
+        popup.open_memory(Some(egui::containers::SetOpenCommand::Bool(true)))
+    } else {
+        popup
+    }
+}
+
 /// Builds the context menu for a card, opening it when right-clicked or when
 /// the card's "…" button is clicked.
 pub fn card_context_menu<'a>(
-    ui: &'a Ui,
+    _ui: &'a Ui,
     card: &CardResponse,
     id: egui::Id,
     palette: &Palette,
 ) -> egui::Popup<'a> {
-    if card.more {
-        egui::Popup::open_id(ui.ctx(), id);
-    }
-    egui::Popup::context_menu(&card.response)
+    context_popup(&card.response, card.more)
         .id(id)
         .frame(menu_frame(palette))
 }
@@ -840,7 +975,11 @@ pub fn picked_menu(
         && menu_item(
             ui,
             &palette,
-            Some(Icon::Minus),
+            Some(if super::mcloud::active(ui.ctx()) {
+                Icon::McloudMinusCircle
+            } else {
+                Icon::Minus
+            }),
             &gettext(locale, "Remove from this playlist"),
         )
     {
@@ -859,7 +998,11 @@ fn add_to_playlist_menu(ui: &mut Ui, app: &mut App, items: &[PlayableItem]) {
     let opened = menu_submenu_with_field(
         ui,
         &palette,
-        Some(Icon::ListPlus),
+        Some(if super::mcloud::active(ui.ctx()) {
+            Icon::Plus
+        } else {
+            Icon::ListPlus
+        }),
         &gettext(app.locale, "Add to playlist"),
         |ui| {
             let frame = ui.ctx().cumulative_frame_nr();
@@ -892,6 +1035,7 @@ pub(crate) fn playlist_picker(
     let locale = app.locale;
     ui.set_min_width(220.0);
     ui.set_max_width(300.0);
+    ensure_mcloud_menu_glass(ui, &palette);
     let width = ui.available_width();
     let field_id = ui.make_persistent_id("playlist-filter");
     let highlight_id = ui.make_persistent_id("playlist-highlight");
@@ -945,7 +1089,11 @@ pub(crate) fn playlist_picker(
         locale,
         field_id,
         query,
-        &gettext(locale, "Filter playlists"),
+        &if super::mcloud::active(ui.ctx()) {
+            gettext(locale, "Find a playlist")
+        } else {
+            gettext(locale, "Filter playlists")
+        },
         width,
     );
     if *query != chosen_for {
@@ -1006,8 +1154,14 @@ pub(crate) fn playlist_picker(
             for (index, (id, name)) in matches.into_iter().enumerate() {
                 ui.push_id(id, |ui| {
                     let chosen = highlighted == Some(index);
-                    let (row, clicked) =
-                        menu_item_response(ui, &palette, Some(Icon::ListMusic), name, true, chosen);
+                    let (row, clicked) = menu_item_response(
+                        ui,
+                        &palette,
+                        (!super::mcloud::active(ui.ctx())).then_some(Icon::ListMusic),
+                        name,
+                        true,
+                        chosen,
+                    );
                     if chosen && moved {
                         row.scroll_to_me(None);
                     }
@@ -1049,6 +1203,63 @@ fn item_menu_at(
     let locale = app.locale;
     ui.set_min_width(220.0);
     ui.set_max_width(300.0);
+    if super::mcloud::active(ui.ctx()) {
+        // The order of the menu mcloud gives Spotify's rows.
+        if item.is_track() {
+            add_to_playlist_menu(ui, app, std::slice::from_ref(item));
+        }
+        item_menu_playlist(ui, app, item, context, index, position);
+        item_menu_saved(ui, app, item);
+        item_menu_queue(ui, app, item, context, index);
+        menu_separator(ui, &palette);
+        item_menu_go(ui, app, item);
+        if item.uri().starts_with("spotify:track:")
+            && menu_item(
+                ui,
+                &palette,
+                Some(Icon::ListMusic),
+                &gettext(locale, "View credits"),
+            )
+        {
+            app.actions.push(Action::ShowCredits {
+                uri: item.uri().to_string(),
+                title: item.name().to_string(),
+            });
+        }
+        menu_submenu(
+            ui,
+            &palette,
+            Some(Icon::ExternalLink),
+            &gettext(locale, "Share"),
+            |ui| {
+                ui.set_min_width(200.0);
+                ui.set_max_width(300.0);
+                item_menu_share(ui, app, item);
+            },
+        );
+        return;
+    }
+    item_menu_queue(ui, app, item, context, index);
+    item_menu_saved(ui, app, item);
+    if item.is_track() {
+        add_to_playlist_menu(ui, app, std::slice::from_ref(item));
+    }
+    item_menu_playlist(ui, app, item, context, index, position);
+    menu_separator(ui, &palette);
+    item_menu_go(ui, app, item);
+    menu_separator(ui, &palette);
+    item_menu_share(ui, app, item);
+}
+
+fn item_menu_queue(
+    ui: &mut Ui,
+    app: &mut App,
+    item: &PlayableItem,
+    context: Option<&RowContext>,
+    index: Option<usize>,
+) {
+    let palette = app.palette;
+    let locale = app.locale;
     let uri = item.uri().to_string();
     let label = item.name().to_string();
     // A local file queues only on this computer's player (#1002).
@@ -1091,20 +1302,37 @@ fn item_menu_at(
             rows: vec![(index, uri.clone())],
         });
     }
+}
+
+fn item_menu_saved(ui: &mut Ui, app: &mut App, item: &PlayableItem) {
+    let palette = app.palette;
+    let locale = app.locale;
+    let uri = item.uri().to_string();
     if item.is_track() {
         let saved = app.is_saved(&uri).unwrap_or(false);
+        let mcloud = super::mcloud::active(ui.ctx());
         let (icon, text) = if saved {
             (
-                Icon::HeartFilled,
+                if mcloud {
+                    Icon::McloudStarFilled
+                } else {
+                    Icon::HeartFilled
+                },
                 gettext(locale, "Remove from Liked Songs"),
             )
         } else {
-            (Icon::Heart, gettext(locale, "Save to Liked Songs"))
+            (
+                if mcloud {
+                    Icon::McloudStar
+                } else {
+                    Icon::Heart
+                },
+                gettext(locale, "Save to Liked Songs"),
+            )
         };
         if menu_item(ui, &palette, Some(icon), &text) {
             app.actions.push(Action::ToggleSaved(uri.clone()));
         }
-        add_to_playlist_menu(ui, app, std::slice::from_ref(item));
     } else if menu_item(
         ui,
         &palette,
@@ -1113,6 +1341,19 @@ fn item_menu_at(
     ) {
         app.actions.push(Action::ToggleSaved(uri.clone()));
     }
+}
+
+fn item_menu_playlist(
+    ui: &mut Ui,
+    app: &mut App,
+    item: &PlayableItem,
+    context: Option<&RowContext>,
+    index: Option<usize>,
+    position: Option<u32>,
+) {
+    let palette = app.palette;
+    let locale = app.locale;
+    let uri = item.uri().to_string();
     // Removal names the row's song and position, so it stays available on
     // a sorted or filtered view. Moves are positional, so they stay on the unsorted
     // context only, where screen positions match server positions.
@@ -1159,7 +1400,11 @@ fn item_menu_at(
         if menu_item(
             ui,
             &palette,
-            Some(Icon::Minus),
+            Some(if super::mcloud::active(ui.ctx()) {
+                Icon::McloudMinusCircle
+            } else {
+                Icon::Minus
+            }),
             &gettext(locale, "Remove from this playlist"),
         ) {
             app.actions.push(Action::RemoveFromPlaylist {
@@ -1200,7 +1445,12 @@ fn item_menu_at(
             });
         }
     }
-    menu_separator(ui, &palette);
+}
+
+fn item_menu_go(ui: &mut Ui, app: &mut App, item: &PlayableItem) {
+    let palette = app.palette;
+    let locale = app.locale;
+    let uri = item.uri().to_string();
     match item {
         PlayableItem::Track(track) => {
             if menu_item(
@@ -1269,7 +1519,12 @@ fn item_menu_at(
             }
         }
     }
-    menu_separator(ui, &palette);
+}
+
+fn item_menu_share(ui: &mut Ui, app: &mut App, item: &PlayableItem) {
+    let palette = app.palette;
+    let locale = app.locale;
+    let uri = item.uri().to_string();
     if menu_item(
         ui,
         &palette,
@@ -1336,6 +1591,10 @@ pub fn context_menu_items(
     ui.set_min_width(200.0);
     ui.set_max_width(300.0);
     let kind = util::uri_kind(uri).unwrap_or("");
+    let mcloud = super::mcloud::active(ui.ctx());
+    if mcloud && kind == "album" {
+        add_album_to_playlist_menu(ui, app, uri);
+    }
     if menu_item(ui, &palette, Some(Icon::Play), &gettext(locale, "Play")) {
         app.actions.push(Action::PlayContext {
             uri: uri.to_string(),
@@ -1395,6 +1654,25 @@ pub fn context_menu_items(
                 public: playlist.public,
             }));
         }
+        if mcloud && let Some(public) = playlist.public {
+            let (icon, text) = if public {
+                (Icon::Lock, gettext(locale, "Make private"))
+            } else {
+                (Icon::Globe, gettext(locale, "Make public"))
+            };
+            if menu_item(ui, &palette, Some(icon), &text) {
+                app.actions.push(Action::UpdatePlaylist {
+                    id: playlist.id.clone(),
+                    name: playlist.name.clone(),
+                    description: playlist
+                        .description
+                        .clone()
+                        .map(|d| util::strip_html(&d))
+                        .unwrap_or_default(),
+                    public: Some(!public),
+                });
+            }
+        }
         if menu_item(ui, &palette, Some(Icon::Trash), &gettext(locale, "Delete")) {
             app.actions
                 .push(Action::ShowDialog(Dialog::ConfirmDeletePlaylist {
@@ -1417,6 +1695,26 @@ pub fn context_menu_items(
     {
         app.actions.push(Action::Open(Page::Radio(uri.to_string())));
     }
+    if mcloud {
+        menu_submenu(
+            ui,
+            &palette,
+            Some(Icon::ExternalLink),
+            &gettext(locale, "Share"),
+            |ui| {
+                ui.set_min_width(200.0);
+                ui.set_max_width(300.0);
+                link_menu_items(ui, app, uri);
+            },
+        );
+    } else {
+        link_menu_items(ui, app, uri);
+    }
+}
+
+fn link_menu_items(ui: &mut Ui, app: &mut App, uri: &str) {
+    let palette = app.palette;
+    let locale = app.locale;
     if menu_item(
         ui,
         &palette,
@@ -1433,6 +1731,39 @@ pub fn context_menu_items(
     ) {
         app.actions.push(Action::OpenInSpotify(uri.to_string()));
     }
+}
+
+/// "Add to playlist" for a whole album, as dragging it onto a playlist does.
+fn add_album_to_playlist_menu(ui: &mut Ui, app: &mut App, album_uri: &str) {
+    let palette = app.palette;
+    let locale = app.locale;
+    menu_submenu(
+        ui,
+        &palette,
+        Some(Icon::Plus),
+        &gettext(locale, "Add to playlist"),
+        |ui| {
+            ui.set_min_width(220.0);
+            ui.set_max_width(300.0);
+            let playlists = app.editable_playlists();
+            if playlists.is_empty() {
+                theme::subtle(ui, &palette, &gettext(locale, "No editable playlists"));
+            }
+            egui::ScrollArea::vertical()
+                .max_height(320.0)
+                .show(ui, |ui| {
+                    for (id, name) in playlists {
+                        if menu_item(ui, &palette, None, &name) {
+                            app.actions.push(Action::AddAlbumToPlaylist {
+                                album_uri: album_uri.to_string(),
+                                playlist_id: id.clone(),
+                                playlist_name: name.clone(),
+                            });
+                        }
+                    }
+                });
+        },
+    );
 }
 
 /// Whether a row can start playback through Spotify. Unknown availability
@@ -3154,9 +3485,6 @@ pub fn card(
                 Icon::Ellipsis,
                 &gettext(app.locale, "More options"),
             );
-            if more {
-                egui::Popup::open_id(ui.ctx(), egui::Popup::default_response_id(&response));
-            }
         }
 
         if playable && hovered && !person {
@@ -4042,10 +4370,22 @@ pub fn search_field(
 ) -> egui::Response {
     let is_mcloud_topbar =
         crate::ui::mcloud::active(ui.ctx()) && id == egui::Id::new("global-search");
-    let height = if is_mcloud_topbar { 36.0 } else { 34.0 };
+    // The field at the top of a menu under mcloud: a row's height, no outline.
+    let is_mcloud_menu =
+        crate::ui::mcloud::active(ui.ctx()) && !is_mcloud_topbar && egui::menu::is_in_menu(ui);
+    let height = if is_mcloud_topbar {
+        36.0
+    } else if is_mcloud_menu {
+        MCLOUD_MENU_ROW
+    } else {
+        34.0
+    };
     let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
     let has_focus = ui.memory(|memory| memory.has_focus(id));
-    if !is_mcloud_topbar {
+    if is_mcloud_menu {
+        ui.painter()
+            .rect_filled(rect, CornerRadius::same(8), crate::ui::mcloud::ink(26));
+    } else if !is_mcloud_topbar {
         let fill = if has_focus {
             palette.surface_hover
         } else {
@@ -4075,6 +4415,8 @@ pub fn search_field(
             20.0,
             36.0,
         )
+    } else if is_mcloud_menu {
+        (pos2(rect.left() + 14.0, rect.center().y), 14.0, 27.0)
     } else {
         (pos2(rect.left() + 18.0, rect.center().y), 16.0, 34.0)
     };
@@ -4545,6 +4887,37 @@ mod tests {
             assert_eq!(ui.cursor().left(), left);
         });
         output.textures_delta.clear();
+    }
+
+    /// The "…" of a card or row opens a context menu that stays where it was
+    /// opened. Opened with no position, it counted as open and never drew.
+    #[test]
+    fn a_more_button_draws_its_menu() {
+        let ctx = egui::Context::default();
+        theme::install(&ctx);
+        let id = egui::Id::new("menu");
+        let mut drawn = false;
+        for frame in 0..3 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(600.0, 400.0))),
+                    events: vec![egui::Event::PointerMoved(pos2(50.0, 50.0))],
+                    ..Default::default()
+                },
+                |ui| {
+                    let response = ui.allocate_response(vec2(100.0, 100.0), Sense::click());
+                    context_popup(&response, frame == 1)
+                        .id(id)
+                        .show(|_| drawn = true);
+                },
+            );
+            output.textures_delta.clear();
+        }
+        assert!(drawn);
+        assert_eq!(
+            egui::Popup::position_of_id(&ctx, id),
+            Some(pos2(50.0, 50.0))
+        );
     }
 
     #[test]

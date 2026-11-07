@@ -177,25 +177,57 @@ pub(in crate::ui) fn solid_capsule(ui: &egui::Ui, rect: Rect) {
         }
         .as_shape(rect, corner),
     );
-    // The gradient's middle colour fills the round ends.
-    painter.rect_filled(rect, corner, Color32::from_rgb(0x33, 0x33, 0x35));
-    widgets::paint_vertical_gradient(
-        ui,
-        rect.shrink2(vec2(half, 0.0)),
+    let top = crate::ui::mcloud::tone(
         Color32::from_rgb(0x3b, 0x3b, 0x3d),
-        Color32::from_rgb(0x2b, 0x2b, 0x2d),
+        Color32::from_rgb(0xfd, 0xfd, 0xfd),
     );
+    let bottom = crate::ui::mcloud::tone(
+        Color32::from_rgb(0x2b, 0x2b, 0x2d),
+        Color32::from_rgb(0xec, 0xec, 0xec),
+    );
+    // The fill only gives the outline its antialiased edge; the gradient runs
+    // over the whole capsule, the round ends included.
+    painter.rect_filled(rect, corner, top.lerp_to_gamma(bottom, 0.5));
+    painter.add(egui::Shape::mesh(capsule_gradient(rect, top, bottom)));
+    // mcloud's --am-rim is white in both appearances.
     painter.rect_stroke(
         rect,
         corner,
-        Stroke::new(1.0, crate::ui::mcloud::ink(18)),
+        Stroke::new(1.0, Color32::from_white_alpha(18)),
         StrokeKind::Inside,
     );
     painter.hline(
         (rect.left() + half)..=(rect.right() - half),
         rect.top() + 1.0,
-        Stroke::new(1.0, crate::ui::mcloud::ink(38)),
+        Stroke::new(1.0, Color32::from_white_alpha(38)),
     );
+}
+
+/// A top-to-bottom gradient in the shape of the capsule `rect`, half a point
+/// inside its edge. A mesh has no antialiasing, so whatever is under it draws
+/// that edge.
+fn capsule_gradient(rect: Rect, top: Color32, bottom: Color32) -> egui::Mesh {
+    const EDGE: f32 = 0.5;
+    let radius = rect.height() / 2.0;
+    let rows = (rect.height() * 2.0).ceil().max(1.0) as u32;
+    let mut mesh = egui::Mesh::default();
+    for row in 0..=rows {
+        let y = (rect.top() + EDGE) + (rect.height() - 2.0 * EDGE) * row as f32 / rows as f32;
+        let from_middle = y - rect.center().y;
+        let reach = (radius * radius - from_middle * from_middle)
+            .max(0.0)
+            .sqrt();
+        let inset = (radius - reach + EDGE).min(rect.width() / 2.0);
+        let colour = top.lerp_to_gamma(bottom, (y - rect.top()) / rect.height());
+        mesh.colored_vertex(egui::pos2(rect.left() + inset, y), colour);
+        mesh.colored_vertex(egui::pos2(rect.right() - inset, y), colour);
+        if row > 0 {
+            let at = row * 2;
+            mesh.add_triangle(at - 2, at - 1, at);
+            mesh.add_triangle(at - 1, at, at + 1);
+        }
+    }
+    mesh
 }
 
 /// A button of mcloud's player: an icon on no background that whitens under
@@ -1333,6 +1365,32 @@ fn scrubber(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_eco_capsules_gradient_runs_through_its_round_ends() {
+        let rect = Rect::from_min_size(egui::pos2(10.0, 20.0), vec2(300.0, 54.0));
+        let (top, bottom) = (Color32::from_gray(60), Color32::from_gray(40));
+        let mesh = super::capsule_gradient(rect, top, bottom);
+        // Every pair of vertices is one row: both ends have that row's colour,
+        // so the ends can't differ from the middle.
+        for row in mesh.vertices.as_chunks::<2>().0 {
+            assert_eq!(row[0].color, row[1].color);
+            assert_eq!(row[0].pos.y, row[1].pos.y);
+        }
+        let middle = &mesh.vertices[mesh.vertices.len() / 2 - 1];
+        assert!(
+            middle.pos.x < rect.left() + 1.0,
+            "the widest row reaches the end"
+        );
+        assert_eq!(mesh.vertices[0].color.r(), 60);
+        assert!(
+            mesh.vertices
+                .last()
+                .is_some_and(|last| last.color.r() <= 41)
+        );
+        // Nothing leaves the capsule, whose top row is only its straight part.
+        assert!(mesh.vertices[0].pos.x > rect.left() + 20.0);
+    }
+
     use super::*;
 
     #[test]

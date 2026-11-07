@@ -27,6 +27,7 @@ pub mod skin_cards;
 mod soloist;
 pub mod topbar;
 mod update;
+pub mod user;
 pub mod widgets;
 pub mod winamp;
 
@@ -515,6 +516,7 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                             Page::Album(id) => collection::album(app, ui, &id),
                             Page::Artist(id) => artist::show(app, ui, &id),
                             Page::Show(id) => show::show(app, ui, &id),
+                            Page::User(id) => user::show(app, ui, &id),
                             Page::Radio(seed) => radio::radio(app, ui, &seed),
                             Page::Queue => queue::page(app, ui),
                             Page::Settings => settings::show(app, ui),

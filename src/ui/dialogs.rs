@@ -198,6 +198,9 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                         }
                     });
                 }
+                Dialog::Credits {
+                    title, credits, ..
+                } => credits_sheet(app, ui, &palette, &title, &credits),
                 Dialog::PremiumNeeded => {
                     theme::text(
                         ui,
@@ -230,6 +233,112 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
     if response.should_close() {
         app.actions.push(Action::CloseDialog);
     }
+}
+
+/// Spotify's Credits sheet: the song, then each role and who filled it, with
+/// a link to those who have an artist page.
+fn credits_sheet(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    palette: &crate::theme::Palette,
+    title: &str,
+    credits: &crate::model::Loadable<crate::session_reads::TrackCredits>,
+) {
+    use crate::model::Loadable;
+    let locale = app.locale;
+    theme::text(
+        ui,
+        gettext(locale, "Credits"),
+        theme::bold(18.0),
+        palette.text,
+    );
+    ui.add_space(2.0);
+    theme::text(ui, title, theme::regular(13.0), palette.secondary);
+    ui.add_space(12.0);
+    match credits {
+        Loadable::Loaded(credits) => {
+            let room = ui.ctx().content_rect().height() - 220.0;
+            crate::autoscroll::show(
+                ui,
+                egui::ScrollArea::vertical()
+                    .max_height(room.max(120.0))
+                    .auto_shrink([false, true]),
+                egui::Vec2b::new(false, true),
+                |ui| {
+                    for group in &credits.groups {
+                        theme::text(ui, &group.name, theme::semibold(13.0), palette.text);
+                        ui.add_space(4.0);
+                        for person in &group.people {
+                            match &person.artist_id {
+                                Some(id) => {
+                                    if theme::link(
+                                        ui,
+                                        &person.name,
+                                        theme::regular(13.0),
+                                        palette.text,
+                                    )
+                                    .clicked()
+                                    {
+                                        app.actions.push(Action::CloseDialog);
+                                        app.actions.push(Action::Open(crate::model::Page::Artist(
+                                            id.clone(),
+                                        )));
+                                    }
+                                }
+                                None => {
+                                    theme::text(
+                                        ui,
+                                        &person.name,
+                                        theme::regular(13.0),
+                                        palette.text,
+                                    );
+                                }
+                            }
+                            if !person.roles.is_empty() {
+                                theme::text(
+                                    ui,
+                                    person.roles.join(", "),
+                                    theme::regular(12.0),
+                                    palette.secondary,
+                                );
+                            }
+                            ui.add_space(6.0);
+                        }
+                        ui.add_space(8.0);
+                    }
+                    if !credits.sources.is_empty() {
+                        theme::text(
+                            ui,
+                            gettext(locale, "Sources"),
+                            theme::semibold(13.0),
+                            palette.text,
+                        );
+                        ui.add_space(4.0);
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new(credits.sources.join(", "))
+                                    .font(theme::regular(12.0))
+                                    .color(palette.secondary),
+                            )
+                            .wrap(),
+                        );
+                    }
+                },
+            );
+        }
+        Loadable::Failed(error) => {
+            crate::ui::widgets::error_row(ui, app, error, None);
+        }
+        Loadable::NotLoaded | Loadable::Loading => {
+            ui.add(egui::Spinner::new().color(palette.secondary));
+        }
+    }
+    ui.add_space(16.0);
+    buttons(ui, |ui| {
+        if theme::pill_button(ui, palette, &gettext(locale, "Close"), false).clicked() {
+            app.actions.push(Action::CloseDialog);
+        }
+    });
 }
 
 // Keep button rows content-sized when the shared modal area last held a taller dialog.

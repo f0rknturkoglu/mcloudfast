@@ -131,6 +131,8 @@ pub enum Page {
     /// Spotify's radio seeded by a song, playlist, album, or artist, by the
     /// seed's URI.
     Radio(String),
+    /// Somebody's public profile, by their user id.
+    User(String),
     Queue,
     Settings,
 }
@@ -161,6 +163,7 @@ impl Page {
             Page::Artist(id) => format!("artist:{id}"),
             Page::Show(id) => format!("show:{id}"),
             Page::Radio(seed) => format!("radio:{seed}"),
+            Page::User(id) => format!("user:{id}"),
             Page::Queue => "queue".into(),
             Page::Settings => "settings".into(),
         }
@@ -195,6 +198,7 @@ impl Page {
                     "album" => Page::Album(id.into()),
                     "artist" => Page::Artist(id.into()),
                     "show" => Page::Show(id.into()),
+                    "user" => Page::User(id.into()),
                     "radio" if crate::util::station_uri(id).is_some() => Page::Radio(id.into()),
                     _ => return None,
                 }
@@ -213,6 +217,7 @@ impl Page {
             "album" => Page::Album(id),
             "artist" => Page::Artist(id),
             "show" => Page::Show(id),
+            "user" => Page::User(id),
             _ => return None,
         })
     }
@@ -1188,6 +1193,12 @@ pub enum Dialog {
         duplicate_uris: Vec<String>,
     },
     Shortcuts,
+    /// Who made a song, Spotify's Credits sheet.
+    Credits {
+        uri: String,
+        title: String,
+        credits: Loadable<crate::session_reads::TrackCredits>,
+    },
     /// The signed-in account is not Premium, so nothing will play.
     PremiumNeeded,
     /// Introduce personal Spotify apps to eligible listeners once.
@@ -1405,6 +1416,13 @@ pub enum Action {
         saved: bool,
     },
     OpenInSpotify(String),
+    /// Which playlists mcloud's sidebar lists.
+    SetMcloudSideLists(crate::settings::McloudSideLists),
+    /// Show who made the song `uri`.
+    ShowCredits {
+        uri: String,
+        title: String,
+    },
     Search(String),
     /// The search field was emptied or its selection typed over, so the
     /// next query starts a new run of typing.

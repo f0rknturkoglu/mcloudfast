@@ -2103,7 +2103,11 @@ pub fn playlist(app: &mut App, ui: &mut egui::Ui, id: &str) {
             let owner_id = playlist.owner.id.as_deref();
             let others = other_adders(owner_id, &page.contributors, &user_id);
             let made_together = playlist.collaborative || !others.is_empty();
-            let mut byline = vec![(owner_name(app, playlist).to_string(), None)];
+            // Spotify's own client opens the owner's profile from here.
+            let mut byline = vec![(
+                owner_name(app, playlist).to_string(),
+                playlist.owner.id.clone().map(Page::User),
+            )];
             if let Some(saves) = playlist.followers.as_ref().map(|followers| followers.total) {
                 byline.push((saves_text(app.locale, saves), None));
             }

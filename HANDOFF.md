@@ -183,8 +183,11 @@ Lyrics'te kalanlar:
 - **Gerçek blur:** Şimdilik uzaklığa göre opaklıkla taklit ediliyor.
 - **Üçüncü taraf söz kaynağı:** ToS ve kırılganlık nedeniyle varsayılan yapılmadı.
 
+Yapılabilir, henüz yapılmadı:
+- Browse tür sayfası: kategori görselleri `browseAll` ile geliyor, tile tıklaması hâlâ aramaya gidiyor; Spotify'ın sayfası `browsePage` sorgusunda.
+- Uyku zamanlayıcısı: Spotify'ın menüsünde var, burada yok.
+
 Web API izin vermediği için yapılamayanlar:
-- Browse kategori görselleri.
 - Aramadaki "Featuring X" rafı (Spotify'ın editoryal listeleri).
 - Liked Songs tür çipleri: sanatçı türleri geliştirici uygulamasına gelmiyor;
   tür gelirse çipler kendiliğinden görünür.

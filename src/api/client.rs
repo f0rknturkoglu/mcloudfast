@@ -608,6 +608,11 @@ impl ApiClient {
                     .map_or(Duration::from_secs(1), Duration::from_secs);
                 let text = response.text().await.unwrap_or_default();
                 if is_quota_exhausted(&text) {
+                    log::warn!(
+                        "Spotify quota exhausted source={} {method} {}",
+                        self.source,
+                        logged_path(&url),
+                    );
                     return Err(ApiError::QuotaExhausted);
                 }
                 // A rejected queue append is safe to retry. Keep its place
@@ -618,7 +623,11 @@ impl ApiClient {
                 } else {
                     wait.min(MAX_RETRY_AFTER)
                 };
-                log::warn!("Spotify rate limit source={} wait={wait:?}", self.source);
+                log::warn!(
+                    "Spotify rate limit source={} {method} {} wait={wait:?}",
+                    self.source,
+                    logged_path(&url),
+                );
                 self.activity.note_rate_limit(self.source);
                 log::info!(
                     "Spotify cooldown source={} duration_ms={}",

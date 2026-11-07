@@ -603,12 +603,40 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
         ),
         McloudSideLists::Spotify => format!("{} · Spotify", gettext(locale, "Playlists")),
     };
-    let (less, create) = heading(
+    let (less, create, heading_response) = heading_with_response(
         ui,
         &heading_label,
         Some((expanded.then_some(show_less.as_ref()), add.as_ref())),
         sticky_heading_y,
     );
+    // Music's Playlists heading opens its New Playlist menu on a right-click;
+    // mcloud adds which lists it shows.
+    egui::Popup::context_menu(&heading_response)
+        .id(ui.make_persistent_id("mcloud-side-heading-menu"))
+        .frame(crate::ui::widgets::menu_frame(&app.palette))
+        .show(|ui| {
+            ui.set_min_width(200.0);
+            let palette = app.palette;
+            if crate::ui::widgets::menu_item(ui, &palette, None, &gettext(locale, "New playlist")) {
+                start_inline_playlist_creation(ui.ctx(), locale);
+            }
+            crate::ui::widgets::menu_separator(ui, &palette);
+            for (lists, label) in [
+                (McloudSideLists::All, gettext(locale, "All Playlists")),
+                (McloudSideLists::Own, gettext(locale, "By You")),
+                (McloudSideLists::Spotify, gettext(locale, "By Spotify")),
+            ] {
+                let picked = app.settings.mcloud_side_lists == lists;
+                if crate::ui::widgets::menu_item(
+                    ui,
+                    &palette,
+                    picked.then_some(Icon::Check),
+                    &label,
+                ) {
+                    app.actions.push(Action::SetMcloudSideLists(lists));
+                }
+            }
+        });
     if less {
         let (scroll_y, viewport_h) = ui
             .ctx()
@@ -798,6 +826,7 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
     let mut open = None;
     let mut any_hovered_or_focused = false;
     let mut toggle = None;
+    let mut row_menus = Vec::new();
     let mut drop_on = None;
     for (slot, side_row) in rows.iter().enumerate() {
         let key = match side_row {
@@ -854,6 +883,18 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
                 if response.clicked() {
                     open = Some(Page::Playlist(playlist.id.clone()));
                 }
+                // Shown after the rows, which hold the library while they draw.
+                let owned = app
+                    .user_id()
+                    .is_some_and(|id| playlist.owned_by(id))
+                    .then(|| (*playlist).clone());
+                row_menus.push((
+                    response.clone(),
+                    playlist.id.clone(),
+                    playlist.uri.clone(),
+                    playlist.name.clone(),
+                    owned,
+                ));
                 // A song or album dragged here joins the playlist, where it may.
                 if app.can_edit_playlist(playlist)
                     && (egui::DragAndDrop::has_payload_of_type::<crate::model::DragTrack>(ui.ctx())
@@ -906,6 +947,32 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
                 if response.clicked() {
                     toggle = Some(id.clone());
                 }
+                // A folder only opens and takes a new playlist, as mcloud's.
+                egui::Popup::context_menu(&response)
+                    .id(ui.make_persistent_id(("mcloud-side-folder-menu", id.as_str())))
+                    .frame(crate::ui::widgets::menu_frame(&app.palette))
+                    .show(|ui| {
+                        ui.set_min_width(200.0);
+                        let palette = app.palette;
+                        if !*folder_open
+                            && crate::ui::widgets::menu_item(
+                                ui,
+                                &palette,
+                                Some(Icon::McloudChevron),
+                                &gettext(locale, "Open folder"),
+                            )
+                        {
+                            toggle = Some(id.clone());
+                        }
+                        if crate::ui::widgets::menu_item(
+                            ui,
+                            &palette,
+                            Some(Icon::Plus),
+                            &gettext(locale, "New playlist"),
+                        ) {
+                            start_inline_playlist_creation(ui.ctx(), locale);
+                        }
+                    });
                 response
             }
         };
@@ -915,6 +982,15 @@ fn playlists(app: &mut App, ui: &mut egui::Ui, page: &Page, sticky_heading_y: &m
         if response.hovered() || response.has_focus() {
             any_hovered_or_focused = true;
         }
+    }
+    for (response, id, uri, name, owned) in row_menus {
+        egui::Popup::context_menu(&response)
+            .id(ui.make_persistent_id(("mcloud-side-menu", &id)))
+            .frame(crate::ui::widgets::menu_frame(&app.palette))
+            .show(|ui| {
+                crate::ui::widgets::context_menu_items(ui, app, &uri, &name, owned.as_ref());
+                crate::ui::sidebar::pin_menu(app, ui, &uri);
+            });
     }
     if let Some(id) = toggle {
         app.actions.push(Action::ToggleLibraryFolder(id));
@@ -1008,11 +1084,24 @@ fn heading(
     buttons: Option<(Option<&str>, &str)>,
     top_out: &mut Option<f32>,
 ) -> (bool, bool) {
+    let (less, add, _) = heading_with_response(ui, label, buttons, top_out);
+    (less, add)
+}
+
+/// A heading, and the response of its whole row for a menu to hang on. The
+/// row takes clicks under the heading's buttons, which still get theirs.
+fn heading_with_response(
+    ui: &mut egui::Ui,
+    label: &str,
+    buttons: Option<(Option<&str>, &str)>,
+    top_out: &mut Option<f32>,
+) -> (bool, bool, egui::Response) {
     ui.add_space(16.0);
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 13.0), Sense::hover());
+    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), 13.0), Sense::click());
     *top_out = Some(rect.top());
     ui.add_space(4.0);
-    paint_heading_in_rect(ui, rect, "heading", label, buttons)
+    let (less, add) = paint_heading_in_rect(ui, rect, "heading", label, buttons);
+    (less, add, response)
 }
 
 fn paint_heading_in_rect(

@@ -47,34 +47,6 @@ pub(crate) fn scroll_progress(page: &Page, scrolled: f32, hero_threshold: Option
     }
 }
 
-/// Soft specular glow along the glass rim nearest the pointer when the cursor
-/// approaches within 28pt.
-fn paint_cursor_glow(painter: &egui::Painter, rect: Rect) {
-    let Some(pointer) = painter.ctx().input(|i| i.pointer.hover_pos()) else {
-        return;
-    };
-    let expanded = rect.expand(28.0);
-    if !expanded.contains(pointer) {
-        return;
-    }
-    let dx = (rect.left() - pointer.x)
-        .max(0.0)
-        .max(pointer.x - rect.right());
-    let dy = (rect.top() - pointer.y)
-        .max(0.0)
-        .max(pointer.y - rect.bottom());
-    let dist = dx.hypot(dy);
-    let proximity = (1.0 - dist / 28.0).clamp(0.0, 1.0);
-    if proximity <= 0.0 {
-        return;
-    }
-    let clipped = painter.with_clip_rect(rect);
-    for (radius, peak_alpha) in [(28.0, 14.0), (18.0, 22.0), (10.0, 28.0)] {
-        let alpha = (peak_alpha * proximity).round() as u8;
-        clipped.circle_filled(pointer, radius, crate::ui::mcloud::ink(alpha));
-    }
-}
-
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let locale = app.locale;
     let inset = if app.settings.sidebar_visible {
@@ -98,10 +70,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let progress = scroll_progress(app.page(), scrolled, hero_threshold);
 
     if progress > 0.0 {
-        let _glass = super::glass::paint(ui, band, app.settings.mcloud_glass);
-        let fill_color =
-            Color32::from_rgba_unmultiplied(0x2a, 0x2a, 0x2a, (158.0 * progress) as u8);
-        ui.painter().rect_filled(band, 0.0, fill_color);
+        // mcloud's --am-bar-glass: a plain blurred rectangle, not a capsule.
+        let _glass = super::glass::paint_bar(ui, band, app.settings.mcloud_glass, progress);
+        let fill = super::tone(
+            Color32::from_rgba_unmultiplied(0x2a, 0x2a, 0x2a, (158.0 * progress) as u8),
+            Color32::from_rgba_unmultiplied(0xf3, 0xf3, 0xf3, (207.0 * progress) as u8),
+        );
+        ui.painter().rect_filled(band, 0.0, fill);
         ui.painter().hline(
             band.x_range(),
             band.bottom(),
@@ -171,7 +146,6 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         ui.painter()
             .rect_filled(drawn_capsule, drawn_radius, fill(false));
     }
-    paint_cursor_glow(ui.painter(), drawn_capsule);
     ui.painter()
         .rect_stroke(drawn_capsule, drawn_radius, ring(), StrokeKind::Inside);
     let halves = [
@@ -249,7 +223,6 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         ui.painter()
             .rect_filled(field, CornerRadius::same((BUTTON / 2.0) as u8), fill(false));
     }
-    paint_cursor_glow(ui.painter(), field);
     ui.painter().rect_stroke(
         field,
         CornerRadius::same((BUTTON / 2.0) as u8),
@@ -289,7 +262,6 @@ fn circle(
     } else if hovered {
         painter.circle_filled(drawn.center(), radius, crate::ui::mcloud::ink(22));
     }
-    paint_cursor_glow(painter, drawn);
     painter.circle_stroke(drawn.center(), radius - 0.25, ring());
     let color = if hovered {
         super::tone(Color32::WHITE, Color32::BLACK)

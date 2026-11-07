@@ -6,7 +6,7 @@ use egui::{Color32, CornerRadius, Rect, Sense, pos2, vec2};
 
 use crate::app::App;
 use crate::i18n::gettext;
-use crate::model::{Action, Page};
+use crate::model::{Action, Loadable, Page};
 use crate::theme::{self, Icon};
 
 struct Category {
@@ -163,9 +163,46 @@ fn columns_of(width: f32, min_tile: f32, gap: f32) -> (usize, f32) {
     (count, tile)
 }
 
-/// Apple Music's Browse Categories under mcloud: the name small at the bottom
-/// left, a faint rim, a small heading. Spotify's pictures on these tiles are
-/// not in any API this app may ask, so the tiles stay flat colours.
+/// What a tile under mcloud shows: Spotify's own category, or this page's
+/// flat one until Spotify has answered, or when it can't.
+struct McloudTile {
+    name: String,
+    query: String,
+    colour: Color32,
+    picture: Option<(String, [u8; 3])>,
+}
+
+fn mcloud_tiles(app: &mut App, ctx: &egui::Context) -> Vec<McloudTile> {
+    app.request_browse_tiles();
+    if matches!(app.browse_tiles, Loadable::Failed(_)) {
+        // Nothing else draws this page again to ask once more.
+        ctx.request_repaint_after(crate::app::BROWSE_TILES_RETRY);
+    }
+    if let Loadable::Loaded(tiles) = &app.browse_tiles {
+        return tiles
+            .iter()
+            .map(|tile| McloudTile {
+                name: tile.name.clone(),
+                query: tile.name.clone(),
+                colour: Color32::from_rgb(tile.colour[0], tile.colour[1], tile.colour[2]),
+                picture: tile.image_url.clone().map(|url| (url, tile.colour)),
+            })
+            .collect();
+    }
+    CATEGORIES
+        .iter()
+        .map(|category| McloudTile {
+            name: category.name.to_string(),
+            query: category.query.to_string(),
+            colour: category.colour,
+            picture: None,
+        })
+        .collect()
+}
+
+/// Apple Music's Browse Categories under mcloud: Spotify's picture as a
+/// duotone in the tile's colour, the name small at the bottom left, a faint
+/// rim, a small heading.
 fn mcloud_grid(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
     let locale = app.locale;
@@ -177,10 +214,11 @@ fn mcloud_grid(app: &mut App, ui: &mut egui::Ui) {
         palette.text,
     );
     ui.add_space(10.0);
+    let tiles = mcloud_tiles(app, ui.ctx());
     let width = ui.available_width();
     let (count, tile_width) = columns_of(width, MCLOUD_MIN_TILE, MCLOUD_GAP);
     let tile_height = tile_width * MCLOUD_ASPECT;
-    let rows = CATEGORIES.len().div_ceil(count);
+    let rows = tiles.len().div_ceil(count);
     let (block, _) = ui.allocate_exact_size(
         vec2(width, (tile_height + MCLOUD_GAP) * rows as f32 - MCLOUD_GAP),
         Sense::hover(),
@@ -190,7 +228,7 @@ fn mcloud_grid(app: &mut App, ui: &mut egui::Ui) {
     } else {
         Color32::from_rgba_unmultiplied(112, 112, 112, 54)
     };
-    for (index, category) in CATEGORIES.iter().enumerate() {
+    for (index, tile) in tiles.iter().enumerate() {
         let rect = Rect::from_min_size(
             block.min
                 + vec2(
@@ -201,33 +239,50 @@ fn mcloud_grid(app: &mut App, ui: &mut egui::Ui) {
         );
         let response = ui.interact(rect, ui.id().with(("browse-tile", index)), Sense::click());
         response.widget_info(|| {
-            egui::WidgetInfo::labeled(egui::WidgetType::Button, true, category.name)
+            egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tile.name.as_str())
         });
-        let fill = if response.hovered() {
-            category.colour.lerp_to_gamma(Color32::WHITE, 0.08)
-        } else {
-            category.colour
-        };
-        ui.painter().rect_filled(rect, CornerRadius::same(8), fill);
-        ui.painter().rect_stroke(
-            rect,
-            CornerRadius::same(8),
-            egui::Stroke::new(0.5, rim),
-            egui::StrokeKind::Inside,
-        );
-        let name = crate::ui::widgets::ellipsized(
-            ui,
-            category.name,
-            theme::bold(13.0),
-            Color32::WHITE,
-            tile_width - 24.0,
-            2,
-        );
-        let at = pos2(rect.left() + 12.0, rect.bottom() - 12.0 - name.size().y);
-        ui.painter().galley(at, name, Color32::WHITE);
+        if ui.is_rect_visible(rect) {
+            let fill = if response.hovered() {
+                tile.colour.lerp_to_gamma(Color32::WHITE, 0.08)
+            } else {
+                tile.colour
+            };
+            ui.painter().rect_filled(rect, CornerRadius::same(8), fill);
+            let art = app.backend.art();
+            let picture = tile
+                .picture
+                .as_ref()
+                .and_then(|(url, colour)| app.duotone_tiles.texture(ui.ctx(), art, url, *colour));
+            if let Some(texture) = picture {
+                egui::Image::from_texture(&texture)
+                    .corner_radius(CornerRadius::same(8))
+                    .tint(if response.hovered() {
+                        Color32::from_gray(255)
+                    } else {
+                        Color32::from_gray(245)
+                    })
+                    .paint_at(ui, rect);
+            }
+            ui.painter().rect_stroke(
+                rect,
+                CornerRadius::same(8),
+                egui::Stroke::new(0.5, rim),
+                egui::StrokeKind::Inside,
+            );
+            let name = crate::ui::widgets::ellipsized(
+                ui,
+                &tile.name,
+                theme::bold(13.0),
+                Color32::WHITE,
+                tile_width - 24.0,
+                2,
+            );
+            let at = pos2(rect.left() + 12.0, rect.bottom() - 12.0 - name.size().y);
+            ui.painter().galley(at, name, Color32::WHITE);
+        }
         theme::focus_ring(ui, &response);
         if response.clicked() {
-            app.actions.push(Action::Search(category.query.to_string()));
+            app.actions.push(Action::Search(tile.query.clone()));
             app.actions.push(Action::Open(Page::Search));
         }
     }

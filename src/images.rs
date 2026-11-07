@@ -1235,6 +1235,285 @@ impl SoftenedCovers {
     }
 }
 
+/// The size a duotone tile is made at: 16:9, and enough for its 195pt on a
+/// high-density display and a wider tile on a wide window.
+const DUOTONE_SIZE: [u32; 2] = [768, 432];
+
+/// A finished tile by its key, `None` when its picture could not be made.
+type DuotoneResult = (String, Option<egui::ColorImage>);
+
+/// Spotify's Browse pictures as mcloud draws them: Apple's duotone in each
+/// tile's colour, made off the UI thread and kept.
+#[derive(Default)]
+pub struct DuotoneTiles {
+    textures: HashMap<String, egui::TextureHandle>,
+    pending: HashSet<String>,
+    failed: HashSet<String>,
+    ready: Option<(
+        std::sync::mpsc::Sender<DuotoneResult>,
+        std::sync::mpsc::Receiver<DuotoneResult>,
+    )>,
+}
+
+impl DuotoneTiles {
+    /// The tile's picture, once it is made.
+    pub fn texture(
+        &mut self,
+        ctx: &egui::Context,
+        loader: &ArtLoader,
+        url: &str,
+        colour: [u8; 3],
+    ) -> Option<egui::TextureHandle> {
+        let (ready_tx, ready_rx) = self.ready.get_or_insert_with(std::sync::mpsc::channel);
+        let ready_tx = ready_tx.clone();
+        while let Ok((key, image)) = ready_rx.try_recv() {
+            self.pending.remove(&key);
+            match image {
+                Some(image) => {
+                    let texture =
+                        ctx.load_texture("duotone-tile", image, egui::TextureOptions::LINEAR);
+                    self.textures.insert(key, texture);
+                }
+                None => {
+                    self.failed.insert(key);
+                }
+            }
+        }
+        let key = format!("{url}|{colour:?}");
+        if let Some(texture) = self.textures.get(&key) {
+            return Some(texture.clone());
+        }
+        if self.failed.contains(&key) || self.pending.contains(&key) || !is_art(url) {
+            return None;
+        }
+        self.pending.insert(key.clone());
+        let ctx = ctx.clone();
+        let inner = Arc::clone(&loader.inner);
+        let url = url.to_string();
+        loader.inner.runtime.spawn(async move {
+            let image = match inner.fetch(&url).await {
+                Ok(bytes) => inner
+                    .runtime
+                    .spawn_blocking(move || duotone_tile(&bytes, colour))
+                    .await
+                    .ok()
+                    .flatten(),
+                Err(_) => None,
+            };
+            let _ = ready_tx.send((key, image));
+            ctx.request_repaint();
+        });
+        None
+    }
+}
+
+fn duotone_tile(bytes: &[u8], colour: [u8; 3]) -> Option<egui::ColorImage> {
+    let [width, height] = DUOTONE_SIZE;
+    let image = decode(bytes)
+        .ok()?
+        .resize_to_fill(width, height, image::imageops::FilterType::Triangle)
+        .to_rgba8();
+    let mut pixels = image.into_raw();
+    duotone(&mut pixels, duotone_colour(colour));
+    Some(egui::ColorImage::from_rgba_unmultiplied(
+        [width as usize, height as usize],
+        &pixels,
+    ))
+}
+
+/// mcloud's `duoDraw`: the picture's grey, stretched between its 2% and 98%
+/// points and brightened until its mean tone reaches 0.85, as the shade of
+/// `colour`. A picture that is mostly black cannot get there by gamma, so its
+/// shadows rise instead.
+fn duotone(rgba: &mut [u8], colour: [u8; 3]) {
+    let mut histogram = [0u32; 256];
+    let grey_of = |pixel: &[u8; 4]| {
+        (0.2126 * f32::from(pixel[0]) + 0.7152 * f32::from(pixel[1]) + 0.0722 * f32::from(pixel[2]))
+            .round() as usize
+    };
+    for pixel in rgba.as_chunks::<4>().0 {
+        histogram[grey_of(pixel).min(255)] += 1;
+    }
+    let total = (rgba.len() / 4).max(1) as f64;
+    let point = |fraction: f64| {
+        let mut sum = 0.0;
+        let mut at = 0usize;
+        while at < 255 && sum + f64::from(histogram[at]) <= total * fraction {
+            sum += f64::from(histogram[at]);
+            at += 1;
+        }
+        at as f64
+    };
+    let (low, high) = if point(0.98) - point(0.02) < 32.0 {
+        (0.0, 255.0)
+    } else {
+        (point(0.02), point(0.98))
+    };
+    let stretched = |grey: usize| ((grey as f64 - low) / (high - low)).clamp(0.0, 1.0);
+    let tone =
+        |grey: usize, gamma: f64, floor: f64| floor + (1.0 - floor) * stretched(grey).powf(gamma);
+    let mean = |gamma: f64, floor: f64| {
+        histogram
+            .iter()
+            .enumerate()
+            .map(|(grey, count)| f64::from(*count) * tone(grey, gamma, floor))
+            .sum::<f64>()
+            / total
+    };
+    let mut floor = 0.25;
+    let mut gamma = 1.0;
+    if mean(1.0, floor) < 0.85 {
+        let (mut lower, mut upper) = (0.1, 1.0);
+        for _ in 0..16 {
+            let middle = (lower + upper) / 2.0;
+            if mean(middle, floor) > 0.85 {
+                lower = middle;
+            } else {
+                upper = middle;
+            }
+        }
+        gamma = (lower + upper) / 2.0;
+    }
+    if mean(gamma, floor) < 0.84 {
+        let reached = mean(gamma, 0.0);
+        floor = ((0.85 - reached) / (1.0 - reached)).min(0.7);
+    }
+    let table: Vec<f64> = (0..256).map(|grey| tone(grey, gamma, floor)).collect();
+    for pixel in rgba.as_chunks_mut::<4>().0 {
+        let shade = table[grey_of(pixel).min(255)];
+        for channel in 0..3 {
+            pixel[channel] = (f64::from(colour[channel]) * shade) as u8;
+        }
+        pixel[3] = 255;
+    }
+}
+
+/// mcloud's `duoColor`: Apple's tile colours are brighter and more vivid than
+/// Spotify's, so the colour keeps its hue and is pushed to OKLCH chroma 0.26
+/// inside sRGB, lightened towards 0.58 only as far as that chroma still fits.
+/// Greys stay grey.
+fn duotone_colour(rgb: [u8; 3]) -> [u8; 3] {
+    let linear = |value: u8| {
+        let value = f64::from(value) / 255.0;
+        if value <= 0.04045 {
+            value / 12.92
+        } else {
+            ((value + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    let encode = |value: f64| {
+        255.0
+            * if value <= 0.0031308 {
+                value * 12.92
+            } else {
+                1.055 * value.powf(1.0 / 2.4) - 0.055
+            }
+    };
+    let (r, g, b) = (linear(rgb[0]), linear(rgb[1]), linear(rgb[2]));
+    let l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b).cbrt();
+    let m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b).cbrt();
+    let s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b).cbrt();
+    let lightness = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+    let a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+    let bb = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+    let chroma = a.hypot(bb);
+    if chroma < 0.03 {
+        return rgb;
+    }
+    let out = |lightness: f64, wanted: f64| {
+        let (a, b) = (a / chroma * wanted, bb / chroma * wanted);
+        let l = (lightness + 0.3963377774 * a + 0.2158037573 * b).powi(3);
+        let m = (lightness - 0.1055613458 * a - 0.0638541728 * b).powi(3);
+        let s = (lightness - 0.0894841775 * a - 1.291485548 * b).powi(3);
+        [
+            4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+            -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+            -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+        ]
+    };
+    let fits = |lightness: f64, wanted: f64| {
+        out(lightness, wanted)
+            .iter()
+            .all(|value| (0.0..=1.0).contains(value))
+    };
+    let want = chroma.max(0.26);
+    let most = |lightness: f64| {
+        if fits(lightness, want) {
+            return want;
+        }
+        let (mut low, mut high) = (0.0, want);
+        for _ in 0..20 {
+            let middle = (low + high) / 2.0;
+            if fits(lightness, middle) {
+                low = middle;
+            } else {
+                high = middle;
+            }
+        }
+        low
+    };
+    let top = lightness.max(0.58);
+    let mut best = (lightness, 0.0);
+    for step in 0..=24 {
+        let at = top - (top - lightness) * f64::from(step) / 24.0;
+        let reach = most(at);
+        if reach > best.1 + 1e-4 {
+            best = (at, reach);
+        }
+        if reach >= want - 1e-4 {
+            break;
+        }
+    }
+    out(best.0, best.1).map(|value| encode(value.clamp(0.0, 1.0)).round() as u8)
+}
+
+#[cfg(test)]
+mod duotone_tests {
+    use super::*;
+
+    #[test]
+    fn a_grey_tile_stays_grey() {
+        assert_eq!(duotone_colour([120, 120, 120]), [120, 120, 120]);
+    }
+
+    #[test]
+    fn a_dull_colour_becomes_more_vivid_and_keeps_its_hue() {
+        let [r, g, b] = duotone_colour([120, 40, 40]);
+        assert!(r > g && r > b, "still red: {r} {g} {b}");
+        assert!(i32::from(r) - i32::from(g) > 80, "more vivid: {r} {g} {b}");
+    }
+
+    #[test]
+    fn a_mostly_black_picture_rises_to_the_tiles_colour() {
+        let mut pixels: Vec<u8> = (0..1000)
+            .flat_map(|at| {
+                let grey = if at < 950 { 0 } else { 255 };
+                [grey, grey, grey, 255]
+            })
+            .collect();
+        duotone(&mut pixels, [200, 100, 50]);
+        let mean = pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| f64::from(p[0]))
+            .sum::<f64>()
+            / 1000.0;
+        assert!(mean / 200.0 > 0.7, "mean tone {}", mean / 200.0);
+        assert!(pixels.as_chunks::<4>().0.iter().all(|p| p[3] == 255));
+    }
+
+    #[test]
+    fn the_darkest_and_brightest_of_a_picture_stay_in_order() {
+        let mut pixels: Vec<u8> = (0..=255u8)
+            .flat_map(|grey| [grey, grey, grey, 255])
+            .collect();
+        duotone(&mut pixels, [200, 200, 200]);
+        let shades: Vec<u8> = pixels.as_chunks::<4>().0.iter().map(|p| p[0]).collect();
+        assert!(shades.windows(2).all(|pair| pair[0] <= pair[1]));
+    }
+}
+
 fn blurred_background(bytes: &[u8], sigma: f32) -> Option<egui::ColorImage> {
     Some(blurred_image(decode(bytes).ok()?, sigma))
 }

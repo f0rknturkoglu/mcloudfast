@@ -147,7 +147,8 @@ Yeni işlerin hiçbiri henüz gerçek hesapla denenmedi. Bu tur önce gelir:
 | 70 | Browse ölçüleri | Tamam |
 | 71 | What's New kartları (#128) | Doğrula |
 | 72 | What's New Music/Podcast seçimi | Kısmi: istek yalnız albüm alıyor, podcast değeri denenmeden eklenmedi |
-| 73 | Kategori görselleri, Liked tür çipleri | Yapılamaz: Web API vermiyor |
+| 73 | Kategori görselleri | Doğrula: `browseAll` ile duotone (tıklama hâlâ aramaya gidiyor, tür sayfası yok) |
+| 73b | Liked tür çipleri | Yapılamaz: Web API vermiyor |
 
 ## J. Sözler
 

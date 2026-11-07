@@ -2076,7 +2076,7 @@ fn entry_menu(app: &mut App, response: &egui::Response, entry: &Entry, custom_or
     }
 }
 
-fn pin_menu(app: &mut App, ui: &mut egui::Ui, key: &str) {
+pub(crate) fn pin_menu(app: &mut App, ui: &mut egui::Ui, key: &str) {
     let mut pins = app.settings.library_pins();
     let pinned = pins.iter().any(|held| held == key);
     let label = if pinned {

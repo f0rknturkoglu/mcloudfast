@@ -106,6 +106,15 @@ clients. Spotifast uses its session for:
 - **Display names and avatars** for the user IDs attached to songs in a
   playlist and for a playlist's owner, from the profile view Spotify's own
   clients read.
+- **Public profiles**: a person's name, picture, follower count, public
+  playlists and any recently played artists they show, from the same profile
+  view, for the page a playlist's owner opens to.
+- **Song credits**: who performed, wrote and produced a song and the sources
+  of those credits, from the view behind Spotify's Credits sheet
+  (`track-credits-view`).
+- **Browse categories** with their colours and pictures, through the private
+  Pathfinder query (`browseAll`) Spotify's desktop client reads them with.
+  Without it the mcloud Browse page keeps its own flat tiles.
 - **Precise EP types** for releases that the Web API groups with singles.
 - **Made for you** through Spotify's personalized Home section. This private
   request uses the playback session and an already verified Web API grant;

@@ -1415,6 +1415,312 @@ fn profile_from_json(json: &serde_json::Value) -> UserProfile {
     }
 }
 
+/// One of Spotify's Browse categories, as its own Search page shows it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BrowseTile {
+    pub uri: String,
+    pub name: String,
+    pub colour: [u8; 3],
+    pub image_url: Option<String>,
+}
+
+/// The persisted `browseAll` query of Spotify's desktop client, and the
+/// variables it sends.
+const BROWSE_ALL_HASH: &str = "dbd8b55e09a58afc52eab438bc228ba28fd72ac2f2148c6c26354980e4579001";
+
+/// Spotify's Browse grid, through the query its desktop client reads it with.
+pub async fn browse_tiles(
+    session: &Session,
+    web: &crate::api::ApiClient,
+) -> anyhow::Result<Vec<BrowseTile>> {
+    let login = session.login5().auth_token().await?;
+    let client_token = session.spclient().client_token().await?;
+    let query = serde_json::json!({
+        "operationName": "browseAll",
+        "variables": {
+            "pagePagination": {"offset": 0, "limit": 10},
+            "sectionPagination": {"offset": 0, "limit": 99},
+            "browseEndUserIntegration": "INTEGRATION_DESKTOP"
+        },
+        "extensions": {"persistedQuery": {"version": 1, "sha256Hash": BROWSE_ALL_HASH}}
+    });
+    let body = web
+        .partner_request(&login.access_token, &client_token, &query)
+        .await?;
+    let tiles = browse_tiles_from_json(&body);
+    anyhow::ensure!(!tiles.is_empty(), "Spotify returned no Browse categories");
+    Ok(tiles)
+}
+
+/// The categories in a `browseAll` answer. A genre is a section's card; a
+/// feature such as Live Events carries the same fields itself.
+fn browse_tiles_from_json(body: &serde_json::Value) -> Vec<BrowseTile> {
+    let list = |value: &serde_json::Value, path: &str| {
+        value
+            .pointer(path)
+            .and_then(|items| items.as_array())
+            .cloned()
+            .unwrap_or_default()
+    };
+    let mut tiles: Vec<BrowseTile> = Vec::new();
+    for section in list(body, "/data/browseStart/sections/items") {
+        for item in list(&section, "/sectionItems/items") {
+            let Some(content) = item.pointer("/content/data") else {
+                continue;
+            };
+            let kind = content.get("__typename").and_then(|kind| kind.as_str());
+            let (uri, card) = match kind {
+                Some("BrowseSectionContainer") => (
+                    item.get("uri").and_then(|uri| uri.as_str()),
+                    content.pointer("/data/cardRepresentation"),
+                ),
+                Some("BrowseClientFeature") => (
+                    content.get("featureUri").and_then(|uri| uri.as_str()),
+                    Some(content),
+                ),
+                _ => continue,
+            };
+            let (Some(uri), Some(card)) = (uri, card) else {
+                continue;
+            };
+            let Some(name) = card
+                .pointer("/title/transformedLabel")
+                .and_then(|name| name.as_str())
+                .filter(|name| !name.is_empty())
+            else {
+                continue;
+            };
+            if tiles.iter().any(|tile| tile.uri == uri) {
+                continue;
+            }
+            let colour = card
+                .pointer("/backgroundColor/hex")
+                .and_then(|hex| hex.as_str())
+                .and_then(hex_colour)
+                .unwrap_or([0x53, 0x53, 0x53]);
+            let image_url = card
+                .pointer("/artwork/sources/0/url")
+                .and_then(|url| url.as_str())
+                .and_then(picture_url);
+            tiles.push(BrowseTile {
+                uri: uri.to_string(),
+                name: name.to_string(),
+                colour,
+                image_url,
+            });
+        }
+    }
+    tiles
+}
+
+fn hex_colour(hex: &str) -> Option<[u8; 3]> {
+    let hex = hex.strip_prefix('#').unwrap_or(hex);
+    if hex.len() != 6 || !hex.is_ascii() {
+        return None;
+    }
+    let channel = |at: usize| u8::from_str_radix(&hex[at..at + 2], 16).ok();
+    Some([channel(0)?, channel(2)?, channel(4)?])
+}
+
+/// A picture reference from a profile or Browse answer: a web address, an
+/// image URI, or the four covers of a mosaic.
+fn picture_url(reference: &str) -> Option<String> {
+    if let Some(covers) = reference.strip_prefix("spotify:mosaic:") {
+        return Some(format!(
+            "https://mosaic.scdn.co/640/{}",
+            covers.replace(':', "")
+        ));
+    }
+    image_url(reference)
+}
+
+/// Somebody's public profile.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct UserPage {
+    pub name: Option<String>,
+    pub image_url: Option<String>,
+    pub followers: Option<u64>,
+    pub total_playlists: Option<u64>,
+    pub playlists: Vec<UserPlaylist>,
+    pub artists: Vec<UserArtist>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UserPlaylist {
+    pub uri: String,
+    pub id: String,
+    pub name: String,
+    pub image_url: Option<String>,
+    pub owner_name: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UserArtist {
+    pub uri: String,
+    pub id: String,
+    pub name: String,
+    pub image_url: Option<String>,
+}
+
+/// The public playlists a profile shows at most, as many as Spotify's first
+/// page of them.
+const USER_PLAYLISTS: u32 = 50;
+const USER_ARTISTS: u32 = 10;
+
+/// What the profile of `user_id` shows, from the view Spotify's own clients
+/// read.
+pub async fn user_page(session: &Session, user_id: &str) -> anyhow::Result<UserPage> {
+    let bytes = session
+        .spclient()
+        .get_user_profile(user_id, Some(USER_PLAYLISTS), Some(USER_ARTISTS))
+        .await?;
+    let json: serde_json::Value = serde_json::from_slice(&bytes)?;
+    Ok(user_page_from_json(&json))
+}
+
+fn user_page_from_json(json: &serde_json::Value) -> UserPage {
+    let text = |value: &serde_json::Value, key: &str| {
+        value
+            .get(key)
+            .and_then(|value| value.as_str())
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+    };
+    let list = |key: &str| {
+        json.get(key)
+            .and_then(|items| items.as_array())
+            .cloned()
+            .unwrap_or_default()
+    };
+    let id_of = |uri: &str, kind: &str| {
+        uri.strip_prefix("spotify:")
+            .and_then(|rest| rest.strip_prefix(kind))
+            .and_then(|rest| rest.strip_prefix(':'))
+            .map(str::to_string)
+    };
+    UserPage {
+        name: text(json, "name"),
+        image_url: text(json, "image_url").and_then(|url| picture_url(&url)),
+        followers: json.get("followers_count").and_then(|count| count.as_u64()),
+        total_playlists: json
+            .get("total_public_playlists_count")
+            .and_then(|count| count.as_u64()),
+        playlists: list("public_playlists")
+            .iter()
+            .filter_map(|playlist| {
+                let uri = text(playlist, "uri")?;
+                Some(UserPlaylist {
+                    id: id_of(&uri, "playlist")?,
+                    name: text(playlist, "name")?,
+                    image_url: text(playlist, "image_url").and_then(|url| picture_url(&url)),
+                    owner_name: text(playlist, "owner_name").unwrap_or_default(),
+                    uri,
+                })
+            })
+            .collect(),
+        artists: list("recently_played_artists")
+            .iter()
+            .filter_map(|artist| {
+                let uri = text(artist, "uri")?;
+                Some(UserArtist {
+                    id: id_of(&uri, "artist")?,
+                    name: text(artist, "name")?,
+                    image_url: text(artist, "image_url").and_then(|url| picture_url(&url)),
+                    uri,
+                })
+            })
+            .collect(),
+    }
+}
+
+/// Who made a song, as Spotify's Credits sheet groups them.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TrackCredits {
+    pub groups: Vec<CreditGroup>,
+    pub sources: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CreditGroup {
+    pub name: String,
+    pub people: Vec<CreditPerson>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CreditPerson {
+    pub name: String,
+    pub artist_id: Option<String>,
+    pub roles: Vec<String>,
+}
+
+/// Who made the song `uri`, from the view Spotify's clients read.
+pub async fn track_credits(session: &Session, uri: &str) -> anyhow::Result<TrackCredits> {
+    let id = uri
+        .strip_prefix("spotify:track:")
+        .ok_or_else(|| anyhow::anyhow!("Only songs have credits"))?;
+    let endpoint = format!("/track-credits-view/v0/experimental/{id}/credits");
+    let bytes = session
+        .spclient()
+        .request(&reqwest::Method::GET, &endpoint, None, None)
+        .await?;
+    let json: serde_json::Value = serde_json::from_slice(bytes.as_ref())?;
+    Ok(track_credits_from_json(&json))
+}
+
+/// The roles of a credits answer in Spotify's order, leaving out empty ones.
+/// A songwriter has a `creatorUri` rather than an artist page, so only
+/// artists link anywhere.
+fn track_credits_from_json(json: &serde_json::Value) -> TrackCredits {
+    let list = |value: &serde_json::Value, key: &str| {
+        value
+            .get(key)
+            .and_then(|items| items.as_array())
+            .cloned()
+            .unwrap_or_default()
+    };
+    let strings = |value: &serde_json::Value, key: &str| -> Vec<String> {
+        list(value, key)
+            .iter()
+            .filter_map(|text| text.as_str().filter(|text| !text.is_empty()))
+            .map(str::to_string)
+            .collect()
+    };
+    TrackCredits {
+        groups: list(json, "roleCredits")
+            .iter()
+            .filter_map(|role| {
+                let people: Vec<CreditPerson> = list(role, "artists")
+                    .iter()
+                    .filter_map(|person| {
+                        Some(CreditPerson {
+                            name: person
+                                .get("name")?
+                                .as_str()
+                                .filter(|n| !n.is_empty())?
+                                .to_string(),
+                            artist_id: person
+                                .get("uri")
+                                .and_then(|uri| uri.as_str())
+                                .and_then(|uri| uri.strip_prefix("spotify:artist:"))
+                                .map(str::to_string),
+                            roles: strings(person, "subroles"),
+                        })
+                    })
+                    .collect();
+                (!people.is_empty()).then(|| CreditGroup {
+                    name: role
+                        .get("roleTitle")
+                        .and_then(|title| title.as_str())
+                        .unwrap_or_default()
+                        .to_string(),
+                    people,
+                })
+            })
+            .collect(),
+        sources: strings(json, "sourceNames"),
+    }
+}
+
 /// What one friend is listening to, or last played, with names to show.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FriendActivity {
@@ -2254,6 +2560,107 @@ fn iso8601(timestamp_ms: i64) -> Option<String> {
         .ok()
         .filter(|_| timestamp_ms > 0)
         .map(|time| time.to_string())
+}
+
+#[cfg(test)]
+mod spotify_page_tests {
+    use super::*;
+
+    #[test]
+    fn browse_tiles_read_cards_and_features_once_each() {
+        let tiles = browse_tiles_from_json(
+            &serde_json::json!({"data":{"browseStart":{"sections":{"items":[
+                {"sectionItems":{"items":[
+                    {"uri":"spotify:page:pop","content":{"data":{"__typename":"BrowseSectionContainer","data":{"cardRepresentation":{
+                        "title":{"transformedLabel":"Pop"},
+                        "backgroundColor":{"hex":"#E13300"},
+                        "artwork":{"sources":[{"url":"https://i.scdn.co/image/pop"}]}
+                    }}}}},
+                    {"uri":"spotify:page:pop","content":{"data":{"__typename":"BrowseSectionContainer","data":{"cardRepresentation":{
+                        "title":{"transformedLabel":"Pop"}
+                    }}}}},
+                    {"uri":"x","content":{"data":{"__typename":"BrowseClientFeature",
+                        "featureUri":"spotify:app:live",
+                        "title":{"transformedLabel":"Live Events"},
+                        "backgroundColor":{"hex":"8400E7"},
+                        "artwork":{"sources":[]}
+                    }}},
+                    {"uri":"y","content":{"data":{"__typename":"NotFound"}}}
+                ]}}
+            ]}}}}),
+        );
+        assert_eq!(
+            tiles,
+            vec![
+                BrowseTile {
+                    uri: "spotify:page:pop".into(),
+                    name: "Pop".into(),
+                    colour: [0xe1, 0x33, 0x00],
+                    image_url: Some("https://i.scdn.co/image/pop".into()),
+                },
+                BrowseTile {
+                    uri: "spotify:app:live".into(),
+                    name: "Live Events".into(),
+                    colour: [0x84, 0x00, 0xe7],
+                    image_url: None,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn a_profile_reads_its_playlists_artists_and_mosaic_pictures() {
+        let page = user_page_from_json(&serde_json::json!({
+            "name": "Kasia",
+            "image_url": "https://i.scdn.co/image/me",
+            "followers_count": 12,
+            "total_public_playlists_count": 3,
+            "public_playlists": [
+                {"uri":"spotify:playlist:p1","name":"One","image_url":"spotify:mosaic:aa:bb:cc:dd","owner_name":"Kasia"},
+                {"uri":"spotify:playlist:p2","name":"Two","image_url":"spotify:image:ee"},
+                {"uri":"spotify:user:nobody","name":"Not a list"}
+            ],
+            "recently_played_artists": [{"uri":"spotify:artist:a1","name":"Ana"}]
+        }));
+        assert_eq!(page.name.as_deref(), Some("Kasia"));
+        assert_eq!(page.followers, Some(12));
+        assert_eq!(page.playlists.len(), 2);
+        assert_eq!(page.playlists[0].id, "p1");
+        assert_eq!(
+            page.playlists[0].image_url.as_deref(),
+            Some("https://mosaic.scdn.co/640/aabbccdd")
+        );
+        assert_eq!(page.artists[0].id, "a1");
+    }
+
+    #[test]
+    fn credits_read_roles_people_and_sources_and_link_only_artists() {
+        // The shape of Spotify's answer for a real song.
+        let credits = track_credits_from_json(&serde_json::json!({
+            "trackUri": "spotify:track:7MXVkk9YMctZqd1Srtv4MB",
+            "trackTitle": "Starboy",
+            "roleCredits": [
+                {"roleTitle": "Performers", "artists": [
+                    {"uri": "spotify:artist:abel", "name": "The Weeknd", "subroles": ["main artist"], "weight": 15.0}
+                ]},
+                {"roleTitle": "Writers", "artists": [
+                    {"name": "DaHeala", "creatorUri": "spotify:songwriter:x", "subroles": [], "weight": 0.0}
+                ]},
+                {"roleTitle": "Producers", "artists": []}
+            ],
+            "extendedCredits": [],
+            "sourceNames": ["Kobalt Music Publishing"]
+        }));
+        assert_eq!(credits.groups.len(), 2);
+        assert_eq!(credits.groups[0].name, "Performers");
+        assert_eq!(
+            credits.groups[0].people[0].artist_id.as_deref(),
+            Some("abel")
+        );
+        assert_eq!(credits.groups[0].people[0].roles, ["main artist"]);
+        assert_eq!(credits.groups[1].people[0].artist_id, None);
+        assert_eq!(credits.sources, ["Kobalt Music Publishing"]);
+    }
 }
 
 #[cfg(test)]

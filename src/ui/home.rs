@@ -252,12 +252,12 @@ fn play_tile(app: &mut App, uri: &str, song: bool) {
 }
 
 /// A shortcut's right-click menu. The liked songs' has none.
-fn tile_menu(app: &mut App, tile: &Tile, response: &egui::Response, id: egui::Id) {
+fn tile_menu(app: &mut App, tile: &Tile, response: &egui::Response, id: egui::Id, more: bool) {
     let palette = app.palette;
     let (false, Some(uri)) = (tile.liked, &tile.uri) else {
         return;
     };
-    egui::Popup::context_menu(response)
+    widgets::context_popup(response, more)
         .id(id)
         .frame(widgets::menu_frame(&palette))
         .show(|ui| match &tile.song {
@@ -378,7 +378,7 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) -> bool {
                 }
                 if let Some(uri) = &tile.uri {
                     let id = ui.make_persistent_id(("quick-access-menu", uri));
-                    tile_menu(app, tile, &response, id);
+                    tile_menu(app, tile, &response, id, false);
                 }
             }
         });
@@ -470,6 +470,7 @@ fn mcloud_shortcuts(app: &mut App, ui: &mut egui::Ui, tiles: &[Tile]) {
             );
         }
         let menu_id = ui.make_persistent_id(("quick-access-menu", index));
+        let mut more_clicked = false;
         if ui.rect_contains_pointer(rect) {
             if let Some(uri) = &tile.uri {
                 let playing_here = app.playing_context_uri().as_deref() == Some(uri.as_str())
@@ -511,16 +512,14 @@ fn mcloud_shortcuts(app: &mut App, ui: &mut egui::Ui, tiles: &[Tile]) {
                     palette.text.gamma_multiply(0.753)
                 };
                 theme::paint_icon(ui, Icon::Ellipsis, more_rect, 16.0, color);
-                if more.clicked() {
-                    egui::Popup::open_id(ui.ctx(), menu_id);
-                }
+                more_clicked = more.clicked();
             }
         }
         theme::focus_ring(ui, &response);
         if response.clicked() {
             app.actions.push(Action::Open(tile.page.clone()));
         }
-        tile_menu(app, tile, &response, menu_id);
+        tile_menu(app, tile, &response, menu_id, more_clicked);
     }
 }
 

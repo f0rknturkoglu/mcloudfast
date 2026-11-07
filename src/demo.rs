@@ -376,6 +376,28 @@ fn demo_local_rows(app: &mut App) {
 
 /// Populates the offline app with cards for screenshots and UI tests.
 pub fn populate(app: &mut App) {
+    app.user_pages.insert(
+        "spotify".into(),
+        Loadable::Loaded(std::sync::Arc::new(crate::session_reads::UserPage {
+            name: Some("Spotify".into()),
+            image_url: None,
+            followers: Some(12_150_146),
+            total_playlists: Some(1545),
+            playlists: PLAYLISTS
+                .iter()
+                .take(6)
+                .enumerate()
+                .map(|(at, name)| crate::session_reads::UserPlaylist {
+                    uri: format!("spotify:playlist:pl{at}"),
+                    id: format!("pl{at}"),
+                    name: (*name).to_string(),
+                    image_url: None,
+                    owner_name: "Spotify".into(),
+                })
+                .collect(),
+            artists: Vec::new(),
+        })),
+    );
     app.soloist_onboarding = crate::settings::SoloistOnboarding::Complete;
     app.backend.set_offline(true);
     app.offline = true;

@@ -489,7 +489,7 @@ fn top_plate(app: &mut App, ui: &mut egui::Ui, rect: Rect, item: &Row<'_>) {
             pos2(rect.right() - 10.0 - 14.0, rect.center().y),
             Vec2::splat(28.0),
         );
-        more_clicked = more_button(app, ui, more, id.with("more"), menu_id);
+        more_clicked = more_button(app, ui, more, id.with("more"));
     } else {
         let chevron = Rect::from_center_size(
             pos2(rect.right() - 14.0 - 7.0, rect.center().y),
@@ -516,7 +516,7 @@ fn top_plate(app: &mut App, ui: &mut egui::Ui, rect: Rect, item: &Row<'_>) {
                 .push(Action::Open(Page::Album(album.id.clone()))),
         }
     }
-    let menu = egui::Popup::context_menu(&response)
+    let menu = widgets::context_popup(&response, more_clicked)
         .id(menu_id)
         .frame(widgets::menu_frame(&palette));
     match item {
@@ -577,8 +577,8 @@ fn name_line(
     }
 }
 
-/// A "…" that opens the menu `menu_id` names; true when it was clicked.
-fn more_button(app: &App, ui: &egui::Ui, rect: Rect, id: Id, menu_id: Id) -> bool {
+/// A "…"; true when it was clicked.
+fn more_button(app: &App, ui: &egui::Ui, rect: Rect, id: Id) -> bool {
     let palette = app.palette;
     let response = ui.interact(rect, id, Sense::click());
     let label = gettext(app.locale, "More options");
@@ -591,11 +591,7 @@ fn more_button(app: &App, ui: &egui::Ui, rect: Rect, id: Id, menu_id: Id) -> boo
     };
     theme::paint_icon(ui, Icon::Ellipsis, rect, 16.0, colour);
     theme::focus_ring(ui, &response);
-    let clicked = response.clicked();
-    if clicked {
-        egui::Popup::open_id(ui.ctx(), menu_id);
-    }
-    clicked
+    response.clicked()
 }
 
 /// A song in the Songs shelf: 56pt, 48pt artwork, a rule from the text on
@@ -679,7 +675,7 @@ fn finish_song(
         pos2(rect.right() - 14.0, rect.center().y),
         Vec2::splat(28.0),
     );
-    let more_clicked = more_button(app, ui, more, id.with("more"), menu_id);
+    let more_clicked = more_button(app, ui, more, id.with("more"));
     theme::focus_ring(ui, response);
     if response.clicked() && !more_clicked {
         app.actions.push(Action::PlayUris {
@@ -688,7 +684,7 @@ fn finish_song(
         });
     }
     let item = PlayableItem::Track(track.clone());
-    egui::Popup::context_menu(response)
+    widgets::context_popup(response, more_clicked)
         .id(menu_id)
         .frame(widgets::menu_frame(&palette))
         .show(|ui| widgets::item_menu(ui, app, &item, None, None));
@@ -964,7 +960,7 @@ fn song_table(app: &mut App, ui: &mut egui::Ui, tracks: &[Track]) {
         );
         let menu_id = ui.make_persistent_id(("mcloud-table-menu", &track.uri));
         let more = Rect::from_center_size(pos2(right - 14.0, rect.center().y), Vec2::splat(28.0));
-        let more_clicked = more_button(app, ui, more, id.with("more"), menu_id);
+        let more_clicked = more_button(app, ui, more, id.with("more"));
         theme::focus_ring(ui, &response);
         if response.clicked() && !more_clicked {
             app.actions.push(Action::PlayUris {
@@ -973,7 +969,7 @@ fn song_table(app: &mut App, ui: &mut egui::Ui, tracks: &[Track]) {
             });
         }
         let item = PlayableItem::Track(track.clone());
-        egui::Popup::context_menu(&response)
+        widgets::context_popup(&response, more_clicked)
             .id(menu_id)
             .frame(widgets::menu_frame(&palette))
             .show(|ui| widgets::item_menu(ui, app, &item, None, None));

@@ -34,8 +34,10 @@ const TRANSPARENCY_RECHECK: Duration = Duration::from_secs(1);
 const HALO_BLUR: f32 = 13.5;
 /// The menu glass's halo blur, in points (macOS 27 NSMenu clear glass).
 const MENU_HALO_BLUR: f32 = 6.8;
+/// Blur of the toolbar's band over a scrolled page, mcloud's --am-bar-filter.
+const BAR_BLUR: f32 = 30.0;
 /// Corner radius of mcloud's popup menus, in points.
-pub const MENU_CORNER_RADIUS: f32 = 10.0;
+pub const MENU_CORNER_RADIUS: f32 = 13.0;
 /// Output luminance (0–255) at each 1/32 of input luminance.
 const TONE: [f32; 33] = [
     32.0, 36.0, 45.0, 56.0, 65.0, 71.0, 78.0, 86.0, 90.0, 96.0, 102.0, 109.0, 116.0, 120.0, 122.0,
@@ -74,6 +76,9 @@ enum SurfaceKind {
     Capsule,
     /// Rounded-rect NSMenu lens (6.8pt blur, 18pt rim bend, white -> 146 tone).
     Menu,
+    /// A plain blurred rectangle with no lens: mcloud's --am-bar-glass, the
+    /// toolbar's band over a scrolled page (blur 30, saturate 1.8).
+    Bar,
 }
 
 /// How finely the halo is made.
@@ -87,6 +92,8 @@ struct Quality {
     halo_blur: f32,
     /// Surface geometry and tone curve.
     kind: SurfaceKind,
+    /// How much of the surface shows, for a bar that fades in with the scroll.
+    opacity: f32,
 }
 
 /// Rim displacement in points at `edge_pt` points inside a menu's edge:
@@ -112,18 +119,21 @@ impl Quality {
                 iterations: 4,
                 halo_blur: HALO_BLUR,
                 kind: SurfaceKind::Capsule,
+                opacity: 1.0,
             }),
             GlassEffect::Balanced if over_lyrics => Some(Self {
                 downscale: 4,
                 iterations: 0,
                 halo_blur: HALO_BLUR,
                 kind: SurfaceKind::Capsule,
+                opacity: 1.0,
             }),
             GlassEffect::Balanced => Some(Self {
                 downscale: 4,
                 iterations: 3,
                 halo_blur: HALO_BLUR,
                 kind: SurfaceKind::Capsule,
+                opacity: 1.0,
             }),
             GlassEffect::Eco => None,
         }
@@ -136,15 +146,32 @@ impl Quality {
                 iterations: 3,
                 halo_blur: MENU_HALO_BLUR,
                 kind: SurfaceKind::Menu,
+                opacity: 1.0,
             }),
             GlassEffect::Balanced => Some(Self {
                 downscale: 2,
                 iterations: 2,
                 halo_blur: MENU_HALO_BLUR,
                 kind: SurfaceKind::Menu,
+                opacity: 1.0,
             }),
             GlassEffect::Eco => None,
         }
+    }
+
+    fn for_bar(effect: GlassEffect, opacity: f32) -> Option<Self> {
+        let iterations = match effect {
+            GlassEffect::Full => 4,
+            GlassEffect::Balanced => 3,
+            GlassEffect::Eco => return None,
+        };
+        Some(Self {
+            downscale: 8,
+            iterations,
+            halo_blur: BAR_BLUR,
+            kind: SurfaceKind::Bar,
+            opacity,
+        })
     }
 
     /// The halo's standard deviation in screen pixels.
@@ -252,6 +279,15 @@ pub fn paint_menu(ui: &egui::Ui, rect: Rect, effect: GlassEffect) -> bool {
     paint_with_quality(ui, rect, quality)
 }
 
+/// Paints the blurred rectangle behind the toolbar over a scrolled page,
+/// `opacity` of the way in. Returns `false` when it drew nothing.
+pub fn paint_bar(ui: &egui::Ui, rect: Rect, effect: GlassEffect, opacity: f32) -> bool {
+    let Some(quality) = Quality::for_bar(effect, opacity) else {
+        return false;
+    };
+    paint_with_quality(ui, rect, quality)
+}
+
 fn paint_with_quality(ui: &egui::Ui, rect: Rect, quality: Quality) -> bool {
     if reduced_transparency(ui.ctx()) {
         return false;
@@ -312,6 +348,7 @@ struct Uniforms {
     capture: Option<glow::UniformLocation>,
     ppp: Option<glow::UniformLocation>,
     mode: Option<glow::UniformLocation>,
+    opacity: Option<glow::UniformLocation>,
     tone: Option<glow::UniformLocation>,
     gain: Option<glow::UniformLocation>,
     highlight: Option<glow::UniformLocation>,
@@ -395,6 +432,7 @@ uniform vec4 u_rect;
 uniform vec4 u_capture;
 uniform float u_ppp;
 uniform int u_mode;
+uniform float u_opacity;
 uniform float u_tone[33];
 uniform float u_gain[33];
 uniform float u_highlight[15];
@@ -436,12 +474,22 @@ float highlight_at(float points) {
 }
 
 void main() {
+    if (u_mode == 2) {
+        // The bar: the page blurred and saturated 1.8 times, no lens or tone.
+        vec3 behind = texture2D(u_halo, (gl_FragCoord.xy - u_capture.xy) / u_capture.zw).rgb;
+        float grey = dot(behind, vec3(0.2126, 0.7152, 0.0722));
+        vec3 bar = mix(vec3(grey), behind, 1.8);
+        float noise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+        bar += noise / 255.0;
+        gl_FragColor = vec4(clamp(bar, 0.0, 1.0) * u_opacity, u_opacity);
+        return;
+    }
     vec2 p = gl_FragCoord.xy - u_rect.xy;
     float edge;
     vec2 normal;
     float shift;
     if (u_mode == 1) {
-        float r = min(10.0 * u_ppp, min(u_rect.z, u_rect.w) * 0.5);
+        float r = min(13.0 * u_ppp, min(u_rect.z, u_rect.w) * 0.5);
         vec2 half_size = u_rect.zw * 0.5;
         vec2 center_p = p - half_size;
         vec2 b = half_size - vec2(r);
@@ -561,6 +609,7 @@ impl Resources {
                     capture: uniform("u_capture"),
                     ppp: uniform("u_ppp"),
                     mode: uniform("u_mode"),
+                    opacity: uniform("u_opacity"),
                     tone: uniform("u_tone"),
                     gain: uniform("u_gain"),
                     highlight: uniform("u_highlight"),
@@ -695,7 +744,13 @@ impl Resources {
             );
             gl.uniform_1_f32(uniforms.ppp.as_ref(), ppp);
             let is_menu = matches!(quality.kind, SurfaceKind::Menu);
-            gl.uniform_1_i32(uniforms.mode.as_ref(), i32::from(is_menu));
+            let mode = match quality.kind {
+                SurfaceKind::Capsule => 0,
+                SurfaceKind::Menu => 1,
+                SurfaceKind::Bar => 2,
+            };
+            gl.uniform_1_i32(uniforms.mode.as_ref(), mode);
+            gl.uniform_1_f32(uniforms.opacity.as_ref(), quality.opacity);
             let light_tones = light_tone(
                 if is_menu { 180.0 } else { 108.0 },
                 if is_menu { 0.29 } else { 0.56 },

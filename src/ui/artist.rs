@@ -197,7 +197,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
                                     app.actions
                                         .push(Action::Open(Page::Album(album.id.clone())));
                                 }
-                                egui::Popup::context_menu(&card.response)
+                                widgets::context_popup(&card.response, card.more)
                                     .id(ui.make_persistent_id(("discography-menu", &album.uri)))
                                     .frame(widgets::menu_frame(&palette))
                                     .show(|ui| {

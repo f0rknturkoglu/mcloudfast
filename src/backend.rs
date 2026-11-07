@@ -916,6 +916,12 @@ pub enum Command {
     },
     /// Resolve user ids to display names through the streaming session.
     UserNames(Vec<String>),
+    /// Read Spotify's Browse categories.
+    BrowseTiles,
+    /// Read somebody's public profile by user id.
+    UserPage(String),
+    /// Read who made a song, by its URI.
+    TrackCredits(String),
     /// Read Spotify's play counts for an album's songs or an artist's
     /// popular songs, by the album's or the artist's URI.
     PlayCounts {
@@ -1138,6 +1144,17 @@ pub enum Event {
         id: String,
         name: Option<String>,
         image: Option<String>,
+    },
+    BrowseTiles {
+        result: Result<Vec<session_reads::BrowseTile>, String>,
+    },
+    UserPage {
+        id: String,
+        result: Result<session_reads::UserPage, String>,
+    },
+    TrackCredits {
+        uri: String,
+        result: Result<session_reads::TrackCredits, String>,
     },
     /// Play counts by track URI for the album or artist `uri`, with an
     /// artist's header picture, or why they could not be read.
@@ -2830,6 +2847,9 @@ impl Worker {
                     }
                 }
                 Command::UserNames(ids) => self.fetch_user_names(ids),
+                Command::BrowseTiles => self.fetch_browse_tiles(),
+                Command::UserPage(id) => self.fetch_user_page(id),
+                Command::TrackCredits(uri) => self.fetch_track_credits(uri),
                 Command::PlayCounts { uri, generation } => self.fetch_play_counts(uri, generation),
                 Command::FriendActivity(generation) => self.fetch_friend_activity(generation),
                 Command::LoadLikedSongsCache { generation } => {
@@ -4879,6 +4899,90 @@ impl Worker {
                 let _ = events.send(Event::UserName { id, name, image });
                 waker.wake();
             }
+        });
+    }
+
+    /// Ask Spotify for its Browse categories. Without a playback session the
+    /// page keeps its own flat tiles.
+    fn fetch_browse_tiles(&self) {
+        let events = self.events.clone();
+        let waker = self.waker.clone();
+        let send = move |result| {
+            let _ = events.send(Event::BrowseTiles { result });
+            waker.wake();
+        };
+        let (Some(engine), Some(web)) = (self.engine.clone(), self.api.prerelease_http_client())
+        else {
+            return send(Err("Browse needs the playback session.".into()));
+        };
+        tokio::spawn(async move {
+            let read = tokio::time::timeout(
+                Duration::from_secs(15),
+                session_reads::browse_tiles(engine.session(), &web),
+            );
+            let result = read
+                .await
+                .map_err(|_| "Spotify took too long to answer.".to_string())
+                .and_then(|result| result.map_err(|error| format!("{error:#}")));
+            match &result {
+                Ok(tiles) => log::debug!("Browse categories: {}", tiles.len()),
+                Err(error) => log::warn!("Browse categories unavailable: {error}"),
+            }
+            send(result);
+        });
+    }
+
+    /// Ask Spotify for what a profile shows. Only the session can ask.
+    fn fetch_user_page(&self, id: String) {
+        let events = self.events.clone();
+        let waker = self.waker.clone();
+        let send = move |id, result| {
+            let _ = events.send(Event::UserPage { id, result });
+            waker.wake();
+        };
+        let Some(engine) = self.engine.clone() else {
+            return send(id, Err("Profiles need the playback session.".into()));
+        };
+        tokio::spawn(async move {
+            let read = tokio::time::timeout(
+                Duration::from_secs(15),
+                session_reads::user_page(engine.session(), &id),
+            );
+            let result = read
+                .await
+                .map_err(|_| "Spotify took too long to answer.".to_string())
+                .and_then(|result| result.map_err(|error| format!("{error:#}")));
+            if let Err(error) = &result {
+                log::debug!("Profile unavailable: {error}");
+            }
+            send(id, result);
+        });
+    }
+
+    /// Ask Spotify who made a song, for its Credits sheet.
+    fn fetch_track_credits(&self, uri: String) {
+        let events = self.events.clone();
+        let waker = self.waker.clone();
+        let send = move |uri, result| {
+            let _ = events.send(Event::TrackCredits { uri, result });
+            waker.wake();
+        };
+        let Some(engine) = self.engine.clone() else {
+            return send(uri, Err("Credits need the playback session.".into()));
+        };
+        tokio::spawn(async move {
+            let read = tokio::time::timeout(
+                Duration::from_secs(15),
+                session_reads::track_credits(engine.session(), &uri),
+            );
+            let result = read
+                .await
+                .map_err(|_| "Spotify took too long to answer.".to_string())
+                .and_then(|result| result.map_err(|error| format!("{error:#}")));
+            if let Err(error) = &result {
+                log::debug!("Credits unavailable: {error}");
+            }
+            send(uri, result);
         });
     }
 
